@@ -101,9 +101,7 @@ pub fn complete_action(mouse: Res<Input<MouseButton>>, mut editor: ResMut<Editor
 
 pub fn remove_bone(
     mut commands: Commands,
-    mut bones: ResMut<Bones>,
     keys: Res<Input<KeyCode>>,
-    cursor_pos: Res<CursorPos>,
     q: Query<(Entity, &Bone)>,
 ) {
     // Remove bone only if DELETE was pressed
@@ -119,8 +117,6 @@ pub fn remove_bone(
 }
 
 pub fn transform_bone(
-    mouse: Res<Input<MouseButton>>,
-    keys: Res<Input<KeyCode>>,
     cursor_pos: Res<CursorPos>,
     mut q: Query<(&GlobalTransform, Option<&Parent>, &mut Transform), With<Bone>>,
     editor: Res<Editor>,
@@ -196,7 +192,7 @@ pub fn transform_bone(
 
 pub fn select_bone(
     mouse: Res<Input<MouseButton>>,
-    mut editor: ResMut<Editor>,
+    editor: Res<Editor>,
     keys: Res<Input<KeyCode>>,
     cursor_pos: Res<CursorPos>,
     mut q: Query<(&GlobalTransform, &mut Bone, Entity)>,
@@ -271,7 +267,6 @@ pub fn add_bone(
         let (parent_gl_transform, _, _) = q.get(parent).unwrap();
         let v_diff =
             Vec3::new(cursor_pos.0.x, cursor_pos.0.y, bone_depth) - parent_gl_transform.translation;
-        dbg!(parent_gl_transform.scale);
             let rel_translation = Quat::mul_vec3(Quat::inverse(parent_gl_transform.rotation), v_diff)
             / Vec3::new(parent_gl_transform.scale.x, parent_gl_transform.scale.y, 1.);
         commands.entity(parent).with_children(|parent| {
