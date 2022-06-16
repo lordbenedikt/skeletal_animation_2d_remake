@@ -4,15 +4,15 @@ use bevy_prototype_debug_lines::*;
 const COLOR_SELECTED: Color = Color::rgb(1., 1., 1.);
 const COLOR_DEFAULT: Color = Color::rgb(1., 0.6, 0.);
 
-pub struct Editor {
+pub struct State {
     action: Action,
     cursor_anchor: Vec2,
     original_transforms: Vec<Transform>,
     selected_entities: Vec<Entity>,
 }
-impl Editor {
-    pub fn new() -> Editor {
-        Editor {
+impl State {
+    pub fn new() -> State {
+        State {
             action: Action::None,
             cursor_anchor: Vec2::new(0., 0.),
             original_transforms: vec![],
@@ -53,49 +53,49 @@ pub fn system_set() -> SystemSet {
 
 pub fn start_action(
     cursor_pos: Res<CursorPos>,
-    mut editor: ResMut<Editor>,
+    mut state: ResMut<State>,
     keys: Res<Input<KeyCode>>,
     q: Query<(&Transform, &Bone, Entity)>,
 ) {
     // Start action only if action isn't already taken
-    if editor.action != Action::None {
+    if state.action != Action::None {
         return;
     }
     if keys.just_pressed(KeyCode::G) {
-        editor.action = Action::Translate;
+        state.action = Action::Translate;
     } else if keys.just_pressed(KeyCode::S) {
-        editor.action = Action::Scale;
+        state.action = Action::Scale;
     } else if keys.just_pressed(KeyCode::R) {
-        editor.action = Action::Rotate;
+        state.action = Action::Rotate;
     } else {
         return;
     }
     // Store cursor position at moment action is started
-    editor.cursor_anchor = cursor_pos.0;
+    state.cursor_anchor = cursor_pos.0;
     // Find selected entities and store their transforms at moment action is started
-    editor.original_transforms.clear();
-    editor.selected_entities.clear();
+    state.original_transforms.clear();
+    state.selected_entities.clear();
     for (transform, bone, entity) in q.iter() {
         if bone.is_selected {
-            editor.original_transforms.push(transform.clone());
-            editor.selected_entities.push(entity);
+            state.original_transforms.push(transform.clone());
+            state.selected_entities.push(entity);
         }
     }
     // Don't start action if no bones are selected
-    if editor.selected_entities.len() == 0 {
-        editor.action = Action::None;
+    if state.selected_entities.len() == 0 {
+        state.action = Action::None;
     }
 }
 
-pub fn complete_action(mouse: Res<Input<MouseButton>>, mut editor: ResMut<Editor>) {
+pub fn complete_action(mouse: Res<Input<MouseButton>>, mut state: ResMut<State>) {
     // If current action is a transformation finnish this action
-    if editor.action != Action::None && editor.action != Action::Done {
+    if state.action != Action::None && state.action != Action::Done {
         if mouse.just_pressed(MouseButton::Left) {
-            editor.action = Action::Done
+            state.action = Action::Done
         }
-    // Otherwise set editor.action to None in case it was Done
+    // Otherwise set state.action to None in case it was Done
     } else {
-        editor.action = Action::None;
+        state.action = Action::None;
     }
 }
 
@@ -119,41 +119,41 @@ pub fn remove_bone(
 pub fn transform_bone(
     cursor_pos: Res<CursorPos>,
     mut q: Query<(&GlobalTransform, Option<&Parent>, &mut Transform), With<Bone>>,
-    editor: Res<Editor>,
+    state: Res<State>,
 ) {
-    match editor.action {
+    match state.action {
         Action::Translate => {
-            for i in 0..editor.selected_entities.len() {
-                if let Some(parent) = q.get(editor.selected_entities[i]).unwrap().1 {
+            for i in 0..state.selected_entities.len() {
+                if let Some(parent) = q.get(state.selected_entities[i]).unwrap().1 {
                     let parent_entity = parent.0;
                     // Calculate transform relative to parent entity
                     let parent_gl_transform = q.get(parent_entity).unwrap().0;
-                    let v_diff = cursor_pos.0 - editor.cursor_anchor;
+                    let v_diff = cursor_pos.0 - state.cursor_anchor;
                     let v_diff_vec3 = Vec3::new(v_diff.x, v_diff.y, 0.);
                     let rel_translation =
                         Quat::mul_vec3(Quat::inverse(parent_gl_transform.rotation), v_diff_vec3)
                         / Vec3::new(parent_gl_transform.scale.x, parent_gl_transform.scale.y, 1.);
-                    q.get_mut(editor.selected_entities[i])
+                    q.get_mut(state.selected_entities[i])
                         .unwrap()
                         .2
-                        .translation = editor.original_transforms[i].translation + rel_translation;
+                        .translation = state.original_transforms[i].translation + rel_translation;
                 } else {
                     // Entity has no parent
-                    let v_diff = cursor_pos.0 - editor.cursor_anchor;
+                    let v_diff = cursor_pos.0 - state.cursor_anchor;
                     let v_diff_vec3 = Vec3::new(v_diff.x, v_diff.y, 0.);
-                    q.get_mut(editor.selected_entities[i])
+                    q.get_mut(state.selected_entities[i])
                         .unwrap()
                         .2
-                        .translation = editor.original_transforms[i].translation + v_diff_vec3;
+                        .translation = state.original_transforms[i].translation + v_diff_vec3;
                 }
             }
         }
         Action::Rotate => {
-            for i in 0..editor.selected_entities.len() {
+            for i in 0..state.selected_entities.len() {
                 // Get bone's global transform, vector from bone cursor anchor
                 // and vector from bone to current cursor position
-                let gl_transform = q.get(editor.selected_entities[i]).unwrap().0;
-                let mut v_diff_anchor = editor.cursor_anchor - gl_transform.translation.truncate();
+                let gl_transform = q.get(state.selected_entities[i]).unwrap().0;
+                let mut v_diff_anchor = state.cursor_anchor - gl_transform.translation.truncate();
                 let mut v_diff = cursor_pos.0 - gl_transform.translation.truncate();
                 // If either v_diff_anchor or v_diff is null vector assign arbitrary value
                 if v_diff_anchor.length() == 0. {
@@ -163,8 +163,8 @@ pub fn transform_bone(
                     v_diff = Vec2::new(0., 1.);
                 }
                 // Assign changed rotation to bone's transform
-                let mut transform = q.get_mut(editor.selected_entities[i]).unwrap().2;
-                transform.rotation = editor.original_transforms[i].rotation
+                let mut transform = q.get_mut(state.selected_entities[i]).unwrap().2;
+                transform.rotation = state.original_transforms[i].rotation
                     * Quat::from_rotation_arc(
                         v_diff_anchor.normalize().extend(0.),
                         v_diff.normalize().extend(0.),
@@ -172,17 +172,17 @@ pub fn transform_bone(
             }
         }
         Action::Scale => {
-            for i in 0..editor.selected_entities.len() {
+            for i in 0..state.selected_entities.len() {
                 // Get bone's global transform, vector from bone cursor anchor
                 // and vector from bone to current cursor position
-                let gl_transform = q.get(editor.selected_entities[i]).unwrap().0;
-                let v_diff_anchor = editor.cursor_anchor - gl_transform.translation.truncate();
+                let gl_transform = q.get(state.selected_entities[i]).unwrap().0;
+                let v_diff_anchor = state.cursor_anchor - gl_transform.translation.truncate();
                 let v_diff = cursor_pos.0 - gl_transform.translation.truncate();
                 let distance_to_anchor = f32::max(0.1, v_diff_anchor.length());
                 let distance_to_cursor = f32::max(0.1, v_diff.length());
                 let scale_ratio = distance_to_cursor / distance_to_anchor;
-                let mut transform = q.get_mut(editor.selected_entities[i]).unwrap().2;
-                transform.scale = editor.original_transforms[i].scale * scale_ratio;
+                let mut transform = q.get_mut(state.selected_entities[i]).unwrap().2;
+                transform.scale = state.original_transforms[i].scale * scale_ratio;
             }
         }
         Action::None => (),
@@ -192,13 +192,13 @@ pub fn transform_bone(
 
 pub fn select_bone(
     mouse: Res<Input<MouseButton>>,
-    editor: Res<Editor>,
+    state: Res<State>,
     keys: Res<Input<KeyCode>>,
     cursor_pos: Res<CursorPos>,
     mut q: Query<(&GlobalTransform, &mut Bone, Entity)>,
 ) {
     // Select/Unselect only if action is not already taken and if left mouse was pressed
-    if !mouse.just_pressed(MouseButton::Left) || editor.action != Action::None {
+    if !mouse.just_pressed(MouseButton::Left) || state.action != Action::None {
         return;
     }
     let mut closest_entity: Option<Entity> = None;
@@ -237,16 +237,15 @@ pub fn select_bone(
 
 pub fn add_bone(
     mut commands: Commands,
-    mut bones: ResMut<Bones>,
     mouse: Res<Input<MouseButton>>,
     keys: Res<Input<KeyCode>>,
     cursor_pos: Res<CursorPos>,
     mut q: Query<(&GlobalTransform, &mut Bone, Entity)>,
-    editor: Res<Editor>,
+    mut state: ResMut<State>,
 ) {
     let show_sprite = false;
     // Return if action is already taken
-    if editor.action != Action::None {
+    if state.action != Action::None {
         return;
     }
     // Add bone only if CTRL and LEFT MOUSE was pressed
@@ -313,12 +312,11 @@ pub fn add_bone(
             .insert(Bone::new())
             .id()
     };
-    // Add id to Bones resource
-    bones.0.push(entity);
     // Unselect all bones
     for (_, mut bone, _) in q.iter_mut() {
         bone.is_selected = false;
     }
+    state.action = Action::Done;
 }
 
 pub fn draw_debug_lines(
