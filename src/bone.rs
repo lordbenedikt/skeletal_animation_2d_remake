@@ -1,8 +1,4 @@
 use crate::*;
-use bevy_prototype_debug_lines::*;
-
-const COLOR_SELECTED: Color = Color::rgb(1., 1., 1.);
-const COLOR_DEFAULT: Color = Color::rgb(1., 0.6, 0.);
 
 pub struct State {
     action: Action,
@@ -99,11 +95,7 @@ pub fn complete_action(mouse: Res<Input<MouseButton>>, mut state: ResMut<State>)
     }
 }
 
-pub fn remove_bone(
-    mut commands: Commands,
-    keys: Res<Input<KeyCode>>,
-    q: Query<(Entity, &Bone)>,
-) {
+pub fn remove_bone(mut commands: Commands, keys: Res<Input<KeyCode>>, q: Query<(Entity, &Bone)>) {
     // Remove bone only if DELETE was pressed
     if !keys.just_pressed(KeyCode::Delete) {
         return;
@@ -132,19 +124,19 @@ pub fn transform_bone(
                     let v_diff_vec3 = Vec3::new(v_diff.x, v_diff.y, 0.);
                     let rel_translation =
                         Quat::mul_vec3(Quat::inverse(parent_gl_transform.rotation), v_diff_vec3)
-                        / Vec3::new(parent_gl_transform.scale.x, parent_gl_transform.scale.y, 1.);
-                    q.get_mut(state.selected_entities[i])
-                        .unwrap()
-                        .2
-                        .translation = state.original_transforms[i].translation + rel_translation;
+                            / Vec3::new(
+                                parent_gl_transform.scale.x,
+                                parent_gl_transform.scale.y,
+                                1.,
+                            );
+                    q.get_mut(state.selected_entities[i]).unwrap().2.translation =
+                        state.original_transforms[i].translation + rel_translation;
                 } else {
                     // Entity has no parent
                     let v_diff = cursor_pos.0 - state.cursor_anchor;
                     let v_diff_vec3 = Vec3::new(v_diff.x, v_diff.y, 0.);
-                    q.get_mut(state.selected_entities[i])
-                        .unwrap()
-                        .2
-                        .translation = state.original_transforms[i].translation + v_diff_vec3;
+                    q.get_mut(state.selected_entities[i]).unwrap().2.translation =
+                        state.original_transforms[i].translation + v_diff_vec3;
                 }
             }
         }
@@ -266,7 +258,7 @@ pub fn add_bone(
         let (parent_gl_transform, _, _) = q.get(parent).unwrap();
         let v_diff =
             Vec3::new(cursor_pos.0.x, cursor_pos.0.y, bone_depth) - parent_gl_transform.translation;
-            let rel_translation = Quat::mul_vec3(Quat::inverse(parent_gl_transform.rotation), v_diff)
+        let rel_translation = Quat::mul_vec3(Quat::inverse(parent_gl_transform.rotation), v_diff)
             / Vec3::new(parent_gl_transform.scale.x, parent_gl_transform.scale.y, 1.);
         commands.entity(parent).with_children(|parent| {
             res = parent
@@ -320,7 +312,7 @@ pub fn add_bone(
 }
 
 pub fn draw_debug_lines(
-    mut lines: ResMut<DebugLines>,
+    mut debug_drawer: ResMut<DebugDrawer>,
     bone_gl_transforms: Query<(&GlobalTransform, &Bone)>,
 ) {
     for (gl_transform, bone) in bone_gl_transforms.iter() {
@@ -338,11 +330,12 @@ pub fn draw_debug_lines(
             points[i].y *= scale.y;
         }
         for i in 0..points.len() {
-            lines.line_colored(
-                gl_transform.translation + Quat::mul_vec3(gl_transform.rotation, points[i]),
-                gl_transform.translation
-                    + Quat::mul_vec3(gl_transform.rotation, points[(i + 1) % points.len()]),
-                0.,
+            debug_drawer.line(
+                (gl_transform.translation + Quat::mul_vec3(gl_transform.rotation, points[i]))
+                    .truncate(),
+                (gl_transform.translation
+                    + Quat::mul_vec3(gl_transform.rotation, points[(i + 1) % points.len()]))
+                .truncate(),
                 if bone.is_selected {
                     COLOR_SELECTED
                 } else {

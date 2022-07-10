@@ -4,14 +4,22 @@ use bevy::{prelude::*, utils::HashMap};
 pub struct State {
     running: bool,
     start_time: f64,
+    running_animations: Vec<LayeredAnimation>,
 }
 impl State {
     pub fn new() -> State {
         State {
             running: false,
             start_time: 0.,
+            running_animations: Vec::new(),
         }
     }
+}
+
+pub struct LayeredAnimation {
+    start_time: f64,
+    duration: f64,
+    animations: Vec<String>,
 }
 
 pub struct Animations {
@@ -70,6 +78,9 @@ pub fn apply_animation(
     let anim_length_in_secs = 3.;
     let time_diff = time.seconds_since_startup() - state.start_time;
     for (key, value) in &anims.map.get("test").unwrap().bone_animations {
+        if q.get_mut(*key).is_err() {
+            continue;
+        }
         let current_frame_a = f64::floor(time_diff / anim_length_in_secs) as usize % value.vector.len();
         let current_frame_b = (current_frame_a + 1) % value.vector.len();
         let mut x = ((time_diff % anim_length_in_secs) / anim_length_in_secs) as f32;
