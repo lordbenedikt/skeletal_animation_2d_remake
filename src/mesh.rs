@@ -1,23 +1,69 @@
 use crate::*;
 use image::GenericImageView;
-use lyon_tessellation::*;
-use lyon_tessellation::geometry_builder::simple_builder;
-use lyon_tessellation::math::{point, Point};
-use lyon_tessellation::path::Path;
+use lyon::lyon_tessellation::{
+    geometry_builder::simple_builder,
+    math::{point, Point},
+    path::Path,
+    FillOptions, FillTessellator, VertexBuffers,
+};
 use std::cmp::*;
 use std::collections::HashMap;
 
 #[derive(Default)]
-pub struct Polygon {
+pub struct LineStrip {
     pub vertices: Vec<Vec2>,
     pub edges: Vec<[usize; 2]>,
 }
-impl Polygon {
-    fn simplify(&mut self) {
-        let keep_one_out_of = 30;
-        let mut keep_vertices = vec![];
-        for i in 0..(self.edges.len() / keep_one_out_of) {
-            keep_vertices.push(self.vertices[self.edges[i * keep_one_out_of][0]]);
+impl LineStrip {
+    fn simplify(&mut self, filename: &str) {
+        dbg!(filename);
+        let img = image::open(format!("assets/{}", filename)).expect("File not found!");
+        let (w, h) = img.dimensions();
+
+        // let max_skipped_vertices = 100;
+        let mut keep_vertices = vec![self.vertices[self.edges[0][0]]];
+        let mut start_index = self.edges[0][0];
+        let mut index = 1;
+        while index <= self.edges.len() {
+            let _index = index % self.edges.len();
+            let current_index = self.edges[_index][0];
+            let v0 = self.vertices[start_index];
+            let v1 = self.vertices[current_index];
+            let magnitude = Vec2::distance(v0, v1) as i32 + 1;
+            let normalized = (v1 - v0).normalize();
+
+            let mut is_collision = false;
+
+            // // bug, collision is detected to soon
+            // for i in 1..=magnitude {
+            //     let is_visible = || -> bool {
+            //         for j in 0..2 {
+            //             for k in 0..2 {
+            //                 let current_pos = v0 + normalized * i as f32;
+            //                 let x = current_pos.x + j as f32;
+            //                 let y = current_pos.y + k as f32;
+            //                 if x < 0. || x as u32 >= w || y < 0. || y as u32 >= h {
+            //                     continue;
+            //                 }
+            //                 if img.get_pixel(x as u32, y as u32).0[3] > 10 {
+            //                     return true;
+            //                 }
+            //             }
+            //         }
+            //         false
+            //     };
+            //     if is_visible() {
+            //         is_collision = true;
+            //         break;
+            //     }
+            // }
+            let is_collision = index % 10 == 0;
+
+            if is_collision {
+                keep_vertices.push(self.vertices[self.edges[index - 1][0]]);
+                start_index = self.edges[index - 1][0];
+            }
+            index += 1;
         }
         self.edges.clear();
         for i in 0..keep_vertices.len() {
@@ -27,17 +73,123 @@ impl Polygon {
     }
 }
 
-pub struct MultiPolygon {
-    pub polygons: Vec<Polygon>,
+#[derive(Default)]
+struct Contour {
+    pub filename: String,
+    pub vertices: Vec<Vec2>,
+    pub edges: Vec<[usize; 2]>,
 }
-impl MultiPolygon {
-    fn from_mesh(mesh: &Mesh) -> MultiPolygon {
-        dbg!(mesh.vertices.len());
-        let mut polygons: Vec<Polygon> = vec![];
+impl Contour {
+    fn from_image(filename: &str) -> Self {
+        let img = image::open(format!("assets/{}", filename)).expect("File not found!");
+        let (w, h) = img.dimensions();
+        let offset: i32 = 10;
+        let max_distance: i32 = offset - 1;
+        let (output_w, output_h) = (w + offset as u32 * 2, h + offset as u32 * 2);
+
+        let mut out = vec![vec![0; output_h as usize]; output_w as usize];
+
+        // generate threshold distance map
+        for x in 0..output_w {
+            for y in 0..output_h {
+                out[x as usize][output_h as usize - y as usize - 1] =
+                    if is_close_to_visible_pixel(x as i32, y as i32, &img, offset, max_distance) {
+                        1
+                    } else {
+                        0
+                    };
+            }
+        }
+
+        // generate contour using marching square algorithm
+        let mut contour_vertices: Vec<Vec2> = vec![];
+        let mut contour_edges: Vec<[usize; 2]> = vec![];
+        let mut contour_grid = vec![vec![0_u8; output_h as usize - 1]; output_w as usize - 1];
+        for x in 0..output_w - 1 {
+            for y in 0..output_h - 1 {
+                let x = x as usize;
+                let y = y as usize;
+                contour_grid[x][y] = (out[x][y + 1] << 3)
+                    + (out[x + 1][y + 1] << 2)
+                    + (out[x + 1][y] << 1)
+                    + out[x][y];
+                let case = &MARCHING_SQUARE_LOOKUP_TABLE[contour_grid[x][y] as usize];
+                let offset_vector = Vec2::new(offset as f32, offset as f32);
+                let current_pos =
+                    Vec2::new(x as f32, y as f32) + Vec2::new(0.5, 0.5) - offset_vector;
+                // store first edge and vertices
+                if case.count > 0 {
+                    contour_vertices.push(Vec2::from_slice(&case.vertices[0]) + current_pos);
+                    contour_vertices.push(Vec2::from_slice(&case.vertices[1]) + current_pos);
+                    let vertex_count: usize = contour_vertices.len();
+                    contour_edges.push([vertex_count - 2, vertex_count - 1]);
+                }
+                // store second edge and vertices
+                if case.count > 1 {
+                    contour_vertices.push(Vec2::from_slice(&case.vertices[2]) + current_pos);
+                    contour_vertices.push(Vec2::from_slice(&case.vertices[3]) + current_pos);
+                    let vertex_count: usize = contour_vertices.len();
+                    contour_edges.push([vertex_count - 2, vertex_count - 1]);
+                }
+            }
+        }
+
+        let mut merged_vertices: HashMap<u64, Vec<usize>> = HashMap::new();
+        let mut original_to_new_index: HashMap<usize, usize> = HashMap::new();
+
+        // insert all unique vertices to hashmap
+        for i in 0..contour_vertices.len() {
+            let hash = contour_vertices.get(i).unwrap().hash();
+            if !merged_vertices.contains_key(&hash) {
+                merged_vertices.insert(hash, vec![i]);
+            } else {
+                merged_vertices.get_mut(&hash).unwrap().push(i);
+            }
+        }
+
+        let mut graph = Contour::default();
+        graph.filename = String::from(filename);
+
+        // store all unique vertices in mesh resource
+        let mut i = 0;
+        for (_, indices) in merged_vertices.iter() {
+            for index in indices.iter() {
+                original_to_new_index.insert(*index, i);
+            }
+            graph.vertices.push(contour_vertices[indices[0]]);
+            i += 1;
+        }
+
+        // store edges with new index in mesh resource
+        for [i0, i1] in contour_edges {
+            graph.edges.push([
+                *original_to_new_index.get(&i0).unwrap(),
+                *original_to_new_index.get(&i1).unwrap(),
+            ]);
+        }
+
+        dbg!(contour_vertices.len());
+        dbg!(graph.vertices.len());
+        dbg!(graph.edges.len());
+
+        graph
+    }
+}
+
+pub struct Polygon {
+    pub filename: String,
+    pub line_strips: Vec<LineStrip>,
+}
+impl Polygon {
+    fn from_contour(contour: &Contour) -> Polygon {
+        dbg!(contour.vertices.len());
+        let mut polygons: Vec<LineStrip> = vec![];
         let mut first_indices_of_polygons: Vec<usize> = vec![0];
-        let mut edges: Vec<[usize; 2]> = mesh.edges.clone();
+        let mut edges: Vec<[usize; 2]> = contour.edges.clone();
         let mut index = 0;
         let mut iteration = 0;
+
+        // order edges
         loop {
             let mut found = false;
             for i in iteration..edges.len() {
@@ -63,37 +215,101 @@ impl MultiPolygon {
                 first_indices_of_polygons.push(iteration);
             }
         }
-        // split up into individual polygons
-        let mut polygon = Polygon::default();
+
+        // split up into contiuous lines
+        let mut line_strip = LineStrip::default();
         for i in 0..first_indices_of_polygons.len() {
             let start = first_indices_of_polygons[i];
             let end = if i + 1 == first_indices_of_polygons.len() {
-                mesh.vertices.len()
+                contour.vertices.len()
             } else {
                 first_indices_of_polygons[i + 1]
             };
             // add edges
             for j in start..end {
-                polygon.vertices.push(mesh.vertices[edges[j][0]].clone());
-                if polygon.vertices.len() >= 2 {
-                    polygon
+                line_strip
+                    .vertices
+                    .push(contour.vertices[edges[j][0]].clone());
+                print!("{}, ", &contour.vertices[edges[j][0]]);
+                if line_strip.vertices.len() >= 2 {
+                    line_strip
                         .edges
-                        .push([polygon.vertices.len() - 2, polygon.vertices.len() - 1]);
+                        .push([line_strip.vertices.len() - 2, line_strip.vertices.len() - 1]);
                 }
             }
             // add edge between last and first vertex
             dbg!(i);
-            polygon.edges.push([polygon.vertices.len() - 1, 0]);
-            
+            line_strip.edges.push([line_strip.vertices.len() - 1, 0]);
 
-            polygons.push(polygon);
-            polygon = Polygon::default();
+            polygons.push(line_strip);
+            line_strip = LineStrip::default();
         }
-        MultiPolygon { polygons }
+
+        Polygon {
+            filename: contour.filename.clone(),
+            line_strips: polygons,
+        }
     }
     fn simplify(&mut self) {
-        for polygon in self.polygons.iter_mut() {
-            polygon.simplify();
+        for line_strip in self.line_strips.iter_mut() {
+            line_strip.simplify(&self.filename);
+        }
+    }
+    fn triangulate(&self) -> Mesh {
+        // Create a simple path.
+        let mut path_builder = Path::builder();
+        let mut is_beginning = true;
+        let mut first_vertex = Vec2::new(0., 0.);
+        for line_strip in self.line_strips.iter() {
+            first_vertex = line_strip.vertices[0];
+            if is_beginning {
+                path_builder.begin(point(first_vertex[0], first_vertex[1]));
+                is_beginning = false;
+            } else {
+                path_builder.end(true);
+                path_builder.begin(point(first_vertex[0], first_vertex[1]));
+            }
+            for i in 1..line_strip.vertices.len() {
+                let vertex = line_strip.vertices[i];
+                path_builder.line_to(point(vertex[0], vertex[1]));
+            }
+        }
+        path_builder.end(true);
+        let path = path_builder.build();
+
+        // Create the destination vertex and index buffers.
+        let mut buffers: VertexBuffers<Point, u16> = VertexBuffers::new();
+
+        {
+            let mut vertex_builder = simple_builder(&mut buffers);
+
+            // Create the tessellator.
+            let mut tessellator = FillTessellator::new();
+
+            // Compute the tessellation.
+            let result =
+                tessellator.tessellate_path(&path, &FillOptions::default(), &mut vertex_builder);
+            assert!(result.is_ok());
+        }
+
+        dbg!(buffers.vertices.len());
+        dbg!(buffers.indices.len());
+        println!("The generated vertices are: {:?}.", &buffers.vertices[..]);
+        println!("The generated indices are: {:?}.", &buffers.indices[..]);
+
+        let mut vertices: Vec<[f32; 3]> = vec![];
+        let mut indices: Vec<u16> = vec![];
+        for vertex in buffers.vertices {
+            vertices.push([vertex.x, vertex.y, 0.]);
+        }
+        for index in buffers.indices {
+            indices.push(index);
+        }
+
+        Mesh {
+            filename: self.filename.clone(),
+            vertices,
+            indices,
         }
     }
 }
@@ -101,57 +317,14 @@ impl MultiPolygon {
 #[derive(Default)]
 pub struct Mesh {
     pub filename: String,
-    pub vertices: Vec<Vec2>,
-    pub edges: Vec<[usize; 2]>,
-}
-impl Mesh {
-    fn order_edges(&mut self) {
-        let mut index = 0;
-        let mut iteration = 0;
-        loop {
-            let mut found = false;
-            for i in iteration..self.edges.len() {
-                let mut edge = self.edges[i];
-                if edge[0] == index || edge[1] == index {
-                    if edge[1] == index {
-                        let other = edge[0];
-                        edge[0] = edge[1];
-                        edge[1] = other;
-                    }
-                    self.edges.swap(iteration, i);
-                    index = edge[1];
-                    iteration += 1;
-                    found = true;
-                    break;
-                }
-            }
-            if iteration == self.edges.len() {
-                break;
-            }
-            if !found {
-                index = self.edges[iteration][0];
-            }
-        }
-    }
-    fn simplify(&mut self) {
-        let keep_one_out_of = 30;
-        let mut keep_vertices = vec![];
-        for i in 0..(self.edges.len() / keep_one_out_of) {
-            keep_vertices.push(self.vertices[self.edges[i * keep_one_out_of][0]]);
-        }
-        self.edges.clear();
-        for i in 0..keep_vertices.len() {
-            self.edges.push([i, (i + 1) % keep_vertices.len()]);
-        }
-        self.vertices = keep_vertices;
-    }
+    pub vertices: Vec<[f32; 3]>,
+    pub indices: Vec<u16>,
 }
 
 struct Edges {
     count: u8,
     vertices: [[f32; 2]; 4],
 }
-
 impl Edges {
     const fn zero() -> Edges {
         Edges {
@@ -176,7 +349,6 @@ impl Edges {
 trait Hash {
     fn hash(&self) -> u64;
 }
-
 impl Hash for Vec2 {
     fn hash(&self) -> u64 {
         ((self.x.to_bits() as u64) << 32) + (self.y.to_bits() as u64)
@@ -202,9 +374,15 @@ const MARCHING_SQUARE_LOOKUP_TABLE: [Edges; 16] = [
     Edges::zero(),
 ];
 
-fn is_close_to_visible_pixel(x: i32, y: i32, img: &image::DynamicImage, max_dist: i32) -> bool {
-    let x = x - max_dist;
-    let y = y - max_dist;
+fn is_close_to_visible_pixel(
+    x: i32,
+    y: i32,
+    img: &image::DynamicImage,
+    offset: i32,
+    max_dist: i32,
+) -> bool {
+    let x = x - offset;
+    let y = y - offset;
     let (w, h) = img.dimensions();
     let (w, h) = (w as i32, h as i32);
     let x_min = max(0, x as i32 - max_dist);
@@ -227,104 +405,31 @@ fn is_close_to_visible_pixel(x: i32, y: i32, img: &image::DynamicImage, max_dist
     false
 }
 
-fn get_contour_from_img(filename: &str) -> Mesh {
-    let img = image::open(format!("assets/{}", filename)).expect("File not found!");
-    let (w, h) = img.dimensions();
-    let max_distance: i32 = 5;
-    let (output_w, output_h) = (w + max_distance as u32 * 2, h + max_distance as u32 * 2);
-
-    let mut out = vec![vec![0; output_h as usize]; output_w as usize];
-
-    // generate threshold distance map
-    for x in 0..output_w {
-        for y in 0..output_h {
-            out[x as usize][output_h as usize - y as usize - 1] =
-                if is_close_to_visible_pixel(x as i32, y as i32, &img, max_distance) {
-                    1
-                } else {
-                    0
-                };
-        }
+pub fn generate_mesh(mut mesh: ResMut<Mesh>, mut debug_drawer: ResMut<DebugDrawer>) {
+    let contour = Contour::from_image("head.png");
+    let mut polygon = Polygon::from_contour(&contour);
+    polygon.simplify();
+    // for line_strip in polygon.line_strips.iter() {
+    //     for vertex in line_strip.vertices.iter() {
+    //         debug_drawer.square_permanent(vertex.clone(), 8, COLOR_DEFAULT);
+    //     }
+    //     for edge in line_strip.edges.iter() {
+    //         debug_drawer.line_permanent(line_strip.vertices[edge[0]].clone(), line_strip.vertices[edge[1]].clone(),COLOR_DEFAULT);
+    //     }
+    // }
+    let mut _mesh = polygon.triangulate();
+    for vertex in _mesh.vertices.iter() {
+        debug_drawer.square_permanent(Vec2::from_slice(vertex), 8, COLOR_DEFAULT);
+    }
+    for i in 2.._mesh.indices.len() {
+        let p0 = Vec2::from_slice(&_mesh.vertices[_mesh.indices[i] as usize]);
+        let p1 = Vec2::from_slice(&_mesh.vertices[_mesh.indices[i - 1] as usize]);
+        let p2 = Vec2::from_slice(&_mesh.vertices[_mesh.indices[i - 2] as usize]);
+        debug_drawer.line_permanent(p0, p1, COLOR_DEFAULT);
+        debug_drawer.line_permanent(p1, p2, COLOR_DEFAULT);
+        debug_drawer.line_permanent(p2, p0, COLOR_DEFAULT);
     }
 
-    // generate contour using marching square algorithm
-    let mut contour_vertices: Vec<Vec2> = vec![];
-    let mut contour_edges: Vec<[usize; 2]> = vec![];
-    let mut contour_grid = vec![vec![0_u8; output_h as usize - 1]; output_w as usize - 1];
-    for x in 0..output_w - 2 {
-        for y in 0..output_h - 2 {
-            let x = x as usize;
-            let y = y as usize;
-            contour_grid[x][y] =
-                (out[x][y + 1] << 3) + (out[x + 1][y + 1] << 2) + (out[x + 1][y] << 1) + out[x][y];
-            let case = &MARCHING_SQUARE_LOOKUP_TABLE[contour_grid[x][y] as usize];
-            let current_pos = Vec2::new(x as f32, y as f32) + Vec2::new(0.5, 0.5);
-            // store first edge and vertices
-            if case.count > 0 {
-                contour_vertices.push(Vec2::from_slice(&case.vertices[0]) + current_pos);
-                contour_vertices.push(Vec2::from_slice(&case.vertices[1]) + current_pos);
-                let vertex_count: usize = contour_vertices.len();
-                contour_edges.push([vertex_count - 2, vertex_count - 1]);
-            }
-            // store second edge and vertices
-            if case.count > 1 {
-                contour_vertices.push(Vec2::from_slice(&case.vertices[2]) + current_pos);
-                contour_vertices.push(Vec2::from_slice(&case.vertices[3]) + current_pos);
-                let vertex_count: usize = contour_vertices.len();
-                contour_edges.push([vertex_count - 2, vertex_count - 1]);
-            }
-        }
-    }
-
-    let mut merged_vertices: HashMap<u64, Vec<usize>> = HashMap::new();
-    let mut original_to_new_index: HashMap<usize, usize> = HashMap::new();
-
-    // insert all unique vertices to hashmap
-    for i in 0..contour_vertices.len() {
-        let hash = contour_vertices.get(i).unwrap().hash();
-        if !merged_vertices.contains_key(&hash) {
-            merged_vertices.insert(hash, vec![i]);
-        } else {
-            merged_vertices.get_mut(&hash).unwrap().push(i);
-        }
-    }
-
-    let mut mesh = Mesh::default();
-    mesh.filename = String::from(filename);
-
-    // store all unique vertices in mesh resource
-    let mut i = 0;
-    for (_, indices) in merged_vertices.iter() {
-        for index in indices.iter() {
-            original_to_new_index.insert(*index, i);
-        }
-        mesh.vertices.push(contour_vertices[indices[0]]);
-        i += 1;
-    }
-
-    // store edges with new index in mesh resource
-    for [i0, i1] in contour_edges {
-        mesh.edges.push([
-            *original_to_new_index.get(&i0).unwrap(),
-            *original_to_new_index.get(&i1).unwrap(),
-        ]);
-    }
-
-    dbg!(contour_vertices.len());
-    dbg!(mesh.vertices.len());
-    dbg!(mesh.edges.len());
-
-    mesh
-}
-
-pub fn generate_mesh(mut mesh: ResMut<Mesh>) {
-    let contour = get_contour_from_img("head.png");
-    let mut multi_polygon = MultiPolygon::from_mesh(&contour);
-    multi_polygon.simplify();
-
-    dbg!(multi_polygon.polygons[0].vertices.len());
-
-    mesh.vertices
-        .append(&mut multi_polygon.polygons[0].vertices);
-    mesh.edges.append(&mut multi_polygon.polygons[0].edges);
+    mesh.vertices.append(&mut _mesh.vertices);
+    mesh.indices.append(&mut _mesh.indices);
 }
