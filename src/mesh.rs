@@ -8,6 +8,7 @@ use lyon::lyon_tessellation::{
 };
 use std::cmp::*;
 use std::collections::HashMap;
+use triangle_rs::*;
 
 #[derive(Default)]
 pub struct LineStrip {
@@ -16,7 +17,7 @@ pub struct LineStrip {
 }
 impl LineStrip {
     fn simplify(&mut self, filename: &str) {
-        dbg!(filename);
+        // dbg!(filename);
         let img = image::open(format!("assets/{}", filename)).expect("File not found!");
         let (w, h) = img.dimensions();
 
@@ -57,7 +58,7 @@ impl LineStrip {
             //         break;
             //     }
             // }
-            let is_collision = index % 10 == 0;
+            let is_collision = index % 40 == 0;
 
             if is_collision {
                 keep_vertices.push(self.vertices[self.edges[index - 1][0]]);
@@ -76,6 +77,7 @@ impl LineStrip {
 #[derive(Default)]
 struct Contour {
     pub filename: String,
+    pub dimensions: [u32;2],
     pub vertices: Vec<Vec2>,
     pub edges: Vec<[usize; 2]>,
 }
@@ -149,6 +151,7 @@ impl Contour {
 
         let mut graph = Contour::default();
         graph.filename = String::from(filename);
+        graph.dimensions = [w,h];
 
         // store all unique vertices in mesh resource
         let mut i = 0;
@@ -168,21 +171,18 @@ impl Contour {
             ]);
         }
 
-        dbg!(contour_vertices.len());
-        dbg!(graph.vertices.len());
-        dbg!(graph.edges.len());
-
         graph
     }
 }
 
 pub struct Polygon {
     pub filename: String,
+    pub dimensions: [u32;2],
     pub line_strips: Vec<LineStrip>,
 }
 impl Polygon {
     fn from_contour(contour: &Contour) -> Polygon {
-        dbg!(contour.vertices.len());
+        // dbg!(contour.vertices.len());
         let mut polygons: Vec<LineStrip> = vec![];
         let mut first_indices_of_polygons: Vec<usize> = vec![0];
         let mut edges: Vec<[usize; 2]> = contour.edges.clone();
@@ -230,7 +230,6 @@ impl Polygon {
                 line_strip
                     .vertices
                     .push(contour.vertices[edges[j][0]].clone());
-                print!("{}, ", &contour.vertices[edges[j][0]]);
                 if line_strip.vertices.len() >= 2 {
                     line_strip
                         .edges
@@ -238,7 +237,6 @@ impl Polygon {
                 }
             }
             // add edge between last and first vertex
-            dbg!(i);
             line_strip.edges.push([line_strip.vertices.len() - 1, 0]);
 
             polygons.push(line_strip);
@@ -247,6 +245,7 @@ impl Polygon {
 
         Polygon {
             filename: contour.filename.clone(),
+            dimensions: contour.dimensions.clone(),
             line_strips: polygons,
         }
     }
@@ -255,7 +254,7 @@ impl Polygon {
             line_strip.simplify(&self.filename);
         }
     }
-    fn triangulate(&self) -> Mesh {
+    fn triangulate(&self) -> Skin {
         // Create a simple path.
         let mut path_builder = Path::builder();
         let mut is_beginning = true;
@@ -263,15 +262,15 @@ impl Polygon {
         for line_strip in self.line_strips.iter() {
             first_vertex = line_strip.vertices[0];
             if is_beginning {
-                path_builder.begin(point(first_vertex[0], first_vertex[1]));
+                path_builder.begin(point(first_vertex.x, first_vertex.y));
                 is_beginning = false;
             } else {
                 path_builder.end(true);
-                path_builder.begin(point(first_vertex[0], first_vertex[1]));
+                path_builder.begin(point(first_vertex.x, first_vertex.y));
             }
             for i in 1..line_strip.vertices.len() {
                 let vertex = line_strip.vertices[i];
-                path_builder.line_to(point(vertex[0], vertex[1]));
+                path_builder.line_to(point(vertex.x, vertex.y));
             }
         }
         path_builder.end(true);
@@ -292,10 +291,10 @@ impl Polygon {
             assert!(result.is_ok());
         }
 
-        dbg!(buffers.vertices.len());
-        dbg!(buffers.indices.len());
-        println!("The generated vertices are: {:?}.", &buffers.vertices[..]);
-        println!("The generated indices are: {:?}.", &buffers.indices[..]);
+        // dbg!(buffers.vertices.len());
+        // dbg!(buffers.indices.len());
+        // println!("The generated vertices are: {:?}.", &buffers.vertices[..]);
+        // println!("The generated indices are: {:?}.", &buffers.indices[..]);
 
         let mut vertices: Vec<[f32; 3]> = vec![];
         let mut indices: Vec<u16> = vec![];
@@ -306,8 +305,12 @@ impl Polygon {
             indices.push(index);
         }
 
-        Mesh {
+        dbg!(&vertices);
+        dbg!(&indices);
+
+        Skin {
             filename: self.filename.clone(),
+            dimensions: self.dimensions.clone(),
             vertices,
             indices,
         }
@@ -315,10 +318,16 @@ impl Polygon {
 }
 
 #[derive(Default)]
-pub struct Mesh {
+pub struct Skin {
     pub filename: String,
+    pub dimensions: [u32;2],
     pub vertices: Vec<[f32; 3]>,
     pub indices: Vec<u16>,
+}
+
+#[derive(Default)]
+pub struct Skins {
+    pub vec: Vec<Skin>,
 }
 
 struct Edges {
@@ -405,8 +414,8 @@ fn is_close_to_visible_pixel(
     false
 }
 
-pub fn generate_mesh(mut mesh: ResMut<Mesh>, mut debug_drawer: ResMut<DebugDrawer>) {
-    let contour = Contour::from_image("head.png");
+pub fn generate_mesh(mut skins: ResMut<Skins>, mut debug_drawer: ResMut<DebugDrawer>) {
+    let contour = Contour::from_image("left_leg.png");
     let mut polygon = Polygon::from_contour(&contour);
     polygon.simplify();
     // for line_strip in polygon.line_strips.iter() {
@@ -417,7 +426,17 @@ pub fn generate_mesh(mut mesh: ResMut<Mesh>, mut debug_drawer: ResMut<DebugDrawe
     //         debug_drawer.line_permanent(line_strip.vertices[edge[0]].clone(), line_strip.vertices[edge[1]].clone(),COLOR_DEFAULT);
     //     }
     // }
+    
+    let vertices = polygon.line_strips[0].edges.iter().map(|edge| polygon.line_strips[0].vertices[edge[0] as usize].clone()).collect::<Vec<Vec2>>();
+    let mut vertices_split = vec![];
+    vertices.iter().for_each(|vertex| {vertices_split.push(vertex.x as f64); vertices_split.push(vertex.y as f64)});
+
+    // let verts = [14f64,155f64,14f64,0f64,66f64,77f64];
+    // let delaunay = Delaunay::builder().add_polygon(&verts).build();
+    // dbg!(delaunay.points);
+
     let mut _mesh = polygon.triangulate();
+
     for vertex in _mesh.vertices.iter() {
         debug_drawer.square_permanent(Vec2::from_slice(vertex), 8, COLOR_DEFAULT);
     }
@@ -430,6 +449,5 @@ pub fn generate_mesh(mut mesh: ResMut<Mesh>, mut debug_drawer: ResMut<DebugDrawe
         debug_drawer.line_permanent(p2, p0, COLOR_DEFAULT);
     }
 
-    mesh.vertices.append(&mut _mesh.vertices);
-    mesh.indices.append(&mut _mesh.indices);
+    skins.vec.push(_mesh);
 }

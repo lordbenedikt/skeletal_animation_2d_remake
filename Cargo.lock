@@ -208,6 +208,7 @@ dependencies = [
  "distance-field",
  "image 0.24.2",
  "lyon",
+ "triangle-rs",
 ]
 
 [[package]]
@@ -1905,6 +1906,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "iter-read"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c397ca3ea05ad509c4ec451fea28b4771236a376ca1c69fd5143aae0cf8f93c4"
+
+[[package]]
 name = "itoa"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2428,6 +2435,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c28774a7fd2fbb4f0babd8237ce554b73af68021b5f695a3cebd6c59bac0980f"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "num-bigint"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f6f7833f2cbf2360a6cfd58cd41a53aa7a90bd4c202f5b1c7dd2ed73c57b2c3"
+dependencies = [
+ "autocfg",
+ "num-integer",
+ "num-traits",
 ]
 
 [[package]]
@@ -3015,6 +3033,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-pickle"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b88454094f5ba5b2149722f41e42395b39556632c3abb068540c0b04d27017a"
+dependencies = [
+ "byteorder",
+ "iter-read",
+ "num-bigint",
+ "num-traits",
+ "serde",
+]
+
+[[package]]
 name = "serde_derive"
 version = "1.0.138"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3382,6 +3413,18 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "triangle-rs"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79ac44bc2f0ee09d28aa800477217b73e77bd0f61668056e9d71687ba76ace4c"
+dependencies = [
+ "cc",
+ "rayon",
+ "serde",
+ "serde-pickle",
 ]
 
 [[package]]
