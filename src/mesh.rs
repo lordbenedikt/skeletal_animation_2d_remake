@@ -418,36 +418,12 @@ pub fn generate_mesh(mut skins: ResMut<Skins>, mut debug_drawer: ResMut<DebugDra
     let contour = Contour::from_image("left_leg.png");
     let mut polygon = Polygon::from_contour(&contour);
     polygon.simplify();
-    // for line_strip in polygon.line_strips.iter() {
-    //     for vertex in line_strip.vertices.iter() {
-    //         debug_drawer.square_permanent(vertex.clone(), 8, COLOR_DEFAULT);
-    //     }
-    //     for edge in line_strip.edges.iter() {
-    //         debug_drawer.line_permanent(line_strip.vertices[edge[0]].clone(), line_strip.vertices[edge[1]].clone(),COLOR_DEFAULT);
-    //     }
-    // }
     
     let vertices = polygon.line_strips[0].edges.iter().map(|edge| polygon.line_strips[0].vertices[edge[0] as usize].clone()).collect::<Vec<Vec2>>();
     let mut vertices_split = vec![];
     vertices.iter().for_each(|vertex| {vertices_split.push(vertex.x as f64); vertices_split.push(vertex.y as f64)});
 
-    // let verts = [14f64,155f64,14f64,0f64,66f64,77f64];
-    // let delaunay = Delaunay::builder().add_polygon(&verts).build();
-    // dbg!(delaunay.points);
-
     let mut _mesh = polygon.triangulate();
-
-    for vertex in _mesh.vertices.iter() {
-        debug_drawer.square_permanent(Vec2::from_slice(vertex), 8, COLOR_DEFAULT);
-    }
-    for i in 2.._mesh.indices.len() {
-        let p0 = Vec2::from_slice(&_mesh.vertices[_mesh.indices[i] as usize]);
-        let p1 = Vec2::from_slice(&_mesh.vertices[_mesh.indices[i - 1] as usize]);
-        let p2 = Vec2::from_slice(&_mesh.vertices[_mesh.indices[i - 2] as usize]);
-        debug_drawer.line_permanent(p0, p1, COLOR_DEFAULT);
-        debug_drawer.line_permanent(p1, p2, COLOR_DEFAULT);
-        debug_drawer.line_permanent(p2, p0, COLOR_DEFAULT);
-    }
 
     skins.vec.push(_mesh);
 }

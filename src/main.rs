@@ -63,39 +63,42 @@ fn main() {
         .add_system_set(animation::system_set())
         .add_system_set(debug::system_set())
         .add_system(draw_mesh)
+        .add_system(transform_mesh)
         // RUN
         .run();
 }
 
 fn draw_mesh(skins: Res<mesh::Skins>, mut debug_drawer: ResMut<DebugDrawer>) {
-    // for vertex in mesh.vertices.iter() {
-    //     debug_drawer.square(Vec2::from_slice(vertex), 8, COLOR_DEFAULT);
-    // }
-    // let mut i = 0;
-    // while i < mesh.indices.len()-2 {
-    //     debug_drawer.line(Vec2::from_slice(&mesh.vertices[mesh.indices[i] as usize]), Vec2::from_slice(&mesh.vertices[mesh.indices[i+1] as usize]), COLOR_DEFAULT);
-    //     debug_drawer.line(Vec2::from_slice(&mesh.vertices[mesh.indices[i+1] as usize]), Vec2::from_slice(&mesh.vertices[mesh.indices[i+2] as usize]), COLOR_DEFAULT);
-    //     debug_drawer.line(Vec2::from_slice(&mesh.vertices[mesh.indices[i+2] as usize]), Vec2::from_slice(&mesh.vertices[mesh.indices[i] as usize]), COLOR_DEFAULT);
-    //     i += 3;
+    let skin = &skins.vec[0];
+    for vertex in skin.vertices.iter() {
+        debug_drawer.square(Vec2::from_slice(vertex), 8, COLOR_DEFAULT);
+    }
+    let mut i = 2;
+    while i < skin.indices.len() {
+        let p0 = Vec2::from_slice(&skin.vertices[skin.indices[i] as usize]);
+        let p1 = Vec2::from_slice(&skin.vertices[skin.indices[i - 1] as usize]);
+        let p2 = Vec2::from_slice(&skin.vertices[skin.indices[i - 2] as usize]);
+        debug_drawer.line(p0, p1, COLOR_DEFAULT);
+        debug_drawer.line(p1, p2, COLOR_DEFAULT);
+        debug_drawer.line(p2, p0, COLOR_DEFAULT);
+        i += 3;
+    }
+    // for i in 2..skin.indices.len() {
+    //     let p0 = Vec2::from_slice(&skin.vertices[skin.indices[i] as usize]);
+    //     let p1 = Vec2::from_slice(&skin.vertices[skin.indices[i - 1] as usize]);
+    //     let p2 = Vec2::from_slice(&skin.vertices[skin.indices[i - 2] as usize]);
+    //     debug_drawer.line(p0, p1, COLOR_DEFAULT);
+    //     debug_drawer.line(p1, p2, COLOR_DEFAULT);
+    //     debug_drawer.line(p2, p0, COLOR_DEFAULT);
     // }
 }
 
-// fn add_vertex(
-//     mut vertices: ResMut<Vertices>,
-//     mut my_mesh: Res<MyMesh>,
-//     cursor_pos: Res<CursorPos>,
-//     mouse: Res<Input<MouseButton>>,
-//     mut debug_drawer: ResMut<DebugDrawer>,
-// ) {
-//     if mouse.just_pressed(MouseButton::Right) {
-//         vertices.0.push(cursor_pos.0);
-//     }
-//     debug_drawer.square(cursor_pos.0, 8, COLOR_DEFAULT);
-// }
+fn transform_mesh(mut skins: ResMut<mesh::Skins>, cursor_pos: Res<CursorPos>) {
+    skins.vec[0].vertices[6] = [cursor_pos.0.x,cursor_pos.0.y,0.];
+}
 
 fn create_textured_mesh(
     mut commands: Commands,
-    mouse: Res<Input<MouseButton>>,
     cursor_pos: Res<CursorPos>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
@@ -103,25 +106,6 @@ fn create_textured_mesh(
     mut my_mesh: ResMut<MyMesh>,
     skins: Res<mesh::Skins>,
 ) {
-    // for _vertex in mesh.vertices.iter() {
-    //     normals.push([0.,0.,1.]);
-    //     uvs.push([0.5,0.5,0.]);
-    // }
-
-    // if !mouse.just_pressed(MouseButton::Left) {
-    //     return;
-    // }
-
-    // my_mesh.vertices = vec![
-    //     [0., 0., 0.],
-    //     [100., 0., 0.],
-    //     [100., 100., 0.],
-    //     [cursor_pos.0.x, cursor_pos.0.y, 0.],
-    // ];
-    // my_mesh.normals = vec![[0., 0., 0.], [0., 0., 0.], [0., 0., 0.], [0., 0., 0.]];
-    // my_mesh.uvs = vec![[0., 0.], [1., 0.], [1., 1.], [0., 1.]];
-    // my_mesh.indices = Some(Indices::U16(vec![3, 2, 1, 1, 0, 3]));
-
     let skin = &skins.vec[0];
     my_mesh.vertices = vec![];
     my_mesh.normals = vec![];
@@ -129,10 +113,8 @@ fn create_textured_mesh(
     for vertex in skin.vertices.iter() {
         my_mesh.vertices.push(vertex.clone());
         my_mesh.normals.push([0.,0.,1.]);
-        // Vec2::from_slice(vertex).clamp(Vec2::new(0.,0.),Vec2::(239.,239.));
         my_mesh.uvs.push([vertex[0] / skin.dimensions[0] as f32, 1. - vertex[1] / skin.dimensions[1] as f32]);
     }
-    my_mesh.vertices[12] = [cursor_pos.0.x,cursor_pos.0.y,0.];
     dbg!(&skin.dimensions);
     dbg!(&my_mesh.uvs);
     let mut inds = skin.indices.clone();
@@ -144,7 +126,7 @@ fn create_textured_mesh(
             let _mesh = meshes.get_mut(&mesh_handle.0).unwrap();
             _mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, my_mesh.vertices.clone());
             _mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, my_mesh.normals.clone());
-            _mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, my_mesh.uvs.clone());
+            // _mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, my_mesh.uvs.clone());
             _mesh.set_indices(my_mesh.indices.clone());
         }
         None => {
