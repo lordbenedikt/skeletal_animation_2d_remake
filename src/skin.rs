@@ -8,7 +8,6 @@ use lyon::lyon_tessellation::{
 };
 use std::cmp::*;
 use std::collections::HashMap;
-use triangle_rs::*;
 
 #[derive(Default)]
 pub struct LineStrip {
@@ -17,13 +16,13 @@ pub struct LineStrip {
 }
 impl LineStrip {
     fn simplify(&mut self, filename: &str) {
-        // dbg!(filename);
         let img = image::open(format!("assets/{}", filename)).expect("File not found!");
         let (w, h) = img.dimensions();
 
-        // let max_skipped_vertices = 100;
         let mut keep_vertices = vec![self.vertices[self.edges[0][0]]];
         let mut start_index = self.edges[0][0];
+        let max_merge_count = 40; // maximum number of merged vertices
+        let mut count = 0;
         let mut index = 1;
         while index <= self.edges.len() {
             let _index = index % self.edges.len();
@@ -35,36 +34,38 @@ impl LineStrip {
 
             let mut is_collision = false;
 
-            // // bug, collision is detected to soon
-            // for i in 1..=magnitude {
-            //     let is_visible = || -> bool {
-            //         for j in 0..2 {
-            //             for k in 0..2 {
-            //                 let current_pos = v0 + normalized * i as f32;
-            //                 let x = current_pos.x + j as f32;
-            //                 let y = current_pos.y + k as f32;
-            //                 if x < 0. || x as u32 >= w || y < 0. || y as u32 >= h {
-            //                     continue;
-            //                 }
-            //                 if img.get_pixel(x as u32, y as u32).0[3] > 10 {
-            //                     return true;
-            //                 }
-            //             }
-            //         }
-            //         false
-            //     };
-            //     if is_visible() {
-            //         is_collision = true;
-            //         break;
-            //     }
-            // }
-            let is_collision = index % 40 == 0;
+            // bug, collision is detected to soon
+            for i in 1..=magnitude {
+                let is_visible = || -> bool {
+                    for j in 0..2 {
+                        for k in 0..2 {
+                            let current_pos = v0 + normalized * i as f32;
+                            let x = current_pos.x + j as f32;
+                            let y = current_pos.y + k as f32;
+                            if x < 0. || x as u32 >= w || y < 0. || y as u32 >= h {
+                                continue;
+                            }
+                            if img.get_pixel(x as u32, h - 1 - y as u32).0[3] > 10 {
+                                return true;
+                            }
+                        }
+                    }
+                    false
+                };
+                if is_visible() {
+                    is_collision = true;
+                    break;
+                }
+            }
+            // let is_collision = index % 40 == 0;
 
-            if is_collision {
+            if is_collision || count >= max_merge_count {
                 keep_vertices.push(self.vertices[self.edges[index - 1][0]]);
                 start_index = self.edges[index - 1][0];
+                count = 0;
             }
             index += 1;
+            count += 1;
         }
         self.edges.clear();
         for i in 0..keep_vertices.len() {
@@ -77,7 +78,7 @@ impl LineStrip {
 #[derive(Default)]
 struct Contour {
     pub filename: String,
-    pub dimensions: [u32;2],
+    pub dimensions: [u32; 2],
     pub vertices: Vec<Vec2>,
     pub edges: Vec<[usize; 2]>,
 }
@@ -151,7 +152,7 @@ impl Contour {
 
         let mut graph = Contour::default();
         graph.filename = String::from(filename);
-        graph.dimensions = [w,h];
+        graph.dimensions = [w, h];
 
         // store all unique vertices in mesh resource
         let mut i = 0;
@@ -177,12 +178,11 @@ impl Contour {
 
 pub struct Polygon {
     pub filename: String,
-    pub dimensions: [u32;2],
+    pub dimensions: [u32; 2],
     pub line_strips: Vec<LineStrip>,
 }
 impl Polygon {
     fn from_contour(contour: &Contour) -> Polygon {
-        // dbg!(contour.vertices.len());
         let mut polygons: Vec<LineStrip> = vec![];
         let mut first_indices_of_polygons: Vec<usize> = vec![0];
         let mut edges: Vec<[usize; 2]> = contour.edges.clone();
@@ -291,11 +291,6 @@ impl Polygon {
             assert!(result.is_ok());
         }
 
-        // dbg!(buffers.vertices.len());
-        // dbg!(buffers.indices.len());
-        // println!("The generated vertices are: {:?}.", &buffers.vertices[..]);
-        // println!("The generated indices are: {:?}.", &buffers.indices[..]);
-
         let mut vertices: Vec<[f32; 3]> = vec![];
         let mut indices: Vec<u16> = vec![];
         for vertex in buffers.vertices {
@@ -305,14 +300,16 @@ impl Polygon {
             indices.push(index);
         }
 
-        dbg!(&vertices);
-        dbg!(&indices);
-
+        let offset = Vec2::new(-(self.dimensions[0] as f32)/2., -(self.dimensions[1] as f32)/2.);
         Skin {
             filename: self.filename.clone(),
             dimensions: self.dimensions.clone(),
+            offset,
+            rotation: 0.,
+            scale: Vec2::new(1.,1.),
             vertices,
             indices,
+            mesh_handle: None,
         }
     }
 }
@@ -320,9 +317,13 @@ impl Polygon {
 #[derive(Default)]
 pub struct Skin {
     pub filename: String,
-    pub dimensions: [u32;2],
+    pub dimensions: [u32; 2],
     pub vertices: Vec<[f32; 3]>,
     pub indices: Vec<u16>,
+    pub offset: Vec2,
+    pub rotation: f32,
+    pub scale: Vec2,
+    pub mesh_handle: Option<Mesh2dHandle>,
 }
 
 #[derive(Default)]
@@ -414,16 +415,24 @@ fn is_close_to_visible_pixel(
     false
 }
 
-pub fn generate_mesh(mut skins: ResMut<Skins>, mut debug_drawer: ResMut<DebugDrawer>) {
+pub fn generate_mesh(mut skins: ResMut<Skins>) {
     let contour = Contour::from_image("left_leg.png");
     let mut polygon = Polygon::from_contour(&contour);
     polygon.simplify();
-    
-    let vertices = polygon.line_strips[0].edges.iter().map(|edge| polygon.line_strips[0].vertices[edge[0] as usize].clone()).collect::<Vec<Vec2>>();
+
+    let vertices = polygon.line_strips[0]
+        .edges
+        .iter()
+        .map(|edge| polygon.line_strips[0].vertices[edge[0] as usize].clone())
+        .collect::<Vec<Vec2>>();
     let mut vertices_split = vec![];
-    vertices.iter().for_each(|vertex| {vertices_split.push(vertex.x as f64); vertices_split.push(vertex.y as f64)});
+    vertices.iter().for_each(|vertex| {
+        vertices_split.push(vertex.x as f64);
+        vertices_split.push(vertex.y as f64)
+    });
 
-    let mut _mesh = polygon.triangulate();
+    let mut skin = polygon.triangulate();
+    skin.scale = Vec2::new(0.005,0.005);
 
-    skins.vec.push(_mesh);
+    skins.vec.push(skin);
 }

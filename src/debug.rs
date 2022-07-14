@@ -94,3 +94,20 @@ pub fn draw_debug_shapes(debug_drawer: Res<DebugDrawer>, mut lines: ResMut<Debug
 pub fn clear_debug_drawer(mut debug_drawer: ResMut<DebugDrawer>) {
     debug_drawer.clear();
 }
+
+fn draw_mesh(skins: Res<skin::Skins>, mut debug_drawer: ResMut<DebugDrawer>) {
+    let skin = &skins.vec[0];
+    for vertex in skin.vertices.iter() {
+        debug_drawer.square(Vec2::from_slice(vertex), 8, COLOR_DEFAULT);
+    }
+    let mut i = 2;
+    while i < skin.indices.len() {
+        let p0 = Vec2::from_slice(&skin.vertices[skin.indices[i] as usize]);
+        let p1 = Vec2::from_slice(&skin.vertices[skin.indices[i - 1] as usize]);
+        let p2 = Vec2::from_slice(&skin.vertices[skin.indices[i - 2] as usize]);
+        debug_drawer.line(p0, p1, COLOR_DEFAULT);
+        debug_drawer.line(p1, p2, COLOR_DEFAULT);
+        debug_drawer.line(p2, p0, COLOR_DEFAULT);
+        i += 3;
+    }
+}
