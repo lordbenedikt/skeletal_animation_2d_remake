@@ -1,5 +1,5 @@
 use crate::*;
-use image::GenericImageView;
+use image::{image_dimensions, GenericImageView};
 use lyon::lyon_tessellation::{
     geometry_builder::simple_builder,
     math::{point, Point},
@@ -291,39 +291,53 @@ impl Polygon {
             assert!(result.is_ok());
         }
 
+        let img = image::open(format!("assets/{}", self.filename)).expect("File not found!");
+        let (w, h) = img.dimensions();
         let mut vertices: Vec<[f32; 3]> = vec![];
+        let mut uvs: Vec<[f32; 2]> = vec![];
         let mut indices: Vec<u16> = vec![];
         for vertex in buffers.vertices {
-            vertices.push([vertex.x, vertex.y, 0.]);
+            let scalar = 0.005;
+            vertices.push([(vertex.x - (w as f32/2.)) * scalar, (vertex.y - (h as f32/2.)) * scalar, 0.]);
+            uvs.push([vertex.x / w as f32, 1. - vertex.y / h as f32]);
         }
         for index in buffers.indices {
             indices.push(index);
         }
 
-        let offset = Vec2::new(-(self.dimensions[0] as f32)/2., -(self.dimensions[1] as f32)/2.);
         Skin {
             filename: self.filename.clone(),
             dimensions: self.dimensions.clone(),
-            offset,
-            rotation: 0.,
-            scale: Vec2::new(1.,1.),
             vertices,
+            uvs,
             indices,
             mesh_handle: None,
         }
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Component)]
 pub struct Skin {
     pub filename: String,
     pub dimensions: [u32; 2],
     pub vertices: Vec<[f32; 3]>,
+    pub uvs: Vec<[f32; 2]>,
     pub indices: Vec<u16>,
-    pub offset: Vec2,
-    pub rotation: f32,
-    pub scale: Vec2,
     pub mesh_handle: Option<Mesh2dHandle>,
+}
+impl Skin {
+    pub fn gl_vertices(&self, gl_transform: &GlobalTransform) -> Vec<[f32; 3]> {
+        self.vertices
+            .iter()
+            .map(|v| {
+                let mut res = Vec3::from_slice(v);
+                res *= gl_transform.scale;
+                res = Quat::mul_vec3(gl_transform.rotation, res);
+                res += gl_transform.translation;
+                [res.x, res.y, res.z]
+            })
+            .collect::<Vec<[f32; 3]>>()
+    }
 }
 
 #[derive(Default)]
@@ -415,8 +429,8 @@ fn is_close_to_visible_pixel(
     false
 }
 
-pub fn generate_mesh(mut skins: ResMut<Skins>) {
-    let contour = Contour::from_image("left_leg.png");
+pub fn generate_mesh(filename: &str) -> Skin {
+    let contour = Contour::from_image(filename);
     let mut polygon = Polygon::from_contour(&contour);
     polygon.simplify();
 
@@ -432,7 +446,6 @@ pub fn generate_mesh(mut skins: ResMut<Skins>) {
     });
 
     let mut skin = polygon.triangulate();
-    skin.scale = Vec2::new(0.005,0.005);
 
-    skins.vec.push(skin);
+    skin
 }

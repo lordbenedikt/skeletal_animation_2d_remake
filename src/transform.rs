@@ -146,12 +146,20 @@ pub fn transform(
     }
 }
 
-pub fn remove(mut commands: Commands, keys: Res<Input<KeyCode>>, q: Query<(Entity, &Transformable)>) {
+pub fn remove(
+    mut commands: Commands,
+    keys: Res<Input<KeyCode>>,
+    q: Query<(Entity, &Transformable)>,
+    q_skins: Query<&skin::Skin>,
+    mut meshes: ResMut<Assets<Mesh>>,
+) {
     // Remove transformable only if DELETE was pressed
     if !keys.just_pressed(KeyCode::Delete) {
         return;
     }
-
+    for skin in q_skins.iter() {
+        meshes.remove(skin.mesh_handle.clone().unwrap().0);
+    }
     for (entity, transformable) in q.iter() {
         if transformable.is_selected {
             commands.entity(entity).despawn_recursive();
@@ -189,7 +197,7 @@ pub fn select(
         let center = gl_transform.translation
             + Quat::mul_vec3(gl_transform.rotation, Vec3::new(0., length / 3., 0.));
         let distance = Vec2::distance(center.truncate(), cursor_pos.0);
-        if distance < length / 2. && distance < shortest_distance {
+        if distance < /*length / 2.*/ 10. && distance < shortest_distance {
             closest_entity = Some(entity);
             shortest_distance = distance;
         }
