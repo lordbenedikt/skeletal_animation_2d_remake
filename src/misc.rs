@@ -19,7 +19,7 @@ fn new_camera_2d() -> OrthographicCameraBundle<Camera2d> {
         scale: 1f32,
         ..Default::default()
     };
-    camera.transform.scale = Vec3::new(0.01, 0.01, 1.);
+    camera.transform.scale = Vec3::new(1. / (PIXELS_PER_UNIT as f32 *0.5), 1. / (PIXELS_PER_UNIT as f32 * 0.5), 1.);
     return camera;
 }
 

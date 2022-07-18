@@ -7,6 +7,8 @@ mod misc;
 mod skeleton;
 mod transform;
 mod state;
+mod cloth;
+mod mesh;
 
 use transform::*;
 use bevy::{
@@ -19,6 +21,7 @@ use debug::DebugDrawer;
 
 const COLOR_SELECTED: Color = Color::rgb(1., 1., 1.);
 const COLOR_DEFAULT: Color = Color::rgb(1., 0.6, 0.);
+const PIXELS_PER_UNIT: u32 = 100;
 
 // RESOURCES
 pub struct CursorPos(Vec2);
@@ -48,14 +51,17 @@ fn main() {
         .add_plugin(DebugLinesPlugin::default())
         // STARTUP SYSTEMS
         .add_startup_system(misc::setup)
-        .add_startup_system(skeleton::create_mesh)
+        .add_startup_system(skeleton::add_skins)
+        .add_startup_system(cloth::create_cloth)
         // SYSTEMS
-        // .add_system(add_vertex)
+        // .add_system(add_vertex) 
         .add_system(misc::get_mouse_position.label("input_handling"))
-        .add_system(skeleton::update_mesh)
+        .add_system(skin::update_mesh.label("update_mesh"))
+        .add_system_set(cloth::system_set().label("update_cloth"))
+        .add_system_set(skeleton::system_set().after("update_mesh"))
         .add_system_set(bone::system_set().label("bone_systems"))
         .add_system_set(transform::system_set().label("tramsform_systems").after("bone_systems"))
-        .add_system_set(debug::system_set().after("transform_systems"))
+        .add_system_set(debug::system_set().after("bone_systems").after("update_cloth"))
         .add_system_set(animation::system_set())
         // RUN
         .run();

@@ -1,13 +1,16 @@
 use crate::*;
-use image::{image_dimensions, GenericImageView};
+use bevy::sprite::MaterialMesh2dBundle;
+use image::GenericImageView;
 use lyon::lyon_tessellation::{
     geometry_builder::simple_builder,
     math::{point, Point},
     path::Path,
-    FillOptions, FillTessellator, VertexBuffers,
+    FillGeometryBuilder, FillOptions, FillTessellator, FillVertex, VertexBuffers,
 };
-use std::cmp::*;
 use std::collections::HashMap;
+use std::{cmp::*, f32::consts::SQRT_2};
+
+const PIXEL_TO_UNIT_RATIO: f32 = 0.005;
 
 #[derive(Default)]
 pub struct LineStrip {
@@ -21,7 +24,7 @@ impl LineStrip {
 
         let mut keep_vertices = vec![self.vertices[self.edges[0][0]]];
         let mut start_index = self.edges[0][0];
-        let max_merge_count = 40; // maximum number of merged vertices
+        let max_merge_count = 20; // maximum number of merged vertices
         let mut count = 0;
         let mut index = 1;
         while index <= self.edges.len() {
@@ -83,11 +86,10 @@ struct Contour {
     pub edges: Vec<[usize; 2]>,
 }
 impl Contour {
-    fn from_image(filename: &str) -> Self {
+    fn from_image(filename: &str, offset: u32) -> Self {
         let img = image::open(format!("assets/{}", filename)).expect("File not found!");
         let (w, h) = img.dimensions();
-        let offset: i32 = 10;
-        let max_distance: i32 = offset - 1;
+        let max_distance = offset - 1;
         let (output_w, output_h) = (w + offset as u32 * 2, h + offset as u32 * 2);
 
         let mut out = vec![vec![0; output_h as usize]; output_w as usize];
@@ -96,7 +98,7 @@ impl Contour {
         for x in 0..output_w {
             for y in 0..output_h {
                 out[x as usize][output_h as usize - y as usize - 1] =
-                    if is_close_to_visible_pixel(x as i32, y as i32, &img, offset, max_distance) {
+                    if is_close_to_visible_pixel(x, y, &img, offset, max_distance as f32) {
                         1
                     } else {
                         0
@@ -297,8 +299,11 @@ impl Polygon {
         let mut uvs: Vec<[f32; 2]> = vec![];
         let mut indices: Vec<u16> = vec![];
         for vertex in buffers.vertices {
-            let scalar = 0.005;
-            vertices.push([(vertex.x - (w as f32/2.)) * scalar, (vertex.y - (h as f32/2.)) * scalar, 0.]);
+            vertices.push([
+                (vertex.x - (w as f32 / 2.)) * PIXEL_TO_UNIT_RATIO,
+                (vertex.y - (h as f32 / 2.)) * PIXEL_TO_UNIT_RATIO,
+                0.,
+            ]);
             uvs.push([vertex.x / w as f32, 1. - vertex.y / h as f32]);
         }
         for index in buffers.indices {
@@ -311,7 +316,7 @@ impl Polygon {
             vertices,
             uvs,
             indices,
-            mesh_handle: None,
+            ..Default::default()
         }
     }
 }
@@ -324,6 +329,7 @@ pub struct Skin {
     pub uvs: Vec<[f32; 2]>,
     pub indices: Vec<u16>,
     pub mesh_handle: Option<Mesh2dHandle>,
+    pub depth: f32,
 }
 impl Skin {
     pub fn gl_vertices(&self, gl_transform: &GlobalTransform) -> Vec<[f32; 3]> {
@@ -334,9 +340,106 @@ impl Skin {
                 res *= gl_transform.scale;
                 res = Quat::mul_vec3(gl_transform.rotation, res);
                 res += gl_transform.translation;
-                [res.x, res.y, res.z]
+                [res.x, res.y, self.depth]
             })
             .collect::<Vec<[f32; 3]>>()
+    }
+    pub fn grid_mesh(filename: &str, cols: u16, rows: u16, depth: f32) -> Skin {
+        let img = image::open(format!("assets/{}", filename)).expect("File not found!");
+        let (w, h) = img.dimensions();
+        let cell_w = w as f32 / cols as f32;
+        let cell_h = h as f32 / rows as f32;
+        let mut vertices: Vec<[f32; 3]> = vec![];
+        let mut uvs: Vec<[f32; 2]> = vec![];
+        for j in (0..=rows).rev() {
+            for i in 0..=cols {
+                let uv_pixel = [cell_w * i as f32, cell_h * j as f32];
+                vertices.push([
+                    (uv_pixel[0] - w as f32 / 2.) * PIXEL_TO_UNIT_RATIO,
+                    (uv_pixel[1] - h as f32 / 2.) * PIXEL_TO_UNIT_RATIO,
+                    0.,
+                ]);
+                uvs.push([uv_pixel[0] / w as f32, 1. - uv_pixel[1] / h as f32]);
+            }
+        }
+        let mut indices: Vec<u16> = vec![];
+        for j in 0..rows {
+            for i in 0..cols {
+                let i0 = j * (cols + 1) + i;
+                let i1 = i0 + 1;
+                let i3 = i0 + (cols + 1);
+                let i2 = i3 + 1;
+
+                // top left triangle
+                indices.push(i3);
+                indices.push(i0);
+                indices.push(i1);
+                //bottom right triangle
+                indices.push(i1);
+                indices.push(i2);
+                indices.push(i3);
+
+                // also visible from behind
+                // top left triangle
+                indices.push(i1);
+                indices.push(i0);
+                indices.push(i3);
+                //bottom right triangle
+                indices.push(i3);
+                indices.push(i2);
+                indices.push(i1);
+            }
+        }
+        let mut skin = Skin {
+            filename: String::from(filename),
+            dimensions: [w, h],
+            vertices,
+            uvs,
+            indices,
+            mesh_handle: None,
+            depth,
+        };
+        // // Remove reduntant vertices and corresponding uvs and indices
+        for i in (0..skin.uvs.len()).rev() {
+            let v = skin.uvs[i];
+            let coords = [
+                min((v[0] * w as f32) as u32, w - 1),
+                min((v[1] * h as f32) as u32, h - 1),
+            ];
+            // if uv is out of image or pixel at uv is transparent remove
+            if !is_close_to_visible_pixel(
+                coords[0],
+                coords[1],
+                &img,
+                0u32,
+                f32::max(
+                    w as f32 / cols as f32 * SQRT_2,
+                    h as f32 / rows as f32 * SQRT_2,
+                ),
+            ) {
+                skin.remove_vertex(i as u16);
+            }
+        }
+        skin
+    }
+    pub fn remove_vertex(&mut self, index: u16) {
+        self.vertices.swap_remove(index as usize);
+        self.uvs.swap_remove(index as usize);
+        for i in (0..self.indices.len()).step_by(3).rev() {
+            if self.indices[i] == index
+                || self.indices[i + 1] == index
+                || self.indices[i + 2] == index
+            {
+                for j in (0..3).rev() {
+                    self.indices.swap_remove(i + j);
+                }
+            }
+        }
+        for i in 0..self.indices.len() {
+            if self.indices[i] == self.vertices.len() as u16 {
+                self.indices[i] = index;
+            }
+        }
     }
 }
 
@@ -399,26 +502,26 @@ const MARCHING_SQUARE_LOOKUP_TABLE: [Edges; 16] = [
 ];
 
 fn is_close_to_visible_pixel(
-    x: i32,
-    y: i32,
+    x: u32,
+    y: u32,
     img: &image::DynamicImage,
-    offset: i32,
-    max_dist: i32,
+    offset: u32,
+    max_dist: f32,
 ) -> bool {
-    let x = x - offset;
-    let y = y - offset;
+    let max_dist_ceil = f32::ceil(max_dist) as i32;
+    let x: i32 = x as i32 - offset as i32;
+    let y: i32 = y as i32 - offset as i32;
     let (w, h) = img.dimensions();
-    let (w, h) = (w as i32, h as i32);
-    let x_min = max(0, x as i32 - max_dist);
-    let x_max = min(w as i32, x as i32 + max_dist);
+    let x_min = max(0, x - max_dist_ceil);
+    let x_max = min(w as i32, x + max_dist_ceil);
     for _x in x_min..x_max {
-        let y_min = max(0, y as i32 - max_dist);
-        let y_max = min(h as i32, y as i32 + max_dist);
+        let y_min = max(0, y - max_dist_ceil);
+        let y_max = min(h as i32, y + max_dist_ceil);
         for _y in y_min..y_max {
-            let square_distance = (x as i32 - _x).pow(2) + (y as i32 - _y).pow(2);
+            let square_distance = (x - _x).pow(2) + (y - _y).pow(2);
             let distance = (square_distance as f32).sqrt();
             // if distance is smaller same max_dist
-            if distance <= max_dist as f32 {
+            if distance <= max_dist {
                 // if pixel is not transparent
                 if img.get_pixel(_x as u32, _y as u32).0[3] > 10 {
                     return true;
@@ -430,7 +533,7 @@ fn is_close_to_visible_pixel(
 }
 
 pub fn generate_mesh(filename: &str) -> Skin {
-    let contour = Contour::from_image(filename);
+    let contour = Contour::from_image(filename, 5);
     let mut polygon = Polygon::from_contour(&contour);
     polygon.simplify();
 
@@ -447,5 +550,71 @@ pub fn generate_mesh(filename: &str) -> Skin {
 
     let mut skin = polygon.triangulate();
 
-    skin
+    // skin
+    Skin::grid_mesh(filename, 40, 40, 0.)
+}
+
+pub fn update_mesh(
+    skeleton: Res<skeleton::Skeleton>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    q: Query<(&GlobalTransform, &Skin)>,
+) {
+    if !skeleton.skin_mapping.vertex_mappings.is_empty() {
+        return;
+    };
+
+    for (gl_transform, skin) in q.iter() {
+        // dbg!(&skin.vertices);
+        let vertices = skin.gl_vertices(gl_transform);
+        // dbg!(&vertices);
+        // dbg!(&skin.filename);
+        // println!();
+
+        let mesh = meshes.get_mut(skin.mesh_handle.clone().unwrap().0).unwrap();
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
+    }
+}
+
+pub fn create_mesh(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut skeleton: ResMut<skeleton::Skeleton>,
+    asset_server: Res<AssetServer>,
+) {
+    let mut skin = skin::generate_mesh("person.png");
+
+    let vertices = skin.vertices.clone();
+    let mut normals = vec![];
+    let uvs = skin.uvs.clone();
+    for _ in skin.vertices.iter() {
+        normals.push([0., 0., 1.]);
+    }
+    let mut inds = skin.indices.clone();
+    inds.reverse();
+    let indices = Some(Indices::U16(inds));
+
+    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices.clone());
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals.clone());
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs.clone());
+    mesh.set_indices(indices.clone());
+
+    let handle: Mesh2dHandle = meshes.add(mesh).into();
+    skin.mesh_handle = Some(handle.clone());
+
+    commands.spawn_bundle(MaterialMesh2dBundle {
+        mesh: handle,
+        material: materials.add(ColorMaterial::from(asset_server.load(&skin.filename))),
+        ..default()
+    });
+    let skin_id = commands
+        .spawn_bundle(TransformBundle::from_transform(Transform {
+            scale: Vec3::new(3.5, 3.5, 1.),
+            ..Default::default()
+        }))
+        .insert(Transformable::default())
+        .insert(skin)
+        .id();
+    skeleton.skin_mapping.skins.push(skin_id);
 }
