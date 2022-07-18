@@ -9,13 +9,63 @@ pub struct Cloth {
     is_tearable: bool,
 }
 impl Cloth {
-    pub fn new(pos: Vec2, w: f32, h: f32, cols: usize, rows: usize) -> Self {
+    pub fn from_mesh(mesh_handle: Mesh2dHandle, meshes: &Assets<Mesh>) -> Self {
+        let mesh = meshes.get(mesh_handle.0).unwrap();
+        let mut vertices = mesh::get_vertices(mesh);
+        for v in vertices.iter_mut() {
+            *v *= Vec3::new(3.5,3.5,1.);
+        }
+        let mut point_masses = vec![];
+        for i in 0..vertices.len() {
+            point_masses.push(PointMass::new(vertices[i], i <= 20));
+        }
+        let links: Vec<Link> = vec![];
+        let mut cloth =         Self {
+            point_masses,
+            links,
+            stiffness: 4,
+            is_tearable: false,
+        };
+        if let Indices::U16(indices) = mesh.indices().unwrap() {
+            for i in (0..indices.len()).step_by(3) {
+                let mut already_present = false;
+                for j in 0..3 {
+                    let ind_0 = i + j;
+                    let ind_1 = i + ((j + 1) % 3);
+                    for link in cloth.links.iter() {
+                        if indices[ind_0] == link.indices[0] as u16
+                            || indices[ind_0] == link.indices[1] as u16
+                        {
+                            if indices[ind_1] == link.indices[0] as u16
+                                || indices[ind_1] == link.indices[1] as u16
+                            {
+                                already_present = true;
+                                break;
+                            }
+                        }
+                        let pos_0 = vertices[indices[ind_0] as usize];
+                        let pos_1 = vertices[indices[ind_1] as usize];
+                        if pos_0.x != pos_1.x && pos_0.y != pos_1.y {
+                            already_present = true;
+                            break;
+                        }
+                    }
+                    if !already_present {
+                        cloth.add_link([indices[ind_0] as usize, indices[ind_1] as usize]);
+                    }
+                }
+            }
+        }
+        cloth
+
+    }
+    pub fn new(pos: Vec3, w: f32, h: f32, cols: usize, rows: usize) -> Self {
         let mut cloth = Cloth::default().with_stiffness(4);
         let cell_w = w / cols as f32;
         let cell_h = h / rows as f32;
         for row in 0..=rows {
             for col in 0..=cols {
-                let current_pos = pos + Vec2::new(cell_w * col as f32, -cell_h * row as f32);
+                let current_pos = pos + Vec3::new(cell_w * col as f32, -cell_h * row as f32, 0.);
                 let pm = PointMass::new(current_pos, row == 0);
                 cloth.point_masses.push(pm);
             }
@@ -87,7 +137,7 @@ impl Cloth {
         for link in self.links.iter() {
             let start = self.point_masses[link.indices[0]].position;
             let end = self.point_masses[link.indices[1]].position;
-            debug_drawer.line(start, end, COLOR_DEFAULT);
+            debug_drawer.line(start.truncate(), end.truncate(), COLOR_DEFAULT);
         }
     }
     fn with_stiffness(mut self, stiffness: u32) -> Self {
@@ -101,15 +151,15 @@ impl Cloth {
 
 #[derive(Default)]
 pub struct PointMass {
-    position: Vec2,
-    last_position: Vec2,
-    velocity: Vec2,
-    acceleration: Vec2,
+    position: Vec3,
+    last_position: Vec3,
+    velocity: Vec3,
+    acceleration: Vec3,
     mass: f32,
-    pin: Option<Vec2>,
+    pin: Option<Vec3>,
 }
 impl PointMass {
-    pub fn new(position: Vec2, is_pinned: bool) -> Self {
+    pub fn new(position: Vec3, is_pinned: bool) -> Self {
         PointMass {
             position,
             last_position: position,
@@ -134,7 +184,7 @@ impl PointMass {
         self.position = self.position + self.velocity + self.acceleration;
 
         // Set acceleration to gravity
-        self.acceleration = Vec2::new(0., -0.01);
+        self.acceleration = Vec3::new(0., -0.01, 0.);
     }
 }
 
@@ -145,7 +195,7 @@ pub struct Link {
 }
 impl Link {
     fn new(cloth: &Cloth, indices: [usize; 2]) -> Self {
-        let resting_distance = Vec2::distance(
+        let resting_distance = Vec3::distance(
             cloth.point_masses[indices[0]].position,
             cloth.point_masses[indices[1]].position,
         );
@@ -185,7 +235,7 @@ pub fn update_cloth(
             }
 
             let pos = mesh::get_vertex(mesh, i);
-            cloth.point_masses[i].position = Vec2::from_slice(&pos);
+            cloth.point_masses[i].position = Vec3::from_slice(&pos);
         }
 
         cloth.update();
@@ -203,11 +253,25 @@ pub fn apply_mesh_to_cloth(mut meshes: ResMut<Assets<Mesh>>, q: Query<(&Cloth, &
             let pm = &cloth.point_masses[i];
             if pm.pin.is_some() {
                 let v = mesh::get_vertex(&mesh, i);
-                vertices.push([v[0],v[1],skin.depth]);
+                vertices.push([v[0], v[1], skin.depth]);
             } else {
-                vertices.push([pm.position[0], pm.position[1], skin.depth]);
+                vertices.push([pm.position[0], pm.position[1], pm.position[2]]);
             }
         }
+        let mut colors: Vec<u32> = vec![];
+        for i in 0..cloth.point_masses.len() {
+            let pm = &cloth.point_masses[i];
+            let lightest = 0.;
+            let color = pm.position.z;
+            let r = 255;
+            colors.push(Color::RED.as_linear_rgba_u32());
+        }
+        // mesh.insert_attribute(
+        //     MeshVertexAttribute::new("Vertex_Color", 1, VertexFormat::Uint32),
+        //     v_color,
+        // );
+
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
     }
 }

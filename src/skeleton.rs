@@ -79,10 +79,15 @@ fn add_skin(
     cols: u16,
     rows: u16,
     depth: f32,
-) -> Entity {
+) -> (Entity, Mesh2dHandle) {
     let mut skin = Skin::grid_mesh(filename, cols, rows, depth);
 
-    let vertices = skin.vertices.clone().iter().map(|v| [v[0],v[1],depth]).collect::<Vec<[f32;3]>>();
+    let vertices = skin
+        .vertices
+        .clone()
+        .iter()
+        .map(|v| [v[0], v[1], depth])
+        .collect::<Vec<[f32; 3]>>();
     let mut normals = vec![];
     let uvs = skin.uvs.clone();
     for _ in skin.vertices.iter() {
@@ -102,20 +107,20 @@ fn add_skin(
     skin.mesh_handle = Some(handle.clone());
 
     commands.spawn_bundle(MaterialMesh2dBundle {
-        mesh: handle,
+        mesh: handle.clone(),
         material: materials.add(ColorMaterial::from(asset_server.load(&skin.filename))),
         ..default()
     });
     let skin_id = commands
         .spawn_bundle(TransformBundle::from_transform(Transform {
             scale: Vec3::new(3.5, 3.5, 1.),
-            ..Default::default()
+            ..default()
         }))
         .insert(Transformable::default())
         .insert(skin)
         .id();
     skeleton.skin_mapping.skins.push(skin_id);
-    skin_id
+    (skin_id, handle.clone())
 }
 
 pub fn add_skins(
@@ -125,18 +130,32 @@ pub fn add_skins(
     mut skeleton: ResMut<skeleton::Skeleton>,
     asset_server: Res<AssetServer>,
 ) {
-    add_skin(
+    // add_skin(
+    //     &mut commands,
+    //     &mut meshes,
+    //     &mut materials,
+    //     &mut skeleton,
+    //     &asset_server,
+    //     "person.png",
+    //     40,
+    //     40,
+    //     100.,
+    // );
+    let (entity, mesh_handle) = add_skin(
         &mut commands,
         &mut meshes,
         &mut materials,
         &mut skeleton,
         &asset_server,
-        "person.png",
-        40,
-        40,
-        100.,
+        "loechrig.png",
+        20,
+        20,
+        90.,
     );
-    let entity = add_skin(
+    let cloth = Cloth::from_mesh(mesh_handle, &meshes);
+
+    commands.entity(entity).insert(cloth);
+    let (entity, _) = add_skin(
         &mut commands,
         &mut meshes,
         &mut materials,
@@ -147,7 +166,7 @@ pub fn add_skins(
         10,
         90.,
     );
-    let cloth = Cloth::new(Vec2::new(0., 0.), 5., 4., 10, 10);
+    let cloth = Cloth::new(Vec3::new(0., 0., 0.), 5., 4., 10, 10);
     commands.entity(entity).insert(cloth);
 }
 
