@@ -68,6 +68,7 @@ pub fn start_stop(keys: Res<Input<KeyCode>>, mut state: ResMut<State>, time: Res
 pub fn apply_animation(
     mut q: Query<&mut Transform, With<bone::Bone>>,
     mut state: ResMut<State>,
+    egui_state: Res<egui::State>,
     anims: Res<Animations>,
     time: Res<Time>,
 ) {
@@ -81,10 +82,17 @@ pub fn apply_animation(
         if q.get_mut(*key).is_err() {
             continue;
         }
-        let current_frame_a = f64::floor(time_diff / anim_length_in_secs) as usize % value.vector.len();
+        let current_frame_a =
+            f64::floor(time_diff / anim_length_in_secs) as usize % value.vector.len();
         let current_frame_b = (current_frame_a + 1) % value.vector.len();
         let mut x = ((time_diff % anim_length_in_secs) / anim_length_in_secs) as f32;
-        x = interpolate::ease_in_out(x);
+        x = match egui_state.interpolation_function {
+            interpolate::Function::EaseInOut => interpolate::ease_in_out(x),
+            interpolate::Function::EaseIn => interpolate::ease_in(x),
+            interpolate::Function::EaseOut => interpolate::ease_out(x),
+            interpolate::Function::EaseOutElastic => interpolate::ease_out_elastic(x),
+            interpolate::Function::Linear => x,
+        };
         let mut transform = q.get_mut(*key).unwrap();
         transform.translation = interpolate::lerp(
             value.vector[current_frame_a].translation,

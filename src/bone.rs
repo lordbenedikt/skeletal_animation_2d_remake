@@ -23,12 +23,12 @@ pub fn add_bone(
     keys: Res<Input<KeyCode>>,
     cursor_pos: Res<CursorPos>,
     mut q: Query<(&GlobalTransform, &mut Bone, Entity, &mut Transformable)>,
-    mut state: ResMut<state::State>,
+    mut transform_state: ResMut<transform::State>,
     mut skeleton: ResMut<skeleton::Skeleton>,
 ) {
     let show_sprite = false;
     // Return if action is already taken
-    if state.action != Action::None {
+    if transform_state.action != Action::None {
         return;
     }
     // Add bone only if CTRL and LEFT MOUSE was pressed
@@ -49,17 +49,25 @@ pub fn add_bone(
         let (parent_gl_transform, _, _, _) = q.get(parent).unwrap();
 
         let gl_translation = Bone::get_tip(parent_gl_transform).extend(0.); // New bones global transform
+        // dbg!(&parent_gl_transform);
         let v_diff = Vec3::new(cursor_pos.0.x, cursor_pos.0.y, 0.) - gl_translation; // Vector representing new bone's protrusion
         let length = v_diff.length();
         let gl_scale = Vec3::new(length, length, 1.);
         let gl_rotation = Quat::from_rotation_arc(Vec3::new(0., 1., 0.).normalize(), v_diff.normalize());
         // let translation = Quat::mul_vec3(Quat::inverse(parent_gl_transform.rotation), v_diff)
         //     / Vec3::new(parent_gl_transform.scale.x, parent_gl_transform.scale.y, 1.);
-        let gl_transform = GlobalTransform {
+        let mut gl_transform = GlobalTransform {
             translation: gl_translation,
             rotation: gl_rotation,
             scale: gl_scale,
         };
+        // dbg!(&parent_gl_transform);
+        // dbg!(&parent_gl_transform.rotation.to_euler(EulerRot::XYZ));
+        // dbg!(&gl_transform);
+        // dbg!(cursor_pos.0);
+        // dbg!(gl_transform.rotation.to_euler(EulerRot::XYZ));
+        // println!();
+        gl_transform.scale.z = 1.;
         let transform = transform::get_relative_transform(
             parent_gl_transform,
             &gl_transform,
@@ -103,7 +111,6 @@ pub fn add_bone(
                 ..Default::default()
             })
             .insert({
-                dbg!("added");
                 Bone {}
             })
             .insert(Transformable::default())
@@ -114,5 +121,5 @@ pub fn add_bone(
     for (_, _, _, mut transformable) in q.iter_mut() {
         transformable.is_selected = false;
     }
-    state.action = Action::Done;
+    transform_state.action = Action::Done;
 }

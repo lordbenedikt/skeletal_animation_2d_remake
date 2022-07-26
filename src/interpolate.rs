@@ -1,4 +1,25 @@
+use std::fmt::Display;
 use std::ops::*;
+
+#[derive(PartialEq)]
+pub enum Function {
+    Linear,
+    EaseIn,
+    EaseOut,
+    EaseInOut,
+    EaseOutElastic,
+}
+impl ToString for Function {
+    fn to_string(&self) -> String {
+        match self {
+            Function::Linear => String::from("linear"),
+            Function::EaseIn => String::from("ease in"),
+            Function::EaseOut => String::from("ease out"),
+            Function::EaseInOut => String::from("ease in out"),
+            Function::EaseOutElastic => String::from("ease out elastic"),
+        }
+    }
+}
 
 pub fn lerp<T>(a: T, b: T, x: f32) -> T
 where

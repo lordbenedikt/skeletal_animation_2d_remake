@@ -11,6 +11,12 @@ pub struct Skeleton {
     pub bones: Vec<Entity>,
     pub skin_mapping: SkinMapping,
 }
+impl Skeleton {
+    pub fn remove_bone(&mut self, bone: Entity) {
+        self.bones.retain(|&b| bone != b);
+        self.skin_mapping.remove_bone(bone);
+    }
+}
 
 #[derive(Default)]
 pub struct SkinMapping {
@@ -18,7 +24,31 @@ pub struct SkinMapping {
     pub vertex_mappings: Vec<Vec<VertexMapping>>,
 }
 impl SkinMapping {
-    pub fn remove_vertex(&self) {}
+    pub fn remove_vertex(&mut self) {}
+    pub fn remove_bone(&mut self, bone: Entity) {
+        for item in self.vertex_mappings.iter_mut() {
+            for mapping in item.iter_mut() {
+                for i in (0..mapping.bones.len()).rev() {
+                    if mapping.bones[i] == bone {
+                        mapping.bones.swap_remove(i);
+                        mapping.weights.swap_remove(i);
+                        mapping.rel_positions.swap_remove(i);
+                        mapping.normalize();
+                    }
+                }
+            }
+        }
+    }
+    pub fn remove_bone_at(&mut self, index: usize) {
+        for item in self.vertex_mappings.iter_mut() {
+            for mapping in item.iter_mut() {
+                mapping.bones.swap_remove(index);
+                mapping.weights.swap_remove(index);
+                mapping.rel_positions.swap_remove(index);
+                mapping.normalize();
+            }
+        }
+    }
 }
 
 #[derive(Default)]
@@ -116,7 +146,10 @@ fn add_skin(
             scale: Vec3::new(3.5, 3.5, 1.),
             ..default()
         }))
-        .insert(Transformable::default())
+        .insert(Transformable {
+            is_selected: false,
+            ..default()
+        })
         .insert(skin)
         .id();
     skeleton.skin_mapping.skins.push(skin_id);
@@ -141,39 +174,79 @@ pub fn add_skins(
     //     40,
     //     100.,
     // );
+    // let (entity, mesh_handle) = add_skin(
+    //     &mut commands,
+    //     &mut meshes,
+    //     &mut materials,
+    //     &mut skeleton,
+    //     &asset_server,
+    //     "loechrig.png",
+    //     20,
+    //     20,
+    //     90.,
+    // );
+    // let cloth = Cloth::from_mesh(mesh_handle, &meshes);
+    // commands.entity(entity).insert(cloth);
+
+    // let (entity, _) = add_skin(
+    //     &mut commands,
+    //     &mut meshes,
+    //     &mut materials,
+    //     &mut skeleton,
+    //     &asset_server,
+    //     "test_cloth.png",
+    //     10,
+    //     10,
+    //     90.,
+    // );
+    // let cloth = Cloth::new(Vec3::new(0., 0., 0.), 5., 4., 10, 10);
+    // commands.entity(entity).insert(cloth);
+
+    // // Add Cobra Snake
+    // let (entity, mesh_handle) = add_skin(
+    //     &mut commands,
+    //     &mut meshes,
+    //     &mut materials,
+    //     &mut skeleton,
+    //     &asset_server,
+    //     "cobra.png",
+    //     25,
+    //     20,
+    //     90.,
+    // );
+
+    // Add Spinnenmann
     let (entity, mesh_handle) = add_skin(
         &mut commands,
         &mut meshes,
         &mut materials,
         &mut skeleton,
         &asset_server,
-        "loechrig.png",
-        20,
-        20,
+        "img/pooh.png",
+        30,
+        30,
         90.,
     );
-    let cloth = Cloth::from_mesh(mesh_handle, &meshes);
 
-    commands.entity(entity).insert(cloth);
     let (entity, _) = add_skin(
         &mut commands,
         &mut meshes,
         &mut materials,
         &mut skeleton,
         &asset_server,
-        "test_cloth.png",
+        "spider_web.png",
         10,
         10,
         90.,
     );
-    let cloth = Cloth::new(Vec3::new(0., 0., 0.), 5., 4., 10, 10);
+    let cloth = Cloth::new(Vec3::new(0., 0., 0.), 5., 4., 10, 10).with_stiffness(10);
     commands.entity(entity).insert(cloth);
 }
 
 pub fn assign_skins_to_bones(
     keys: Res<Input<KeyCode>>,
     mut skeleton: ResMut<Skeleton>,
-    q0: Query<(&GlobalTransform, &Skin, Option<&Cloth>)>,
+    q0: Query<(&GlobalTransform, &Skin, &Transformable, Option<&Cloth>)>,
     q1: Query<&GlobalTransform, With<Bone>>,
 ) {
     // assign skins to bones when A is pressed
@@ -188,8 +261,13 @@ pub fn assign_skins_to_bones(
         skeleton.skin_mapping.vertex_mappings.push(vec![]);
         match q0.get(skeleton.skin_mapping.skins[skin_index]) {
             Ok(result) => {
+                // let transformable = result.2;
+                // if !transformable.is_selected {
+                //     continue;
+                // }
+
                 let skin = result.1; // get skin
-                let opt_cloth = result.2;
+                let opt_cloth = result.3;
                 let gl_transform = result.0; // get skin global transform
                 let skin_vertices = skin.gl_vertices(gl_transform); // get vertex global position
 
@@ -251,11 +329,11 @@ pub fn assign_skins_to_bones(
 
 pub fn apply_mesh_to_skeleton(
     mut meshes: ResMut<Assets<Mesh>>,
-    skeleton: Res<Skeleton>,
+    mut skeleton: ResMut<Skeleton>,
     q_bones: Query<&GlobalTransform, With<Bone>>,
     q_skins: Query<&Skin>,
 ) {
-    let skin_mapping = &skeleton.skin_mapping;
+    let skin_mapping = &mut skeleton.skin_mapping;
     if skin_mapping.vertex_mappings.is_empty() {
         return;
     }
@@ -263,8 +341,20 @@ pub fn apply_mesh_to_skeleton(
     // for each SKIN
     for i in 0..skin_mapping.skins.len() {
         let mut vertices: Vec<[f32; 3]> = vec![];
-        let skin = q_skins.get(skin_mapping.skins[i]).unwrap();
-        let mesh = meshes.get_mut(skin.mesh_handle.clone().unwrap().0).unwrap();
+
+        // if skin doesn't exist, continue
+        let opt_skin = q_skins.get(skin_mapping.skins[i]);
+        if opt_skin.is_err() {
+            continue;
+        }
+        let skin = opt_skin.unwrap();
+
+        // if mesh doesn't exist, continue
+        let opt_mesh = meshes.get_mut(skin.mesh_handle.clone().unwrap().0);
+        if opt_mesh.is_none() {
+            continue;
+        }
+        let mesh = opt_mesh.unwrap();
 
         // for each VERTEX
         for v_i in 0..skin.vertices.len() {
@@ -275,16 +365,20 @@ pub fn apply_mesh_to_skeleton(
             }
             let mut v_gl_position = Vec3::new(0., 0., 0.);
             // for each BONE
-            for b_i in 0..skin_mapping.vertex_mappings[i][v_i].bones.len() {
+            for b_i in (0..skin_mapping.vertex_mappings[i][v_i].bones.len()).rev() {
                 let bone = skin_mapping.vertex_mappings[i][v_i].bones[b_i];
-                let bone_gl_transform = q_bones.get(bone).unwrap();
-                let weight = skin_mapping.vertex_mappings[i][v_i].weights[b_i];
-                let mut position =
-                    skin_mapping.vertex_mappings[i][v_i].rel_positions[b_i].extend(0.);
-                position = Quat::mul_vec3(bone_gl_transform.rotation, position);
-                position *= bone_gl_transform.scale;
-                position += bone_gl_transform.translation;
-                v_gl_position += weight * position;
+                if let Ok(bone_gl_transform) = q_bones.get(bone) {
+                    let weight = skin_mapping.vertex_mappings[i][v_i].weights[b_i];
+                    let mut position =
+                        skin_mapping.vertex_mappings[i][v_i].rel_positions[b_i].extend(0.);
+                    position = Quat::mul_vec3(bone_gl_transform.rotation, position);
+                    position *= bone_gl_transform.scale;
+                    position += bone_gl_transform.translation;
+                    v_gl_position += weight * position;
+                } else {
+                    skin_mapping.remove_bone(bone);
+                    continue;
+                }
             }
             vertices.push([v_gl_position.x, v_gl_position.y, skin.depth]);
         }

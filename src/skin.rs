@@ -399,27 +399,27 @@ impl Skin {
             mesh_handle: None,
             depth,
         };
-        // // Remove reduntant vertices and corresponding uvs and indices
-        for i in (0..skin.uvs.len()).rev() {
-            let v = skin.uvs[i];
-            let coords = [
-                min((v[0] * w as f32) as u32, w - 1),
-                min((v[1] * h as f32) as u32, h - 1),
-            ];
-            // if uv is out of image or pixel at uv is transparent remove
-            if !is_close_to_visible_pixel(
-                coords[0],
-                coords[1],
-                &img,
-                0u32,
-                f32::max(
-                    w as f32 / cols as f32 * SQRT_2,
-                    h as f32 / rows as f32 * SQRT_2,
-                ),
-            ) {
-                skin.remove_vertex(i as u16);
-            }
-        }
+        // // // Remove reduntant vertices and corresponding uvs and indices
+        // for i in (0..skin.uvs.len()).rev() {
+        //     let v = skin.uvs[i];
+        //     let coords = [
+        //         min((v[0] * w as f32) as u32, w - 1),
+        //         min((v[1] * h as f32) as u32, h - 1),
+        //     ];
+        //     // if uv is out of image or pixel at uv is transparent remove
+        //     if !is_close_to_visible_pixel(
+        //         coords[0],
+        //         coords[1],
+        //         &img,
+        //         0u32,
+        //         f32::max(
+        //             w as f32 / cols as f32 * SQRT_2,
+        //             h as f32 / rows as f32 * SQRT_2,
+        //         ),
+        //     ) {
+        //         skin.remove_vertex(i as u16);
+        //     }
+        // }
         skin
     }
     pub fn remove_vertex(&mut self, index: u16) {
@@ -613,7 +613,10 @@ pub fn create_mesh(
             scale: Vec3::new(3.5, 3.5, 1.),
             ..Default::default()
         }))
-        .insert(Transformable::default())
+        .insert(Transformable {
+            is_selected: false,
+            ..default()
+        })
         .insert(skin)
         .id();
     skeleton.skin_mapping.skins.push(skin_id);

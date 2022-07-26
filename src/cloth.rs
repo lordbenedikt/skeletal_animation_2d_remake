@@ -13,14 +13,14 @@ impl Cloth {
         let mesh = meshes.get(mesh_handle.0).unwrap();
         let mut vertices = mesh::get_vertices(mesh);
         for v in vertices.iter_mut() {
-            *v *= Vec3::new(3.5,3.5,1.);
+            *v *= Vec3::new(3.5, 3.5, 1.);
         }
         let mut point_masses = vec![];
         for i in 0..vertices.len() {
             point_masses.push(PointMass::new(vertices[i], i <= 20));
         }
         let links: Vec<Link> = vec![];
-        let mut cloth =         Self {
+        let mut cloth = Self {
             point_masses,
             links,
             stiffness: 4,
@@ -57,7 +57,6 @@ impl Cloth {
             }
         }
         cloth
-
     }
     pub fn new(pos: Vec3, w: f32, h: f32, cols: usize, rows: usize) -> Self {
         let mut cloth = Cloth::default().with_stiffness(4);
@@ -140,7 +139,7 @@ impl Cloth {
             debug_drawer.line(start.truncate(), end.truncate(), COLOR_DEFAULT);
         }
     }
-    fn with_stiffness(mut self, stiffness: u32) -> Self {
+    pub fn with_stiffness(mut self, stiffness: u32) -> Self {
         self.stiffness = stiffness;
         self
     }
@@ -209,8 +208,8 @@ impl Link {
 
 pub fn system_set() -> SystemSet {
     SystemSet::new()
+        .with_system(apply_mesh_to_cloth.before(update_cloth))
         .with_system(update_cloth)
-        .with_system(apply_mesh_to_cloth)
 }
 
 pub fn create_cloth(mut commands: Commands) {

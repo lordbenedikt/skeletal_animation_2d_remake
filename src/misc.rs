@@ -1,12 +1,37 @@
 use crate::*;
-use bevy::{prelude::*, render::camera::{DepthCalculation, ScalingMode, Camera2d,RenderTarget}};
+use bevy::{
+    prelude::*,
+    render::camera::{Camera2d, DepthCalculation, RenderTarget, ScalingMode},
+};
 use bevy_prototype_debug_lines::DebugLines;
 
 #[derive(Component)]
 pub struct MainCamera;
 
-pub fn setup(mut commands: Commands) {
+pub fn setup(mut commands: Commands, mut asset_server: ResMut<AssetServer>) {
     commands.spawn_bundle(new_camera_2d()).insert(MainCamera);
+    commands.spawn_bundle(UiCameraBundle::default());
+    commands.spawn_bundle(TextBundle {
+        text: Text::with_section(
+            String::from("Position"),
+            TextStyle {
+                font: asset_server.load("fonts/SpaceMono-Regular.ttf"),
+                font_size: 30.0,
+                color: Color::BLACK,
+            },
+            TextAlignment {
+                vertical: VerticalAlign::Top,
+                horizontal: HorizontalAlign::Left,
+            },
+        ),
+        ..Default::default()
+    });
+}
+
+pub fn update_text(mut q: Query<&mut Text>, cursor_pos: Res<CursorPos>) {
+    for mut text in q.iter_mut() {
+        text.sections[0].value = format!("cursor: {}", cursor_pos.0);
+    }
 }
 
 fn new_camera_2d() -> OrthographicCameraBundle<Camera2d> {
@@ -19,7 +44,11 @@ fn new_camera_2d() -> OrthographicCameraBundle<Camera2d> {
         scale: 1f32,
         ..Default::default()
     };
-    camera.transform.scale = Vec3::new(1. / (PIXELS_PER_UNIT as f32 *0.5), 1. / (PIXELS_PER_UNIT as f32 * 0.5), 1.);
+    camera.transform.scale = Vec3::new(
+        1. / (PIXELS_PER_UNIT as f32 * 0.5),
+        1. / (PIXELS_PER_UNIT as f32 * 0.5),
+        1.,
+    );
     return camera;
 }
 

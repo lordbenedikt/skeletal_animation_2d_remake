@@ -1,4 +1,21 @@
-use crate::*;
+use crate::{*, bone::Bone};
+
+pub struct State {
+    pub action: transform::Action,
+    pub cursor_anchor: Vec2,
+    pub original_transforms: Vec<Transform>,
+    pub selected_entities: Vec<Entity>,
+}
+impl State {
+    pub fn new() -> State {
+        State {
+            action: transform::Action::None,
+            cursor_anchor: Vec2::new(0., 0.),
+            original_transforms: vec![],
+            selected_entities: vec![],
+        }
+    }
+}
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Action {
@@ -17,6 +34,7 @@ pub struct Transformable {
     pub translatable: bool,
     pub rotatable: bool,
     pub scalable: bool,
+    pub collision_shape: Shape,
 }
 impl Default for Transformable {
     fn default() -> Self {
@@ -25,8 +43,16 @@ impl Default for Transformable {
             translatable: true,
             rotatable: true,
             scalable: true,
+            collision_shape: Shape::None,
         }
     }
+}
+
+#[derive(PartialEq)]
+pub enum Shape {
+    Rectangle(Vec2, Vec2),
+    Line(Vec2, Vec2),
+    None,
 }
 
 pub fn system_set() -> SystemSet {
@@ -40,7 +66,7 @@ pub fn system_set() -> SystemSet {
 
 pub fn start_action(
     cursor_pos: Res<CursorPos>,
-    mut state: ResMut<state::State>,
+    mut state: ResMut<State>,
     keys: Res<Input<KeyCode>>,
     q: Query<(&Transform, &Transformable, Entity)>,
 ) {
@@ -93,7 +119,7 @@ pub fn start_action(
 pub fn transform(
     cursor_pos: Res<CursorPos>,
     mut q: Query<(&GlobalTransform, Option<&Parent>, &mut Transform), With<Transformable>>,
-    state: Res<state::State>,
+    state: Res<State>,
 ) {
     match state.action {
         Action::Translate => {
@@ -161,7 +187,6 @@ pub fn transform(
         }
         Action::ScaleX => {
             for i in 0..state.selected_entities.len() {
-                dbg!("scale_x");
                 // Get transformable's global transform, vector from transformable cursor anchor
                 // and vector from transformable to current cursor position
                 let gl_transform = q.get(state.selected_entities[i]).unwrap().0;
@@ -196,25 +221,27 @@ pub fn transform(
 pub fn remove(
     mut commands: Commands,
     keys: Res<Input<KeyCode>>,
-    q: Query<(Entity, &Transformable)>,
-    q_skins: Query<&skin::Skin>,
+    q: Query<(Entity, &Transformable, Option<&skin::Skin>, Option<&Bone>)>,
+    mut state: ResMut<State>,
+    mut skeleton: ResMut<skeleton::Skeleton>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
     // Remove transformable only if DELETE was pressed
     if !keys.just_pressed(KeyCode::Delete) {
         return;
     }
-    for skin in q_skins.iter() {
-        meshes.remove(skin.mesh_handle.clone().unwrap().0);
-    }
-    for (entity, transformable) in q.iter() {
+    for (entity, transformable, skin, bone) in q.iter() {
         if transformable.is_selected {
             commands.entity(entity).despawn_recursive();
+            state.selected_entities.retain(|&e| e != entity);
+            if let Some(skin) = skin {
+                meshes.remove(skin.mesh_handle.clone().unwrap().0);
+            }
         }
     }
 }
 
-pub fn complete_action(mouse: Res<Input<MouseButton>>, mut state: ResMut<state::State>) {
+pub fn complete_action(mouse: Res<Input<MouseButton>>, mut state: ResMut<State>) {
     // If current action is a transformation finnish this action
     if state.action != Action::None && state.action != Action::Done {
         if mouse.just_pressed(MouseButton::Left) {
@@ -228,7 +255,7 @@ pub fn complete_action(mouse: Res<Input<MouseButton>>, mut state: ResMut<state::
 
 pub fn select(
     mouse: Res<Input<MouseButton>>,
-    state: Res<state::State>,
+    state: Res<State>,
     keys: Res<Input<KeyCode>>,
     cursor_pos: Res<CursorPos>,
     mut q: Query<(&GlobalTransform, &mut Transformable, Entity)>,
@@ -239,14 +266,39 @@ pub fn select(
     }
     let mut closest_entity: Option<Entity> = None;
     let mut shortest_distance = 999.;
-    for (gl_transform, _, entity) in q.iter_mut() {
-        let length = gl_transform.scale.y;
-        let center = gl_transform.translation
-            + Quat::mul_vec3(gl_transform.rotation, Vec3::new(0., length / 3., 0.));
-        let distance = Vec2::distance(center.truncate(), cursor_pos.0);
-        if distance < /*length / 2.*/ 1. && distance < shortest_distance {
-            closest_entity = Some(entity);
-            shortest_distance = distance;
+    for (gl_transform, transformable, entity) in q.iter_mut() {
+        let distance: f32 = if let Shape::Rectangle(min, max) = transformable.collision_shape {
+            Vec2::distance((min + max) / 2., cursor_pos.0)
+        } else if let Shape::Line(start, end) = transformable.collision_shape {
+            distance_segment_point(start, end, cursor_pos.0)
+        } else {
+            // assert transformable.collision_shape == Shape::None
+            let length = gl_transform.scale.y;
+            let center = gl_transform.translation
+                + Quat::mul_vec3(gl_transform.rotation, Vec3::new(0., length / 3., 0.));
+            Vec2::distance(center.truncate(), cursor_pos.0)
+        };
+        if distance < shortest_distance {
+            if let Shape::Rectangle(min, max) = transformable.collision_shape {
+                if min.x <= cursor_pos.0.x
+                    && min.y <= cursor_pos.0.y
+                    && max.x >= cursor_pos.0.x
+                    && max.y >= cursor_pos.0.y
+                {
+                    closest_entity = Some(entity);
+                    shortest_distance = distance;
+                }
+            } else if let Shape::Line(start, end) = transformable.collision_shape {
+                if distance < 1. {
+                    closest_entity = Some(entity);
+                    shortest_distance = distance;
+                }
+            } else {
+                if distance < 1. {
+                    closest_entity = Some(entity);
+                    shortest_distance = distance;
+                }
+            }
         }
     }
     // Select/Unselect transformable
