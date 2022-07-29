@@ -1,0 +1,246 @@
+\documentclass[11pt,a4paper,twoside,openright]{memoir}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  In my opinion (DW) there are no fonts available in the standard
+%  TeX/LaTeX set that are ideal for this use, unless you go down to 9pt or 
+%  8pt for your text face, and this is too small.  If you have Metafont you
+%  should consider generating a cmr17 font at a magstep of two (about 25pt)
+%  or three (about 30pt), or even more, depending on the point size of your
+%  main text.  Why not go the whole hog and design some really fancy 
+%  capitals from scratch!
+%
+%%%%%%%%%%%%%%%%%%%%% BOX ONE %%%%%%%%%%%%%%%%%%%%%%%%%
+%\typein[\dropinitialfont]{Font for Dropped initial:} %
+%\font\largefont \dropinitialfont                     %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%%%%%%%%%%%%%%%%%%%%% BOX TWO %%%%%%%%%%%%%%%%%%%%%%%%%
+%\font\largefont= cmr10 scaled \magstep5              %
+%\font\largefont= cmbx10 scaled \magstep5             %
+%\font\largefont= cmbx17 scaled \magstep3             %
+\font\largefont= cmr17 scaled \magstep5               %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Copyright Symbole u.ä.
+\def\TReg{\textsuperscript{\textregistered}}
+\def\TCop{\textsuperscript{\textcopyright}}
+\def\TTra{\textsuperscript{\texttrademark}}
+
+\def\drop#1#2{{\noindent
+    \setbox0\hbox{\largefont #1}\setbox1\hbox{#2}\setbox2\hbox{(}%
+    \count0=\ht0\advance\count0 by\dp0\count1\baselineskip
+    \advance\count0 by-\ht1\advance\count0by\ht2
+    \dimen1=.5ex\advance\count0by\dimen1\divide\count0 by\count1
+    \advance\count0 by1\dimen0\wd0
+    \advance\dimen0 by.25em\dimen1=\ht0\advance\dimen1 by-\ht1
+    \global\hangindent\dimen0\global\hangafter-\count0
+    \hskip-\dimen0\setbox0\hbox to\dimen0{\raise-\dimen1\box0\hss}%
+    \dp0=0in\ht0=0in\box0}#2}
+
+% end of new \drop command
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% new \versal command
+\newcommand{\versal}[1]{{\noindent
+    \setbox0\hbox{\largefont #1}%
+    \count0=\ht0                   % height of versal
+    \count1=\baselineskip          % baselineskip
+    \divide\count0 by \count1      % versal height/baselineskip
+    \dimen1 = \count0\baselineskip % distance to drop versal
+    \advance\count0 by 1\relax     % no of indented lines
+    \dimen0=\wd0                   % width of versal
+    \global\hangindent\dimen0      % set indentation distance
+    \global\hangafter-\count0      % set no of indented lines
+    \hskip-\dimen0\setbox0\hbox to\dimen0{\raise-\dimen1\box0\hss}%
+    \dp0=0in\ht0=0in\box0}}
+% end of new \versal command
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% redefining the textblocksize
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\setlrmarginsandblock{1in}{1.5in}{*}
+\checkandfixthelayout
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\usepackage{graphicx}
+\usepackage{latexsym}
+\usepackage{epsfig}
+\usepackage[figuresright]{rotating}
+\usepackage{dsfont}
+\usepackage{ngerman}
+\usepackage{amsmath} 
+\usepackage{subcaption}
+%%% FEHLER IN OVERLEAF \usepackage[latin1]{inputenc}
+%\usepackage[dvips]{color}
+\usepackage{colortbl}
+	\definecolor{darkblue}{rgb}{0,0,0.4}
+	\definecolor{darkgray}{rgb}{0.1,0.1,0.2}
+	\definecolor{darkred}{rgb}{0.6,0.0,0.0}
+   \definecolor{darkgreen}{rgb}{0.0,0.6,0.0}
+   \definecolor{orange}{rgb}{1.0,0.8,0.0}
+
+%---- for algorithms ----
+\usepackage[Algorithmus]{algorithm}
+\usepackage{algorithmic}
+
+%---- for source code presentations ----
+%%%   ERROR IN OVERLEAF!! \usepackage{minted}
+
+%---- for the index ----
+\usepackage{layouts}[2001/04/29]
+\makeindex
+
+\usepackage{hyperref}
+\usepackage{memhfixc}
+\hypersetup{colorlinks=true,linkcolor=darkgray,urlcolor=darkblue,citecolor=darkblue,filecolor=darkgreen}
+
+%---- a second bibliography ----
+\usepackage{multibib}
+\renewcommand{\refname}{Allgemeine Literaturquellen}
+
+%---- some new math symbols ----
+\usepackage{nicefrac} % schräge bruchstriche
+\usepackage{amssymb}
+\newcommand{\Real}{\mathbb R}
+
+%---- memoir package specialties
+%\pagestyle{companion}
+\pagestyle{Ruled}
+\setlength{\epigraphwidth}{7cm}
+\setcounter{tocdepth}{3}
+\setcounter{secnumdepth}{3}
+\maxsecnumdepth{subsection}
+
+% change standard font
+%\usepackage{cmbright}
+\renewcommand{\rmdefault}{cmss}
+\renewcommand{\sfdefault}{cmss}
+
+% set figure resp. table name and number bold
+\makeatletter
+\renewcommand{\fnum@figure}{\textbf{\figurename~\thefigure}}
+\renewcommand{\fnum@table}{\textbf{\tablename~\thetable}}
+\makeatother
+
+% setting the authors for a verse
+\newcommand{\attrib}[1]{%
+	\nopagebreak{\raggedleft\footnotesize #1\par}}
+
+%---- general information ----
+\author{ 
+	\small{vorgelegt von} \vspace{.5cm} 											\\ 
+	\Large{\textbf{Benedikt Jensen}} 											\\ 
+	\small{geb.\ in Langenfeld(Rheinland))}}
+	\title{
+			\textbf{\vspace{-2.5cm}
+			%--------------------------------------------------------------
+			% unter mac os x können Sie auch ein .png als Bild einbinden...
+			%--------------------------------------------------------------
+			\includegraphics[width=16.0cm]{logo_thm_cg.png} \\
+			\vspace{3cm} Techniken der 2D-Skelettanimation} \\
+			\vspace{1cm}
+			\normalsize{Studiengang Informatik} \vspace{1cm} \\
+			\Large{\textbf{Bachelorarbeit}} }
+			\date{}
+
+
+\begin{document}
+	%---- the frontmatter ----
+	\frontmatter
+	
+		\begin{titlingpage}
+			\begin{center}
+				%---- create the title page ----
+				\maketitle
+				\vspace{-1cm}
+				\small{durchgeführt an:} \\
+				\small{Technische Hochschule Mittelhessen (THM), Gießen}
+				\begin{tabular}{ll}
+					& \\
+					& \\
+					& \\
+					Referent der Arbeit: & Prof. Dr. Soundso Mustermann \\
+					Korreferent der Arbeit: & Prof. Dr. Herr Mann \\
+					Betreuer an der THM: & Prof. Dr. Andreas Gogol-Döring\\
+				   & \\
+				\end{tabular}
+
+				\vspace{\fill}
+				\small{Gießen, 2022}
+			\end{center}
+	
+		\end{titlingpage}
+
+	\cleardoublepage
+	\setcounter{page}{1}
+	
+	%---- Danksagung ----
+	\include{acknow/acknow}
+
+	%---- Selbstständigkeitserklärung ----
+	\include{erklaerung/erklaerung}
+	
+	\cleardoublepage
+	
+	%---- table of contents ----
+	\tableofcontents
+	
+	\cleardoublepage
+	
+	%---- list of figures ----
+	\listoffigures
+	
+	%---- the mainmatter ----
+	\mainmatter
+
+		%---- Einführung ----
+		\include{intro/intro}
+		
+		%---- Kapitel Funktionsweise der Skelettanimation ----
+		\include{funktionsweise/funktionsweise}
+		
+		%---- Kapitel Weiterführende Techniken ----
+		\include{weitere_techniken/weitere_techniken}
+
+		\include{tips/intro}
+		
+	%---- Beginn Anhang ----
+	\appendix	% resets numbering to alphabetic style
+	\include{anhang/anhang}
+	%---- Ende Anhang ----
+
+	\cleardoublepage
+
+
+
+	% ---- the backmatter ----
+	\backmatter
+	
+		%---- include Glossar ----
+		\include{glossar/glossar}
+
+		%---- Literaturverzeichnis ----
+%		\begin{footnotesize}
+			\bibliography{abschlussarbeit}
+			\bibliographystyle{alphadin}
+%		\end{footnotesize}
+		
+		%---- Own publications again ----
+		\cleardoublepage
+
+		%---- Indexverzeichnis ----	
+		\cleardoublepage
+%		\pagestyle{index}
+%		\renewcommand{\chaptermark}[1]{}
+		\renewcommand{\preindexhook}{ % Die erste angegebene Seitenzahl ist gewöhnlich, aber nicht immer, die erste Referenz zum entsprechenden Eintrag.
+		\vskip\onelineskip}
+		\indexintoc
+		\printindex
+		\cleardoublepage
+
+	
+\end{document}

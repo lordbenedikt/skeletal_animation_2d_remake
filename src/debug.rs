@@ -172,10 +172,6 @@ pub fn draw_skin_bounding_box(
     mut debug_drawer: ResMut<DebugDrawer>,
 ) {
     for (mut transformable, skin) in q.iter_mut() {
-        if !transformable.is_selected {
-            continue;
-        }
-
         // if mesh doesn't exist, continue
         let opt_mesh = meshes.get(skin.mesh_handle.clone().unwrap().0) ;
         if opt_mesh.is_none() {continue;}
@@ -206,6 +202,10 @@ pub fn draw_skin_bounding_box(
             COLOR_DEFAULT
         };
 
+        // if skin isn't selected, don't draw bounding box
+        if !transformable.is_selected {
+            continue;
+        }
         // draw bounding box
         debug_drawer.line_thick(
             Vec2::new(min[0], min[1]),

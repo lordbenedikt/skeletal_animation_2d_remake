@@ -47,7 +47,8 @@ fn main() {
         .insert_resource(skeleton::Skeleton::default())
         .insert_resource(egui::State::default())
         // EVENTS
-        .add_event::<skeleton::AddSkinEvent>()
+        .add_event::<skin::AddSkinEvent>()
+        .add_event::<transform::UpdateSelectionEvent>()
         // PLUGINS
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
@@ -56,22 +57,21 @@ fn main() {
         // .add_plugin(FrameTimeDiagnosticsPlugin::default())
         // STARTUP SYSTEMS
         .add_startup_system(misc::setup)
-        .add_startup_system(skeleton::add_startup_skins)
+        .add_startup_system(skin::add_startup_skins)
         .add_startup_system(cloth::create_cloth)
         // SYSTEMS
         // .add_system(add_vertex)
-        .add_system(skeleton::add_skins)
-        .add_system(egui::ui_action.before("transform_systems"))
         .add_system(misc::get_mouse_position.label("input_handling"))
         .add_system(misc::update_text)
-        .add_system(skin::update_mesh.label("update_mesh"))
+        .add_system_set(egui::system_set().label("ui_action"))
+        .add_system_set(skin::system_set().label("skin_systems"))
         .add_system_set(cloth::system_set().label("update_cloth"))
-        .add_system_set(skeleton::system_set().after("update_mesh"))
+        .add_system_set(skeleton::system_set().after("skin_systems"))
         .add_system_set(bone::system_set().label("bone_systems"))
         .add_system_set(ccd::system_set().label("ccd_systems"))
         .add_system_set(
             transform::system_set()
-                .label("tramsform_systems")
+                .after("ui_action")
                 .after("bone_systems")
                 .after("ccd_systems"),
         )

@@ -1,4 +1,4 @@
-use crate::{*, bone::Bone};
+use crate::{bone::Bone, *};
 
 pub struct State {
     pub action: transform::Action,
@@ -16,6 +16,9 @@ impl State {
         }
     }
 }
+
+#[derive(Default)]
+pub struct UpdateSelectionEvent;
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Action {
@@ -63,6 +66,7 @@ pub enum Shape {
 
 pub fn system_set() -> SystemSet {
     SystemSet::new()
+        .with_system(update_selection)
         .with_system(start_action)
         .with_system(transform)
         .with_system(remove.before(complete_action))
@@ -74,7 +78,7 @@ pub fn start_action(
     cursor_pos: Res<CursorPos>,
     mut state: ResMut<State>,
     keys: Res<Input<KeyCode>>,
-    q: Query<(&Transform, &Transformable, Entity)>,
+    q: Query<&Transform, With<Transform>>,
 ) {
     // // WIP
     // Switch between scale modi
@@ -107,14 +111,11 @@ pub fn start_action(
     }
     // Store cursor position at moment action is started
     state.cursor_anchor = cursor_pos.0;
-    // Find selected entities and store their transforms at moment action is started
+    // Store selected entities' transforms at moment action is started
     state.original_transforms.clear();
-    state.selected_entities.clear();
-    for (transform, transformable, entity) in q.iter() {
-        if transformable.is_selected {
-            state.original_transforms.push(transform.clone());
-            state.selected_entities.push(entity);
-        }
+    for e in state.selected_entities.clone() {
+        let transform = q.get(e).unwrap();
+        state.original_transforms.push(transform.clone());
     }
     // Don't start action if no transformables are selected
     if state.selected_entities.len() == 0 {
@@ -261,17 +262,17 @@ pub fn complete_action(mouse: Res<Input<MouseButton>>, mut state: ResMut<State>)
 
 pub fn select(
     mouse: Res<Input<MouseButton>>,
-    state: Res<State>,
+    mut state: ResMut<State>,
     keys: Res<Input<KeyCode>>,
     cursor_pos: Res<CursorPos>,
     mut q: Query<(&GlobalTransform, &mut Transformable, Entity)>,
+    mut update_selection_evw: EventWriter<UpdateSelectionEvent>,
 ) {
     // Select/Unselect only if action is not already taken and if left mouse was pressed
     if !mouse.just_pressed(MouseButton::Left) || state.action != Action::None {
         return;
     }
 
-    dbg!("select");
     let mut closest_entity: Option<Entity> = None;
     let mut shortest_distance = 999.;
     for (gl_transform, transformable, entity) in q.iter_mut() {
@@ -329,6 +330,7 @@ pub fn select(
             }
         }
     }
+    update_selection_evw.send_default();
 }
 
 pub fn get_relative_transform(
@@ -376,4 +378,19 @@ pub fn distance_segment_point(start: Vec2, end: Vec2, v: Vec2) -> f32 {
     let t = f32::max(0., f32::min(1., Vec2::dot(v - start, end - start) / length));
     let projection: Vec2 = start + t * (end - start);
     return Vec2::distance(v, projection);
+}
+
+pub fn update_selection(
+    q: Query<(&Transformable, Entity)>,
+    mut state: ResMut<State>,
+    mut update_selection_evr: EventReader<UpdateSelectionEvent>,
+) {
+    for _ in update_selection_evr.iter() {
+        state.selected_entities.clear();
+        for (transformable, entity) in q.iter() {
+            if transformable.is_selected {
+                state.selected_entities.push(entity);
+            }
+        }
+    }
 }

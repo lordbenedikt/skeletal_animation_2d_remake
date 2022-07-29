@@ -1,5 +1,6 @@
 use crate::*;
 use bevy::sprite::MaterialMesh2dBundle;
+use cloth::Cloth;
 use image::GenericImageView;
 use lyon::lyon_tessellation::{
     geometry_builder::simple_builder,
@@ -7,11 +8,19 @@ use lyon::lyon_tessellation::{
     path::Path,
     FillGeometryBuilder, FillOptions, FillTessellator, FillVertex, VertexBuffers,
 };
+use skeleton::Skeleton;
 use std::collections::HashMap;
 use std::{cmp::*, f32::consts::SQRT_2};
 
 const PIXEL_TO_UNIT_RATIO: f32 = 0.005;
 pub const START_SCALE: f32 = 3.5;
+
+pub struct AddSkinEvent {
+    pub filename: String,
+    pub cols: u16,
+    pub rows: u16,
+    pub as_cloth: bool,
+}
 
 #[derive(Default)]
 pub struct LineStrip {
@@ -558,15 +567,21 @@ pub fn generate_mesh(filename: &str) -> Skin {
 }
 
 pub fn update_mesh(
-    skeleton: Res<skeleton::Skeleton>,
+    skeleton: Res<Skeleton>,
     mut meshes: ResMut<Assets<Mesh>>,
-    q: Query<(&GlobalTransform, &Skin)>,
+    q: Query<(&GlobalTransform, &Skin, Entity)>,
 ) {
-    if !skeleton.skin_mapping.vertex_mappings.is_empty() {
-        return;
-    };
-
-    for (gl_transform, skin) in q.iter() {
+    for (gl_transform, skin, entity) in q.iter() {
+        let mut is_part_of_skeleton = false;
+        for mapping in skeleton.skin_mappings.iter() {
+            if mapping.skin.unwrap() == entity {
+                is_part_of_skeleton = true;
+                break;
+            }
+        }
+        if is_part_of_skeleton {
+            continue;
+        }
         let vertices = skin.gl_vertices(gl_transform);
         let opt_mesh = meshes.get_mut(skin.mesh_handle.clone().unwrap().0);
         if let Some(mesh) = opt_mesh {
@@ -579,7 +594,7 @@ pub fn create_mesh(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    mut skeleton: ResMut<skeleton::Skeleton>,
+    mut skeleton: ResMut<Skeleton>,
     asset_server: Res<AssetServer>,
 ) {
     let mut skin = skin::generate_mesh("person.png");
@@ -619,5 +634,152 @@ pub fn create_mesh(
         })
         .insert(skin)
         .id();
-    skeleton.skin_mapping.skins.push(skin_id);
+    skeleton.skin_mappings.push(skeleton::SkinMapping {
+        skin: Some(skin_id),
+        vertex_mappings: vec![],
+    });
+}
+
+pub fn system_set() -> SystemSet {
+    SystemSet::new()
+        .with_system(add_skins)
+        .with_system(update_mesh)
+}
+
+pub fn add_startup_skins(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    asset_server: Res<AssetServer>,
+) {
+    let (entity, mesh_handle) = add_skin(
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        &asset_server,
+        "img/pooh.png",
+        30,
+        30,
+        90.,
+        false,
+    );
+    let (entity, mesh_handle) = add_skin(
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        &asset_server,
+        "img/honey.png",
+        10,
+        10,
+        90.,
+        true,
+    );
+    let bounding_box = meshes.get(mesh_handle.0).unwrap().compute_aabb().unwrap();
+    let diagonal = (bounding_box.max() - bounding_box.min()) * skin::START_SCALE;
+    let cloth = Cloth::new(
+        Vec3::new(0., 0., 0.),
+        diagonal.x,
+        diagonal.y,
+        10 as usize,
+        10 as usize,
+    )
+    .with_stiffness(10);
+    commands.entity(entity).insert(cloth);
+    // let cloth = Cloth::new(Vec3::new(0., 0., 0.), 5., 4., 10, 10).with_stiffness(10);
+    // commands.entity(entity).insert(cloth);
+}
+
+fn add_skin(
+    mut commands: &mut Commands,
+    mut meshes: &mut Assets<Mesh>,
+    mut materials: &mut Assets<ColorMaterial>,
+    asset_server: &AssetServer,
+    filename: &str,
+    cols: u16,
+    rows: u16,
+    depth: f32,
+    rectangular: bool,
+) -> (Entity, Mesh2dHandle) {
+    let mut skin = Skin::grid_mesh(filename, cols, rows, depth, rectangular);
+
+    let vertices = skin
+        .vertices
+        .clone()
+        .iter()
+        .map(|v| [v[0], v[1], depth])
+        .collect::<Vec<[f32; 3]>>();
+    let mut normals = vec![];
+    let uvs = skin.uvs.clone();
+    for _ in skin.vertices.iter() {
+        normals.push([0., 0., 1.]);
+    }
+    let mut inds = skin.indices.clone();
+    inds.reverse();
+    let indices = Some(Indices::U16(inds));
+
+    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices.clone());
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals.clone());
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs.clone());
+    mesh.set_indices(indices.clone());
+
+    let handle: Mesh2dHandle = meshes.add(mesh).into();
+    skin.mesh_handle = Some(handle.clone());
+
+    commands.spawn_bundle(MaterialMesh2dBundle {
+        mesh: handle.clone(),
+        material: materials.add(ColorMaterial::from(asset_server.load(&skin.filename))),
+        ..default()
+    });
+    let skin_id = commands
+        .spawn_bundle(TransformBundle::from_transform(Transform {
+            scale: Vec3::new(3.5, 3.5, 1.),
+            ..default()
+        }))
+        .insert(Transformable {
+            is_selected: false,
+            ..default()
+        })
+        .insert(skin)
+        .id();
+    (skin_id, handle.clone())
+}
+
+pub fn add_skins(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut add_skin_evr: EventReader<AddSkinEvent>,
+    asset_server: Res<AssetServer>,
+) {
+    if add_skin_evr.is_empty() {
+        return;
+    } else {
+        for event in add_skin_evr.iter() {
+            let (entity, mesh_handle) = add_skin(
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                &asset_server,
+                &event.filename,
+                event.cols,
+                event.rows,
+                90.,
+                event.as_cloth,
+            );
+            if event.as_cloth {
+                let bounding_box = meshes.get(mesh_handle.0).unwrap().compute_aabb().unwrap();
+                let diagonal = (bounding_box.max() - bounding_box.min()) * skin::START_SCALE;
+                let cloth = Cloth::new(
+                    Vec3::new(0., 0., 0.),
+                    diagonal.x,
+                    diagonal.y,
+                    event.cols as usize,
+                    event.rows as usize,
+                )
+                .with_stiffness(10);
+                commands.entity(entity).insert(cloth);
+            }
+        }
+    }
 }
