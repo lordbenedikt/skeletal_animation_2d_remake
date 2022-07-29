@@ -47,6 +47,12 @@ impl Default for Transformable {
         }
     }
 }
+impl Transformable {
+    pub fn with_shape(mut self, shape: Shape) -> Self {
+        self.collision_shape = shape;
+        self
+    }
+}
 
 #[derive(PartialEq)]
 pub enum Shape {
@@ -264,6 +270,8 @@ pub fn select(
     if !mouse.just_pressed(MouseButton::Left) || state.action != Action::None {
         return;
     }
+
+    dbg!("select");
     let mut closest_entity: Option<Entity> = None;
     let mut shortest_distance = 999.;
     for (gl_transform, transformable, entity) in q.iter_mut() {

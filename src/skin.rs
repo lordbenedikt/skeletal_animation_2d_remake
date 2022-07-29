@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::{cmp::*, f32::consts::SQRT_2};
 
 const PIXEL_TO_UNIT_RATIO: f32 = 0.005;
+pub const START_SCALE: f32 = 3.5;
 
 #[derive(Default)]
 pub struct LineStrip {
@@ -344,7 +345,7 @@ impl Skin {
             })
             .collect::<Vec<[f32; 3]>>()
     }
-    pub fn grid_mesh(filename: &str, cols: u16, rows: u16, depth: f32) -> Skin {
+    pub fn grid_mesh(filename: &str, cols: u16, rows: u16, depth: f32, rectangular: bool) -> Skin {
         let img = image::open(format!("assets/{}", filename)).expect("File not found!");
         let (w, h) = img.dimensions();
         let cell_w = w as f32 / cols as f32;
@@ -399,27 +400,29 @@ impl Skin {
             mesh_handle: None,
             depth,
         };
-        // // // Remove reduntant vertices and corresponding uvs and indices
-        // for i in (0..skin.uvs.len()).rev() {
-        //     let v = skin.uvs[i];
-        //     let coords = [
-        //         min((v[0] * w as f32) as u32, w - 1),
-        //         min((v[1] * h as f32) as u32, h - 1),
-        //     ];
-        //     // if uv is out of image or pixel at uv is transparent remove
-        //     if !is_close_to_visible_pixel(
-        //         coords[0],
-        //         coords[1],
-        //         &img,
-        //         0u32,
-        //         f32::max(
-        //             w as f32 / cols as f32 * SQRT_2,
-        //             h as f32 / rows as f32 * SQRT_2,
-        //         ),
-        //     ) {
-        //         skin.remove_vertex(i as u16);
-        //     }
-        // }
+        // // Remove reduntant vertices and corresponding uvs and indices
+        if !rectangular {
+            for i in (0..skin.uvs.len()).rev() {
+                let v = skin.uvs[i];
+                let coords = [
+                    min((v[0] * w as f32) as u32, w - 1),
+                    min((v[1] * h as f32) as u32, h - 1),
+                ];
+                // if uv is out of image or pixel at uv is transparent remove
+                if !is_close_to_visible_pixel(
+                    coords[0],
+                    coords[1],
+                    &img,
+                    0u32,
+                    f32::max(
+                        w as f32 / cols as f32 * SQRT_2,
+                        h as f32 / rows as f32 * SQRT_2,
+                    ),
+                ) {
+                    skin.remove_vertex(i as u16);
+                }
+            }
+        }
         skin
     }
     pub fn remove_vertex(&mut self, index: u16) {
@@ -551,7 +554,7 @@ pub fn generate_mesh(filename: &str) -> Skin {
     let mut skin = polygon.triangulate();
 
     // skin
-    Skin::grid_mesh(filename, 40, 40, 0.)
+    Skin::grid_mesh(filename, 40, 40, 0., false)
 }
 
 pub fn update_mesh(
@@ -564,14 +567,11 @@ pub fn update_mesh(
     };
 
     for (gl_transform, skin) in q.iter() {
-        // dbg!(&skin.vertices);
         let vertices = skin.gl_vertices(gl_transform);
-        // dbg!(&vertices);
-        // dbg!(&skin.filename);
-        // println!();
-
-        let mesh = meshes.get_mut(skin.mesh_handle.clone().unwrap().0).unwrap();
-        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
+        let opt_mesh = meshes.get_mut(skin.mesh_handle.clone().unwrap().0);
+        if let Some(mesh) = opt_mesh {
+            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
+        }
     }
 }
 

@@ -86,6 +86,7 @@ pub fn system_set() -> SystemSet {
     SystemSet::new()
         .with_system(draw_skin_bounding_box.before(draw_skin_mesh))
         .with_system(draw_skin_mesh)
+        .with_system(draw_ccd_target)
         .with_system(draw_bones.after(draw_skin_mesh))
         .with_system(draw_permanent_debug_shapes.before(draw_debug_shapes))
         .with_system(draw_debug_shapes.after(draw_bones))
@@ -334,5 +335,14 @@ pub fn enable_debug_lines(keys: Res<Input<KeyCode>>, mut debug_drawer: ResMut<De
     }
     if keys.just_pressed(KeyCode::M) {
         debug_drawer.mesh_debug_enabled = !debug_drawer.mesh_debug_enabled;
+    }
+}
+
+pub fn draw_ccd_target(
+    mut debug_drawer: ResMut<DebugDrawer>,
+    q: Query<&Transform, With<ccd::Target>>,
+) {
+    for transform in q.iter() {
+        debug_drawer.square(transform.translation.truncate(),12.,Color::rgb(0., 1., 0.));
     }
 }

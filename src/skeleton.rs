@@ -6,6 +6,14 @@ use skin::Skin;
 
 const VERTEX_BONE_MAX_DISTANCE: f32 = 1.;
 
+
+pub struct AddSkinEvent {
+    pub filename: String,
+    pub cols: u16,
+    pub rows: u16,
+    pub as_cloth: bool,
+}
+
 #[derive(Default)]
 pub struct Skeleton {
     pub bones: Vec<Entity>,
@@ -109,8 +117,9 @@ fn add_skin(
     cols: u16,
     rows: u16,
     depth: f32,
+    rectangular: bool,
 ) -> (Entity, Mesh2dHandle) {
-    let mut skin = Skin::grid_mesh(filename, cols, rows, depth);
+    let mut skin = Skin::grid_mesh(filename, cols, rows, depth, rectangular);
 
     let vertices = skin
         .vertices
@@ -156,66 +165,13 @@ fn add_skin(
     (skin_id, handle.clone())
 }
 
-pub fn add_skins(
+pub fn add_startup_skins(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut skeleton: ResMut<skeleton::Skeleton>,
     asset_server: Res<AssetServer>,
 ) {
-    // add_skin(
-    //     &mut commands,
-    //     &mut meshes,
-    //     &mut materials,
-    //     &mut skeleton,
-    //     &asset_server,
-    //     "person.png",
-    //     40,
-    //     40,
-    //     100.,
-    // );
-    // let (entity, mesh_handle) = add_skin(
-    //     &mut commands,
-    //     &mut meshes,
-    //     &mut materials,
-    //     &mut skeleton,
-    //     &asset_server,
-    //     "loechrig.png",
-    //     20,
-    //     20,
-    //     90.,
-    // );
-    // let cloth = Cloth::from_mesh(mesh_handle, &meshes);
-    // commands.entity(entity).insert(cloth);
-
-    // let (entity, _) = add_skin(
-    //     &mut commands,
-    //     &mut meshes,
-    //     &mut materials,
-    //     &mut skeleton,
-    //     &asset_server,
-    //     "test_cloth.png",
-    //     10,
-    //     10,
-    //     90.,
-    // );
-    // let cloth = Cloth::new(Vec3::new(0., 0., 0.), 5., 4., 10, 10);
-    // commands.entity(entity).insert(cloth);
-
-    // // Add Cobra Snake
-    // let (entity, mesh_handle) = add_skin(
-    //     &mut commands,
-    //     &mut meshes,
-    //     &mut materials,
-    //     &mut skeleton,
-    //     &asset_server,
-    //     "cobra.png",
-    //     25,
-    //     20,
-    //     90.,
-    // );
-
-    // Add Spinnenmann
     let (entity, mesh_handle) = add_skin(
         &mut commands,
         &mut meshes,
@@ -226,21 +182,74 @@ pub fn add_skins(
         30,
         30,
         90.,
+        false,
     );
-
-    let (entity, _) = add_skin(
+    let (entity, mesh_handle) = add_skin(
         &mut commands,
         &mut meshes,
         &mut materials,
         &mut skeleton,
         &asset_server,
-        "spider_web.png",
+        "img/honey.png",
         10,
         10,
         90.,
+        true,
     );
-    let cloth = Cloth::new(Vec3::new(0., 0., 0.), 5., 4., 10, 10).with_stiffness(10);
+    let bounding_box = meshes.get(mesh_handle.0).unwrap().compute_aabb().unwrap();
+    let diagonal = (bounding_box.max() - bounding_box.min()) * skin::START_SCALE;
+    let cloth = Cloth::new(
+        Vec3::new(0., 0., 0.),
+        diagonal.x,
+        diagonal.y,
+        10 as usize,
+        10 as usize,
+    )
+    .with_stiffness(10);
     commands.entity(entity).insert(cloth);
+    // let cloth = Cloth::new(Vec3::new(0., 0., 0.), 5., 4., 10, 10).with_stiffness(10);
+    // commands.entity(entity).insert(cloth);
+}
+
+pub fn add_skins(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut skeleton: ResMut<skeleton::Skeleton>,
+    mut add_skin_evr: EventReader<AddSkinEvent>,
+    asset_server: Res<AssetServer>,
+) {
+    if add_skin_evr.is_empty() {
+        return;
+    } else {
+        for event in add_skin_evr.iter() {
+            let (entity, mesh_handle) = add_skin(
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                &mut skeleton,
+                &asset_server,
+                &event.filename,
+                event.cols,
+                event.rows,
+                90.,
+                event.as_cloth,
+            );
+            if event.as_cloth {
+                let bounding_box = meshes.get(mesh_handle.0).unwrap().compute_aabb().unwrap();
+                let diagonal = (bounding_box.max() - bounding_box.min()) * skin::START_SCALE;
+                let cloth = Cloth::new(
+                    Vec3::new(0., 0., 0.),
+                    diagonal.x,
+                    diagonal.y,
+                    event.cols as usize,
+                    event.rows as usize,
+                )
+                .with_stiffness(10);
+                commands.entity(entity).insert(cloth);
+            }
+        }
+    }
 }
 
 pub fn assign_skins_to_bones(
@@ -358,6 +367,11 @@ pub fn apply_mesh_to_skeleton(
 
         // for each VERTEX
         for v_i in 0..skin.vertices.len() {
+            // CONFUSION!!! TODO: Fix! After removeing bone confusion!!
+            if i >= skin_mapping.vertex_mappings.len() {
+                vertices.push(mesh::get_vertex(mesh, v_i));
+                continue;
+            }
             // if vertex is free keep old position and continue to next vertex
             if skin_mapping.vertex_mappings[i][v_i].is_free == true {
                 vertices.push(mesh::get_vertex(mesh, v_i));
@@ -387,49 +401,3 @@ pub fn apply_mesh_to_skeleton(
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
     }
 }
-
-// pub fn create_textured_mesh(
-//     mut commands: Commands,
-//     cursor_pos: Res<CursorPos>,
-//     mut meshes: ResMut<Assets<Mesh>>,
-//     mut materials: ResMut<Assets<ColorMaterial>>,
-//     asset_server: Res<AssetServer>,
-// ) {
-//     let mut skin = skin::generate_mesh("left_leg.png");
-//     let mut normals = vec![];
-//     let mut uvs = vec![];
-//     for vertex in skin.vertices.iter() {
-//         normals.push([0.,0.,1.]);
-//         uvs.push([vertex[0] / skin.dimensions[0] as f32, 1. - vertex[1] / skin.dimensions[1] as f32]);
-//     }
-//     let mut inds = skin.indices.clone();
-//     inds.reverse();
-//     let indices = Some(Indices::U16(inds));
-
-//     match skin.mesh_handle.clone() {
-//         Some(mesh_handle) => {
-//             let _mesh = meshes.get_mut(&mesh_handle.0).unwrap();
-//             _mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, skin.vertices.clone());
-//             _mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals.clone());
-//             // _mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, my_mesh.uvs.clone());
-//             _mesh.set_indices(indices.clone());
-//         }
-//         None => {
-//             let mut textured_mesh = Mesh::new(PrimitiveTopology::TriangleList);
-//             textured_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, skin.vertices.clone());
-//             textured_mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals.clone());
-//             textured_mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs.clone());
-//             textured_mesh.set_indices(indices.clone());
-
-//             let handle: Mesh2dHandle = meshes.add(textured_mesh).into();
-//             skin.mesh_handle = Some(handle.clone());
-
-//             commands.spawn_bundle(MaterialMesh2dBundle {
-//                 mesh: handle,
-//                 // transform: Transform::default().with_scale(Vec3::splat(0.005)),
-//                 material: materials.add(ColorMaterial::from(asset_server.load(&skin.filename))),
-//                 ..default()
-//             });
-//         }
-//     }
-// }

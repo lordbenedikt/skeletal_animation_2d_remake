@@ -9,6 +9,9 @@ pub struct Cloth {
     is_tearable: bool,
 }
 impl Cloth {
+    pub fn from_skin(skin: Skin, meshes: &Assets<Mesh>) -> Self {
+        Self::from_mesh(skin.mesh_handle.unwrap(), meshes)
+    }
     pub fn from_mesh(mesh_handle: Mesh2dHandle, meshes: &Assets<Mesh>) -> Self {
         let mesh = meshes.get(mesh_handle.0).unwrap();
         let mut vertices = mesh::get_vertices(mesh);
@@ -238,7 +241,6 @@ pub fn update_cloth(
         }
 
         cloth.update();
-        let pm = &mut cloth.point_masses[110];
     }
 }
 

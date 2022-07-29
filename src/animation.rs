@@ -76,7 +76,7 @@ pub fn apply_animation(
     if anims.map.is_empty() || state.running == false {
         return;
     }
-    let anim_length_in_secs = 3.;
+    let anim_length_in_secs = egui_state.keyframe_length as f64 / 1000.;
     let time_diff = time.seconds_since_startup() - state.start_time;
     for (key, value) in &anims.map.get("test").unwrap().bone_animations {
         if q.get_mut(*key).is_err() {
