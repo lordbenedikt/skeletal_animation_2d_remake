@@ -37,11 +37,11 @@ Eine Kette von Gelenken und Knochen in der Skelettanimation hat die gleiche Stru
 \subsection{Algebraische Methode für 2 Gelenke}
 \begin{figure}[!htb]
 	\minipage{0.5\textwidth}
-	\includegraphics[width=\linewidth]{geogebra/roboterarm_0.png}
+	\includegraphics[width=\linewidth]{img/roboterarm_0.png}
 	\caption{Ausgangsposition}\label{fig:roboterarm_0}
 	\endminipage\hfill
 	\minipage{0.5\textwidth}
-	\includegraphics[width=\linewidth]{geogebra/roboterarm_1.png}
+	\includegraphics[width=\linewidth]{img/roboterarm_1.png}
 	\caption{Zielposition}\label{fig:roboterarm_1}
 	\endminipage\hfill
 \end{figure}
@@ -69,22 +69,22 @@ Cyclic Coordinate Descent (CCD) ist eine iterative Methode zur Lösung von Inver
 \newline\newline
 \begin{figure}[!htb]
 	\minipage{0.5\textwidth}
-	\includegraphics[width=\linewidth]{geogebra/ccd_0.png}
+	\includegraphics[width=\linewidth]{img/ccd_0.png}
 	\caption{Ausgangsposition}\label{fig:ccd_0}
 	\endminipage\hfill
 	\minipage{0.5\textwidth}
-	\includegraphics[width=\linewidth]{geogebra/ccd_1.png}
+	\includegraphics[width=\linewidth]{img/ccd_1.png}
 	\caption{}\label{fig:ccd_1}
 	\endminipage\hfill
 \end{figure} 
 Abbildung \ref{fig:ccd_0} zeigt einen Roboterarm, welcher aus drei Knochen und drei Gelenken besteht. $A$ ist fixiert, $D$ ist der Endeffektor und soll zu $D_Ziel$ bewegt werden. Wir beginnen mit dem Knochen auf der untersten Ebene in der Hierarchie und rotieren diesen um den Punkt $C$, sodass $D$ auf $\vec{CD}_{Ziel}$, also dem Vektor vom betroffenen Gelenk zum Zielpunkt, liegt (siehe Abbildung \ref{fig:ccd_1}). Eine Ebene weiter oben rotieren wir um den Punkt $B$ (siehe Abbildung \ref{fig:ccd_2}), dann um den Punkt $A$ (siehe Abbildung \ref{fig:ccd_3}). Wiederholen wir diese Schritte, nähert sich D mit jeder Iteration $D_{Ziel}$ an. Der Algorithmus endet, sobald der Abstand von $D$ zu $D_{Ziel}$ einen vorher festgelegten Minimalabstand unterschreitet.
 \begin{figure}[!htb]
 	\minipage{0.5\textwidth}
-	\includegraphics[width=\linewidth]{geogebra/ccd_2.png}
+	\includegraphics[width=\linewidth]{img/ccd_2.png}
 	\caption{}\label{fig:ccd_2}
 	\endminipage\hfill
 	\minipage{0.5\textwidth}
-	\includegraphics[width=\linewidth]{geogebra/ccd_3.png}
+	\includegraphics[width=\linewidth]{img/ccd_3.png}
 	\caption{Zielposition}\label{fig:ccd_3}
 	\endminipage\hfill
 \end{figure}
@@ -117,5 +117,34 @@ Je nach Verwendungszweck unterscheidet sich die Natur des am besten geeigneten M
 \newline
 Die Dichte von Dreiecken in einem Bereich des Bildes und die Form und Lage der Dreiecke beeinflusst die Art und Weise, auf welche sich die angezeigte Grafik bei Verzerrung des Meshs verändert. Übermäßig große Dreiecke, besonders in Bereichen, welche stark verzerrt werden, führen meist zu einem unnatürlich erscheinendem Ergebnis.
 %
+\subsubsection{Marching Squares Algorithmus}
+Um ein enganliegendes Mesh zu generieren, berechnen wir erst einmal eine Kontur für unsere Bilddatei, in unserem Fall ein Bild im PNG-Format. Um aus einer Bilddatei eine Kontur zu generieren, kann der Marching Squares Algorithmus (engl.: wandernde Quadrate) angewandt werden. Die Kontur sollte etwas weiter als die tatsächliche Kontur des abgebildeten Objekts sein. Das dient dazu, dass alle sichtbaren Teile beim Rendern später vollständig gezeichnet werden. Zudem ermöglicht es das aussortieren überflüssiger Eckpunkte, die durch den Marching Squares Algorithmus entstehen. (vgl. \cite{Maple2003})\newline\newline
+
+Unser Ziel ist es, eine Kontur um alle sichtbaren Teile der Bilddatei zu ziehen. Als sichtbar sehen wir alles an, was einen festgelegten Alpha-Schwellwert überschreitet. Dazu generieren wir aus dem Alpha-Kanal des Bildes ein Distanzfeld. Das Distanzfeld ist eine Grauwertmatrix der selben Auflösung des Bildes. Für jeden Pixel der Bilddatei wird hier die Distanz zum nächstgelegenen sichtbaren Pixel berechnet und festgehalten. Anhand eines weiteren Schwellwerts generieren wir ein Raster, dessen Zellen jeweils entweder $true$ für sichtbar oder $false$ für unsichtbar sind.
+Auf dieses Raster wird nun ein Konturraster gelegt, welches in x- und y-Richtung jeweils eine Zelle kleiner ist. Die Eckpunkte des Konturrasters liegen jeweils im Zentrum einer der Binärzellen. Jeder Zelle des Konturrasters wird ein Wert zugewiesen. Dieser ergibt sich daraus, ob die Werte der vier Ecken dieser Zelle $true$ oder $false$ sind. Den Ecken werden die Werte $2^0$, $2^1$, $2^3$ und $2^4$ zugewiesen. (siehe Abb.: \ref{fig:marching_square_corners})
+\cite{Wisq2022}
+\begin{figure}[!htb]
+	\minipage{0.3\textwidth}
+	\includegraphics[width=\linewidth]{img/marching_square_corners.png}
+	\caption{Konturzelle}\label{fig:marching_square_corners}
+	\endminipage\hfill
+	\minipage{0.5\textwidth}
+	\includegraphics[width=\linewidth]{img/marching_square_wiki.png}
+	\caption{Mögliche Fälle (vgl. \cite{Wisq2022	}})}\label{fig:marching_square_cases}
+	\endminipage\hfill
+\end{figure}
+%
+Für jede der 15 möglichen Kombinationen wird jeweils ein entsprechendes Konturstück festgelegt. Diese 15 Fälle können in einer Lookup-Tabelle gespeichert werden. Fügt man all diese Stücke zusammen ergibt sich die gesuchte Kontur. Abb. \ref{fig:marching_square_example} und \ref{fig:marching_square_example_solved} zeigen die Vorgangsweise an einem Beispiel.
+\begin{figure}[!htb]
+	\minipage{0.4\textwidth}
+	\includegraphics[width=\linewidth]{img/marching_square_example.png}
+	\caption{Ausgangsposition}\label{fig:marching_square_example}
+	\endminipage\hfill
+	\minipage{0.4\textwidth}
+	\includegraphics[width=\linewidth]{img/marching_square_example_solved.png}
+	\caption{Zielposition}\label{fig:marching_square_example_solved}
+	\endminipage\hfill
+\end{figure}
+%
 \subsection{Mesh Deformierung}
-Die Deformierung des Meshs erfolgt durch die Verschiebung der dazugehörigen Punkte. Um eine solche Deformierung durch das Transformieren der Skelett-Knochen zu erreichen, legen wir den Einflussgrad jedes Knochens auf jeden Mesh-Punkt fest. Zusätzlich legen wir die Lage jedes Punktes relative zur Lage, Rotation und Skalierung jedes auf ihn Einfluss nehmenden Knochens fest. Für jeden Mesh-Punkt ergeben sich nun bei beliebiger Skelettpose eine Anzahl an globalen Koordinaten. Die endgültige Punktkoordinate ergibt sich zu festgelegten Anteielen aus diesen global Koordinaten.
+Die Deformierung des Meshs erfolgt durch die Verschiebung der dazugehörigen Punkte. Um eine solche Deformierung durch das Transformieren der Skelett-Knochen zu erreichen, legen wir den Einflussgrad jedes Knochens auf jeden Mesh-Punkt fest. Zusätzlich legen wir die Lage jedes Punktes relativ zur Lage, Rotation und Skalierung jedes auf ihn Einfluss nehmenden Knochens fest. Für jeden Mesh-Punkt ergeben sich nun bei beliebiger Skelettpose eine Anzahl an globalen Koordinaten. Die endgültige Punktkoordinate ergibt sich zu festgelegten Anteielen aus diesen global Koordinaten. Das angepasste Mesh geben wir an die Graphics Library weiter, welche sich um das Rendern kümmert.

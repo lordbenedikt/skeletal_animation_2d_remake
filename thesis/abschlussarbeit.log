@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 22.3) (preloaded format=pdflatex 2022.5.21)  28 JUL 2022 16:45
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 22.3) (preloaded format=pdflatex 2022.5.21)  30 JUL 2022 02:37
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -939,7 +939,7 @@ LaTeX Info: Redefining \nameref on input line 151.
 \@outlinefile=\write5
 \openout5 = `abschlussarbeit.out'.
 
-<logo_thm_cg.png, id=123, 501.875pt x 101.37875pt>
+<logo_thm_cg.png, id=127, 501.875pt x 101.37875pt>
 File: logo_thm_cg.png Graphic file (type png)
 <use logo_thm_cg.png>
 Package pdftex.def Info: logo_thm_cg.png  used on input line 159.
@@ -1021,15 +1021,18 @@ Underfull \hbox (badness 10000) in paragraph at lines 5--185
 
 
 
-] (abschlussarbeit.toc [5]) [6] (abschlussarbeit.lof) [7
+] (abschlussarbeit.toc [5]) [6] (abschlussarbeit.lof
+
+LaTeX Warning: Citation `Wisq2022' on page vii undefined on input line 13.
+
+) [7
 
 ] [8
 
 ]
 \openout2 = `intro/intro.aux'.
 
-
-(intro/intro.tex
+ (intro/intro.tex
 Underfull \hbox (badness 10000) in paragraph at lines 12--13
 
  []
@@ -1089,41 +1092,41 @@ Underfull \hbox (badness 10000) in paragraph at lines 33--34
 
 
 ]
-<geogebra/roboterarm_0.png, id=239, 262.48062pt x 170.6375pt>
-File: geogebra/roboterarm_0.png Graphic file (type png)
-<use geogebra/roboterarm_0.png>
-Package pdftex.def Info: geogebra/roboterarm_0.png  used on input line 40.
+<img/roboterarm_0.png, id=250, 262.48062pt x 170.6375pt>
+File: img/roboterarm_0.png Graphic file (type png)
+<use img/roboterarm_0.png>
+Package pdftex.def Info: img/roboterarm_0.png  used on input line 40.
 (pdftex.def)             Requested size: 208.0pt x 135.22394pt.
-<geogebra/roboterarm_1.png, id=241, 262.48062pt x 170.6375pt>
-File: geogebra/roboterarm_1.png Graphic file (type png)
-<use geogebra/roboterarm_1.png>
-Package pdftex.def Info: geogebra/roboterarm_1.png  used on input line 44.
+<img/roboterarm_1.png, id=252, 262.48062pt x 170.6375pt>
+File: img/roboterarm_1.png Graphic file (type png)
+<use img/roboterarm_1.png>
+Package pdftex.def Info: img/roboterarm_1.png  used on input line 44.
 (pdftex.def)             Requested size: 208.0pt x 135.22394pt.
 
 Underfull \hbox (badness 10000) in paragraph at lines 48--49
 
  []
 
-[6 <./geogebra/roboterarm_0.png> <./geogebra/roboterarm_1.png>]
-<geogebra/ccd_0.png, id=254, 260.975pt x 145.54375pt>
-File: geogebra/ccd_0.png Graphic file (type png)
-<use geogebra/ccd_0.png>
-Package pdftex.def Info: geogebra/ccd_0.png  used on input line 72.
+[6 <./img/roboterarm_0.png> <./img/roboterarm_1.png>]
+<img/ccd_0.png, id=265, 260.975pt x 145.54375pt>
+File: img/ccd_0.png Graphic file (type png)
+<use img/ccd_0.png>
+Package pdftex.def Info: img/ccd_0.png  used on input line 72.
 (pdftex.def)             Requested size: 208.0pt x 116.00208pt.
-<geogebra/ccd_1.png, id=255, 260.975pt x 145.54375pt>
-File: geogebra/ccd_1.png Graphic file (type png)
-<use geogebra/ccd_1.png>
-Package pdftex.def Info: geogebra/ccd_1.png  used on input line 76.
+<img/ccd_1.png, id=266, 260.975pt x 145.54375pt>
+File: img/ccd_1.png Graphic file (type png)
+<use img/ccd_1.png>
+Package pdftex.def Info: img/ccd_1.png  used on input line 76.
 (pdftex.def)             Requested size: 208.0pt x 116.00208pt.
-<geogebra/ccd_2.png, id=260, 260.975pt x 145.54375pt>
-File: geogebra/ccd_2.png Graphic file (type png)
-<use geogebra/ccd_2.png>
-Package pdftex.def Info: geogebra/ccd_2.png  used on input line 83.
+<img/ccd_2.png, id=271, 260.975pt x 145.54375pt>
+File: img/ccd_2.png Graphic file (type png)
+<use img/ccd_2.png>
+Package pdftex.def Info: img/ccd_2.png  used on input line 83.
 (pdftex.def)             Requested size: 208.0pt x 116.00208pt.
-<geogebra/ccd_3.png, id=261, 260.975pt x 145.54375pt>
-File: geogebra/ccd_3.png Graphic file (type png)
-<use geogebra/ccd_3.png>
-Package pdftex.def Info: geogebra/ccd_3.png  used on input line 87.
+<img/ccd_3.png, id=272, 260.975pt x 145.54375pt>
+File: img/ccd_3.png Graphic file (type png)
+<use img/ccd_3.png>
+Package pdftex.def Info: img/ccd_3.png  used on input line 87.
 (pdftex.def)             Requested size: 208.0pt x 116.00208pt.
 
 
@@ -1142,20 +1145,64 @@ Underfull \hbox (badness 10000) in paragraph at lines 95--100
 
 Underfull \vbox (badness 2126) has occurred while \output is active []
 
- [7 <./geogebra/ccd_0.png> <./geogebra/ccd_1.png>]
+ [7 <./img/ccd_0.png> <./img/ccd_1.png>]
 Underfull \hbox (badness 10000) in paragraph at lines 106--114
 
  []
 
-[8 <./geogebra/ccd_2.png> <./geogebra/ccd_3.png>]
+[8 <./img/ccd_2.png> <./img/ccd_3.png>]
 Underfull \hbox (badness 10000) in paragraph at lines 116--120
 
  []
 
-) [9]
+
+Underfull \hbox (badness 10000) in paragraph at lines 121--122
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 121--122
+
+ []
+
+
+LaTeX Warning: Citation `Wisq2022' on page 9 undefined on input line 125.
+
+<img/marching_square_corners.png, id=291, 60.7068pt x 62.8749pt>
+File: img/marching_square_corners.png Graphic file (type png)
+<use img/marching_square_corners.png>
+Package pdftex.def Info: img/marching_square_corners.png  used on input line 12
+8.
+(pdftex.def)             Requested size: 124.80127pt x 129.26561pt.
+<img/marching_square_wiki.png, id=292, 203.76125pt x 213.79875pt>
+File: img/marching_square_wiki.png Graphic file (type png)
+<use img/marching_square_wiki.png>
+Package pdftex.def Info: img/marching_square_wiki.png  used on input line 132.
+(pdftex.def)             Requested size: 208.0pt x 218.25778pt.
+
+LaTeX Warning: Citation `Bill2018' on page 9 undefined on input line 133.
+
+
+LaTeX Warning: Citation `Bill2018' on page 9 undefined on input line 133.
+
+<img/marching_square_example.png, id=295, 119.4864pt x 130.3269pt>
+File: img/marching_square_example.png Graphic file (type png)
+<use img/marching_square_example.png>
+Package pdftex.def Info: img/marching_square_example.png  used on input line 14
+0.
+(pdftex.def)             Requested size: 166.39746pt x 181.49588pt.
+<img/marching_square_example_solved.png, id=296, 119.4864pt x 130.3269pt>
+File: img/marching_square_example_solved.png Graphic file (type png)
+<use img/marching_square_example_solved.png>
+Package pdftex.def Info: img/marching_square_example_solved.png  used on input 
+line 144.
+(pdftex.def)             Requested size: 166.39746pt x 181.49588pt.
+[9]) [10 <./img/marching_square_corners.png> <./img/marching_square_wiki.png> <
+./img/marching_square_example.png> <./img/marching_square_example_solved.png>]
+[11]
 \openout2 = `tips/intro.aux'.
 
- (tips/intro.tex [10
+ (tips/intro.tex [12
 
 
 
@@ -1190,12 +1237,12 @@ Underfull \hbox (badness 10000) in paragraph at lines 23--32
 
 Underfull \vbox (badness 1308) has occurred while \output is active []
 
- [11]
+ [13]
 
-LaTeX Warning: Citation `schrijver89' on page 12 undefined on input line 52.
+LaTeX Warning: Citation `schrijver89' on page 14 undefined on input line 52.
 
 
-LaTeX Warning: Reference `fig:klein_bottle' on page 12 undefined on input line 
+LaTeX Warning: Reference `fig:klein_bottle' on page 14 undefined on input line 
 52.
 
 
@@ -1204,15 +1251,10 @@ Underfull \hbox (badness 10000) in paragraph at lines 52--63
  []
 
 
-LaTeX Warning: Reference `cha:umgebung' on page 12 undefined on input line 66.
+LaTeX Warning: Reference `cha:umgebung' on page 14 undefined on input line 66.
 
 
-LaTeX Warning: Citation `conway96' on page 12 undefined on input line 80.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 78--83
-
- []
+LaTeX Warning: Citation `conway96' on page 14 undefined on input line 80.
 
 
 Underfull \hbox (badness 10000) in paragraph at lines 78--83
@@ -1224,12 +1266,17 @@ Underfull \hbox (badness 10000) in paragraph at lines 78--83
 
  []
 
-[12]
+
+Underfull \hbox (badness 10000) in paragraph at lines 78--83
+
+ []
+
+[14]
 Underfull \hbox (badness 10000) in paragraph at lines 116--119
 
  []
 
-[13]
+[15]
 Overfull \hbox (1.71634pt too wide) in paragraph at lines 142--142
 []|\OT1/cmss/bx/n/10.95 Lexikoneintrag| 
  []
@@ -1283,10 +1330,10 @@ Underfull \hbox (badness 10000) in paragraph at lines 165--209
 
  []
 
-[14] [15]
+[16] [17]
 \openout2 = `anhang/anhang.aux'.
 
- (anhang/anhang.tex [16
+ (anhang/anhang.tex [18
 
 
 
@@ -1294,8 +1341,8 @@ Underfull \hbox (badness 10000) in paragraph at lines 165--209
 ])
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [17]
-[18]
+ [19]
+[20]
 \openout2 = `glossar/glossar.aux'.
 
  (glossar/glossar.tex)
@@ -1303,20 +1350,20 @@ Overfull \hbox (34.79132pt too wide) in paragraph at lines 11--224
 [] 
  []
 
-[19
+[21
 
 
 
 
 
 
-] (abschlussarbeit.bbl [20
+] (abschlussarbeit.bbl [22
 
 
 
 ]
 bibitemlist
-) [21] [22
+) [23] [24
 
 ]
 No file abschlussarbeit.ind.
@@ -1340,16 +1387,16 @@ LaTeX Warning: There were undefined references.
 LaTeX Warning: There were multiply-defined labels.
 
 Package rerunfilecheck Info: File `abschlussarbeit.out' has not changed.
-(rerunfilecheck)             Checksum: D9BCAF8C1EEE924FD353A5A4FA9888CE;4410.
+(rerunfilecheck)             Checksum: A1F227E4FB49C67319B09D20A89CB2DD;4618.
  ) 
 Here is how much of TeX's memory you used:
- 16095 strings out of 478582
- 262265 string characters out of 2839588
- 599330 words of memory out of 3000000
- 33896 multiletter control sequences out of 15000+600000
+ 16136 strings out of 478582
+ 263115 string characters out of 2839588
+ 599679 words of memory out of 3000000
+ 33927 multiletter control sequences out of 15000+600000
  485480 words of font info for 94 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 67i,16n,77p,964b,408s stack positions out of 10000i,1000n,20000p,200000b,80000s
+ 67i,16n,77p,964b,415s stack positions out of 10000i,1000n,20000p,200000b,80000s
 <C:/Users/Benedikt Jensen/AppData/Local/Programs/MiKTeX/fonts/type1/public/am
 sfonts/cm/cmcsc10.pfb><C:/Users/Benedikt Jensen/AppData/Local/Programs/MiKTeX/f
 onts/type1/public/amsfonts/cm/cmex10.pfb><C:/Users/Benedikt Jensen/AppData/Loca
@@ -1370,9 +1417,9 @@ sy10.pfb><C:/Users/Benedikt Jensen/AppData/Local/Programs/MiKTeX/fonts/type1/pu
 blic/amsfonts/cm/cmsy8.pfb><C:/Users/Benedikt Jensen/AppData/Local/Programs/MiK
 TeX/fonts/type1/public/amsfonts/cm/cmtt10.pfb><C:/Users/Benedikt Jensen/AppData
 /Local/Programs/MiKTeX/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
-Output written on abschlussarbeit.pdf (32 pages, 335595 bytes).
+Output written on abschlussarbeit.pdf (34 pages, 416123 bytes).
 PDF statistics:
- 443 PDF objects out of 1000 (max. 8388607)
- 80 named destinations out of 1000 (max. 500000)
- 276 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 476 PDF objects out of 1000 (max. 8388607)
+ 86 named destinations out of 1000 (max. 500000)
+ 304 words of extra memory for PDF output out of 10000 (max. 10000000)
 
