@@ -343,13 +343,14 @@ pub struct Skin {
 }
 impl Skin {
     pub fn gl_vertices(&self, gl_transform: &GlobalTransform) -> Vec<[f32; 3]> {
+        let (gl_scale, gl_rotation, gl_translation) = gl_transform.to_scale_rotation_translation();
         self.vertices
             .iter()
             .map(|v| {
                 let mut res = Vec3::from_slice(v);
-                res *= gl_transform.scale;
-                res = Quat::mul_vec3(gl_transform.rotation, res);
-                res += gl_transform.translation;
+                res *= gl_scale;
+                res = Quat::mul_vec3(gl_rotation, res);
+                res += gl_translation;
                 [res.x, res.y, self.depth]
             })
             .collect::<Vec<[f32; 3]>>()
@@ -583,7 +584,7 @@ pub fn update_mesh(
             continue;
         }
         let vertices = skin.gl_vertices(gl_transform);
-        let opt_mesh = meshes.get_mut(skin.mesh_handle.clone().unwrap().0);
+        let opt_mesh = meshes.get_mut(&skin.mesh_handle.clone().unwrap().0);
         if let Some(mesh) = opt_mesh {
             mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
         }
@@ -674,7 +675,7 @@ pub fn add_startup_skins(
         90.,
         true,
     );
-    let bounding_box = meshes.get(mesh_handle.0).unwrap().compute_aabb().unwrap();
+    let bounding_box = meshes.get(&mesh_handle.0).unwrap().compute_aabb().unwrap();
     let diagonal = (bounding_box.max() - bounding_box.min()) * skin::START_SCALE;
     let cloth = Cloth::new(
         Vec3::new(0., 0., 0.),
@@ -768,7 +769,7 @@ pub fn add_skins(
                 event.as_cloth,
             );
             if event.as_cloth {
-                let bounding_box = meshes.get(mesh_handle.0).unwrap().compute_aabb().unwrap();
+                let bounding_box = meshes.get(&mesh_handle.0).unwrap().compute_aabb().unwrap();
                 let diagonal = (bounding_box.max() - bounding_box.min()) * skin::START_SCALE;
                 let cloth = Cloth::new(
                     Vec3::new(0., 0., 0.),

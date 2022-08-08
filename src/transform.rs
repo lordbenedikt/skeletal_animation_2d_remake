@@ -1,3 +1,5 @@
+use bevy::math::Vec3A;
+
 use crate::{bone::Bone, *};
 
 pub struct State {
@@ -132,18 +134,16 @@ pub fn transform(
         Action::Translate => {
             for i in 0..state.selected_entities.len() {
                 if let Some(parent) = q.get(state.selected_entities[i]).unwrap().1 {
-                    let parent_entity = parent.0;
+                    let parent_entity = parent.get();
                     // Calculate transform relative to parent entity
                     let parent_gl_transform = q.get(parent_entity).unwrap().0;
                     let v_diff = cursor_pos.0 - state.cursor_anchor;
                     let v_diff_vec3 = Vec3::new(v_diff.x, v_diff.y, 0.);
+                    let (parent_gl_scale, parent_gl_rotation, _) =
+                        parent_gl_transform.to_scale_rotation_translation();
                     let rel_translation =
-                        Quat::mul_vec3(Quat::inverse(parent_gl_transform.rotation), v_diff_vec3)
-                            / Vec3::new(
-                                parent_gl_transform.scale.x,
-                                parent_gl_transform.scale.y,
-                                1.,
-                            );
+                        Quat::mul_vec3(Quat::inverse(parent_gl_rotation), v_diff_vec3)
+                            / Vec3::new(parent_gl_scale.x, parent_gl_scale.y, 1.);
                     q.get_mut(state.selected_entities[i]).unwrap().2.translation =
                         state.original_transforms[i].translation + rel_translation;
                 } else {
@@ -160,8 +160,9 @@ pub fn transform(
                 // Get transformable's global transform, vector from transformable to cursor anchor
                 // and vector from transformable to current cursor position
                 let gl_transform = q.get(state.selected_entities[i]).unwrap().0;
-                let mut v_diff_anchor = state.cursor_anchor - gl_transform.translation.truncate();
-                let mut v_diff = cursor_pos.0 - gl_transform.translation.truncate();
+                let mut v_diff_anchor =
+                    state.cursor_anchor - gl_transform.affine().translation.truncate();
+                let mut v_diff = cursor_pos.0 - gl_transform.affine().translation.truncate();
                 // If either v_diff_anchor or v_diff is null vector assign arbitrary value
                 if v_diff_anchor.length() == 0. {
                     v_diff_anchor = Vec2::new(0., 1.);
@@ -183,8 +184,9 @@ pub fn transform(
                 // Get transformable's global transform, vector from transformable cursor anchor
                 // and vector from transformable to current cursor position
                 let gl_transform = q.get(state.selected_entities[i]).unwrap().0;
-                let v_diff_anchor = state.cursor_anchor - gl_transform.translation.truncate();
-                let v_diff = cursor_pos.0 - gl_transform.translation.truncate();
+                let v_diff_anchor =
+                    state.cursor_anchor - gl_transform.affine().translation.truncate();
+                let v_diff = cursor_pos.0 - gl_transform.affine().translation.truncate();
                 let distance_to_anchor = f32::max(0.1, v_diff_anchor.length());
                 let distance_to_cursor = f32::max(0.1, v_diff.length());
                 let scale_ratio = distance_to_cursor / distance_to_anchor;
@@ -197,8 +199,9 @@ pub fn transform(
                 // Get transformable's global transform, vector from transformable cursor anchor
                 // and vector from transformable to current cursor position
                 let gl_transform = q.get(state.selected_entities[i]).unwrap().0;
-                let v_diff_anchor = state.cursor_anchor - gl_transform.translation.truncate();
-                let v_diff = cursor_pos.0 - gl_transform.translation.truncate();
+                let v_diff_anchor =
+                    state.cursor_anchor - gl_transform.affine().translation.truncate();
+                let v_diff = cursor_pos.0 - gl_transform.affine().translation.truncate();
                 let distance_to_anchor = f32::max(0.1, v_diff_anchor.length());
                 let distance_to_cursor = f32::max(0.1, v_diff.length());
                 let scale_ratio = distance_to_cursor / distance_to_anchor;
@@ -211,8 +214,9 @@ pub fn transform(
                 // Get transformable's global transform, vector from transformable cursor anchor
                 // and vector from transformable to current cursor position
                 let gl_transform = q.get(state.selected_entities[i]).unwrap().0;
-                let v_diff_anchor = state.cursor_anchor - gl_transform.translation.truncate();
-                let v_diff = cursor_pos.0 - gl_transform.translation.truncate();
+                let v_diff_anchor =
+                    state.cursor_anchor - gl_transform.affine().translation.truncate();
+                let v_diff = cursor_pos.0 - gl_transform.affine().translation.truncate();
                 let distance_to_anchor = f32::max(0.1, v_diff_anchor.length());
                 let distance_to_cursor = f32::max(0.1, v_diff.length());
                 let scale_ratio = distance_to_cursor / distance_to_anchor;
@@ -282,9 +286,12 @@ pub fn select(
             distance_segment_point(start, end, cursor_pos.0)
         } else {
             // assert transformable.collision_shape == Shape::None
-            let length = gl_transform.scale.y;
-            let center = gl_transform.translation
-                + Quat::mul_vec3(gl_transform.rotation, Vec3::new(0., length / 3., 0.));
+            let length = gl_transform.to_scale_rotation_translation().0.y;
+            let center = gl_transform.affine().translation
+                + Quat::mul_vec3a(
+                    gl_transform.to_scale_rotation_translation().1,
+                    Vec3A::new(0., length / 3., 0.),
+                );
             Vec2::distance(center.truncate(), cursor_pos.0)
         };
         if distance < shortest_distance {
@@ -333,18 +340,17 @@ pub fn select(
     update_selection_evw.send_default();
 }
 
-pub fn get_relative_transform(
-    origin: &GlobalTransform,
-    gl_transform: &GlobalTransform,
-) -> Transform {
+pub fn get_relative_transform(origin: &GlobalTransform, gl_transform: &Transform) -> Transform {
     let mut result = gl_transform.clone();
-    result.translation -= origin.translation;
-    let origin_rotation_inverse = origin.rotation.inverse();
+    let (origin_scale, origin_rotation, origin_translation) =
+        origin.to_scale_rotation_translation();
+    result.translation -= origin_translation;
+    let origin_rotation_inverse = origin_rotation.inverse();
     result.translation = Quat::mul_vec3(origin_rotation_inverse, result.translation);
     result.rotation *= origin_rotation_inverse;
-    if origin.scale.x != 0. && origin.scale.y != 0. && origin.scale.z != 0. {
-        result.translation /= origin.scale;
-        result.scale /= origin.scale;
+    if origin_scale.x != 0. && origin_scale.y != 0. && origin_scale.z != 0. {
+        result.translation /= origin_scale;
+        result.scale /= origin_scale;
     } else {
         println!("get_relative_transform: Failed to compute relative transform, because origin's scale is 0");
     }
@@ -355,15 +361,14 @@ pub fn get_relative_transform(
     }
 }
 
-pub fn get_global_transform(
-    origin: &GlobalTransform,
-    rel_transform: &Transform,
-) -> GlobalTransform {
+pub fn get_global_transform(origin: &GlobalTransform, rel_transform: &Transform) -> Transform {
     let mut result = rel_transform.clone();
-    result.translation += origin.translation;
-    result.rotation *= origin.rotation;
-    result.scale *= origin.scale;
-    GlobalTransform {
+    let (origin_scale, origin_rotation, origin_translation) =
+        origin.to_scale_rotation_translation();
+    result.translation += origin_translation;
+    result.rotation *= origin_rotation;
+    result.scale *= origin_scale;
+    Transform {
         translation: result.translation,
         rotation: result.rotation,
         scale: result.scale,

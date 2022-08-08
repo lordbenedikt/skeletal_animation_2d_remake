@@ -7,6 +7,19 @@
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
 
+\bibitem[Cou]{Counts2012}
+ \url{https://gamedevelopment.tutsplus.com/tutorials/simulate-tearable-cloth-and-ragdolls-with-simple-verlet-integration--gamedev-519}
+
+\bibitem[F\^03]{Fedor2003}
+\textsc{F\^{e}dor}, Martin:
+\newblock Application of Inverse Kinematics for Skeleton Manipulation in
+  Real-Time.
+\newblock {In: }\emph{Proceedings of the 19th Spring Conference on Computer
+  Graphics}.
+\newblock New York, NY, USA : Association for Computing Machinery, 2003 (SCCG
+  '03). --
+\newblock ISBN 158113861X, 203–212
+
 \bibitem[Feb18]{Febucci2018}
 \textsc{Febucci}:
 \newblock Easing Functions for Animations.
@@ -19,5 +32,14 @@
   marching cube algorithms.
 \newblock {In: }\emph{2003 International Conference on Geometric Modeling and
   Graphics, 2003. Proceedings}, 2003, S. 90--95
+
+\bibitem[Wik22]{Wisq2022}
+\textsc{Wikipedia}:
+\newblock Marching squares.
+\newblock   (2022).
+\newblock \url{https://en.wikipedia.org/wiki/Marching_squares}
+
+\bibitem[Wiv]{Wiver2022}
+ \url{https://de.wikipedia.org/wiki/Verlet-Algorithmus#:~:text=Der%20Verlet%2DAlgorithmus%20ist%20eine,in%20der%20theoretischen%20Chemie%20verwendet.}
 
 \end{thebibliography}

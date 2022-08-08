@@ -13,7 +13,7 @@ impl Cloth {
         Self::from_mesh(skin.mesh_handle.unwrap(), meshes)
     }
     pub fn from_mesh(mesh_handle: Mesh2dHandle, meshes: &Assets<Mesh>) -> Self {
-        let mesh = meshes.get(mesh_handle.0).unwrap();
+        let mesh = meshes.get(&mesh_handle.0).unwrap();
         let mut vertices = mesh::get_vertices(mesh);
         for v in vertices.iter_mut() {
             *v *= Vec3::new(3.5, 3.5, 1.);
@@ -129,9 +129,11 @@ impl Cloth {
             }
         }
     }
-    fn update(&mut self) {
-        for point_mass in self.point_masses.iter_mut() {
-            point_mass.update();
+    fn update(&mut self, in_motion: bool) {
+        if in_motion {
+            for point_mass in self.point_masses.iter_mut() {
+                point_mass.update();
+            }
         }
         self.solve();
     }
@@ -226,10 +228,11 @@ pub fn update_cloth(
     meshes: Res<Assets<Mesh>>,
     mut q: Query<(&mut Cloth, &Skin)>,
     mut debug_drawer: ResMut<DebugDrawer>,
+    animation_state: Res<animation::State>,
 ) {
     for (mut cloth, skin) in q.iter_mut() {
         // apply pinned point masses to skeleton (get positions from mesh, updated in skeleton.rs)
-        let mesh = meshes.get(skin.mesh_handle.clone().unwrap().0).unwrap();
+        let mesh = meshes.get(&skin.mesh_handle.clone().unwrap().0).unwrap();
         for i in 0..cloth.point_masses.len() {
             // if point mass isn't pinned continue with next point mass
             if cloth.point_masses[i].pin.is_none() {
@@ -240,13 +243,13 @@ pub fn update_cloth(
             cloth.point_masses[i].position = Vec3::from_slice(&pos);
         }
 
-        cloth.update();
+        cloth.update(animation_state.running);
     }
 }
 
 pub fn apply_mesh_to_cloth(mut meshes: ResMut<Assets<Mesh>>, q: Query<(&Cloth, &Skin)>) {
     for (cloth, skin) in q.iter() {
-        let mesh = meshes.get_mut(skin.mesh_handle.clone().unwrap().0).unwrap();
+        let mesh = meshes.get_mut(&skin.mesh_handle.clone().unwrap().0).unwrap();
 
         // update mesh vertices
         let mut vertices: Vec<[f32; 3]> = vec![];
@@ -273,6 +276,6 @@ pub fn apply_mesh_to_cloth(mut meshes: ResMut<Assets<Mesh>>, q: Query<(&Cloth, &
         // );
 
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
+        // mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
     }
 }

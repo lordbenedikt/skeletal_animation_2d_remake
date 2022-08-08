@@ -24,7 +24,7 @@ impl Default for State {
             interpolation_function: Function::EaseInOut,
             skin_filename: String::from("filename"),
             animation: String::from("anim_0"),
-            keyframe_length: 60,
+            keyframe_length: 1500,
             step: 0,
             skin_cols: 10,
             skin_rows: 10,
@@ -118,7 +118,7 @@ fn animation_settings(ui: &mut Ui, state: &mut State) {
                 ui.selectable_value(
                     &mut state.interpolation_function,
                     Function::Linear,
-                    "linear",
+                    Function::Linear.to_string(),
                 );
                 ui.selectable_value(
                     &mut state.interpolation_function,
@@ -140,6 +140,16 @@ fn animation_settings(ui: &mut Ui, state: &mut State) {
                     &mut state.interpolation_function,
                     Function::EaseOutElastic,
                     Function::EaseOutElastic.to_string(),
+                );
+                ui.selectable_value(
+                    &mut state.interpolation_function,
+                    Function::EaseInOutElastic,
+                    Function::EaseInOutElastic.to_string(),
+                );
+                ui.selectable_value(
+                    &mut state.interpolation_function,
+                    Function::EaseInOutBack,
+                    Function::EaseInOutBack.to_string(),
                 );
             });
         ui.add(
@@ -193,13 +203,13 @@ pub fn get_selection_values(
     //             continue;
     //         }
 
-            // let mut is_bound = false;
-            // for mapping in skeleton.skin_mappings.iter() {
-            //     if mapping.skin.unwrap() == e {
-            //         is_bound = true;
-            //         break;
-            //     }
-            // }
+    // let mut is_bound = false;
+    // for mapping in skeleton.skin_mappings.iter() {
+    //     if mapping.skin.unwrap() == e {
+    //         is_bound = true;
+    //         break;
+    //     }
+    // }
     //         if skin_selected {
     //             if state.skin_is_bound != is_bound{
     //                 state.skin_bound_status_is_valid = false;
@@ -212,24 +222,43 @@ pub fn get_selection_values(
     // }
 }
 
+fn animation_plot(ui: &mut egui::Ui)  {
+    // use egui::plot::{Line, PlotPoints};
+    // let n = 128;
+    // let line_points: PlotPoints = (0..=n)
+    //     .map(|i| {
+    //         use std::f64::consts::TAU;
+    //         let x = egui::remap(i as f64, 0.0..=n as f64, -TAU..=TAU);
+    //         [x, x.sin()]
+    //     })
+    //     .collect();
+    // let line = Line::new(line_points);
+    // egui::plot::Plot::new("example_plot")
+    //     .height(32.0)
+    //     .data_aspect(1.0)
+    //     .show(ui, |plot_ui| plot_ui.line(line))
+    //     .response
+}
+
 pub fn ui_action(
     mut egui_context: ResMut<EguiContext>,
     mut state: ResMut<State>,
     mut transform_state: ResMut<transform::State>,
     mut add_skin_evw: EventWriter<AddSkinEvent>,
-    mouse: Res<Input<MouseButton>>
+    mouse: Res<Input<MouseButton>>,
 ) {
     let response = egui::Window::new("Menu")
         .show(egui_context.ctx_mut(), |ui| {
             animation_settings(ui, &mut state);
             skin_menu(ui, &mut state, add_skin_evw);
-            ccd_settings(ui, &mut state)
+            ccd_settings(ui, &mut state);
+            animation_plot(ui);
         })
         .unwrap()
         .response;
 
     if let Some(hover_pos) = egui_context.ctx_mut().pointer_hover_pos() {
-        if response.rect.contains(hover_pos) && mouse.get_just_pressed().count()!=0 {
+        if response.rect.contains(hover_pos) && mouse.get_just_pressed().count() != 0 {
             transform_state.action = transform::Action::Done;
         }
     }

@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 22.3) (preloaded format=pdflatex 2022.5.21)  30 JUL 2022 02:37
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 22.3) (preloaded format=pdflatex 2022.5.21)  4 AUG 2022 12:06
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -819,7 +819,7 @@ Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 2
 )
 \Hy@SectionHShift=\skip275
 )
-Package hyperref Info: Option `colorlinks' set `true' on input line 99.
+Package hyperref Info: Option `colorlinks' set `true' on input line 100.
 
 (C:\Users\Benedikt Jensen\AppData\Local\Programs\MiKTeX\tex/latex/multibib\mult
 ibib.sty
@@ -854,31 +854,27 @@ File: l3backend-pdftex.def 2022-02-07 L3 backend support: PDF output (pdfTeX)
 ) (abschlussarbeit.aux (acknow/acknow.aux)
 (erklaerung/erklaerung.aux) (intro/intro.aux)
 (funktionsweise/funktionsweise.aux) (weitere_techniken/weitere_techniken.aux)
-(tips/intro.aux
-
-LaTeX Warning: Label `cha:introduction' multiply defined.
-
-) (anhang/anhang.aux) (glossar/glossar.aux))
+(anhang/anhang.aux) (glossar/glossar.aux))
 \openout1 = `abschlussarbeit.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 151.
-LaTeX Font Info:    ... okay on input line 151.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 151.
-LaTeX Font Info:    ... okay on input line 151.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 151.
-LaTeX Font Info:    ... okay on input line 151.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 151.
-LaTeX Font Info:    ... okay on input line 151.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 151.
-LaTeX Font Info:    ... okay on input line 151.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 151.
-LaTeX Font Info:    ... okay on input line 151.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 151.
-LaTeX Font Info:    ... okay on input line 151.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 151.
-LaTeX Font Info:    ... okay on input line 151.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 151.
-LaTeX Font Info:    ... okay on input line 151.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 152.
+LaTeX Font Info:    ... okay on input line 152.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 152.
+LaTeX Font Info:    ... okay on input line 152.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 152.
+LaTeX Font Info:    ... okay on input line 152.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 152.
+LaTeX Font Info:    ... okay on input line 152.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 152.
+LaTeX Font Info:    ... okay on input line 152.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 152.
+LaTeX Font Info:    ... okay on input line 152.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 152.
+LaTeX Font Info:    ... okay on input line 152.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 152.
+LaTeX Font Info:    ... okay on input line 152.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 152.
+LaTeX Font Info:    ... okay on input line 152.
 
 (C:\Users\Benedikt Jensen\AppData\Local\Programs\MiKTeX\tex/context/base/mkii\s
 upp-pdf.mkii
@@ -911,9 +907,9 @@ Package caption Info: hyperref package is loaded.
 Package caption Info: End \AtBeginDocument code.
 
 
-Package layouts Warning: Layout scale set to 0.5 on input line 151.
+Package layouts Warning: Layout scale set to 0.5 on input line 152.
 
-Package hyperref Info: Link coloring ON on input line 151.
+Package hyperref Info: Link coloring ON on input line 152.
 
 (C:\Users\Benedikt Jensen\AppData\Local\Programs\MiKTeX\tex/latex/hyperref\name
 ref.sty
@@ -931,38 +927,38 @@ Package: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)
 )
 Redoing nameref's sectioning
 Redoing nameref's label
-LaTeX Info: Redefining \nameref on input line 151.
-LaTeX Info: Redefining \ref on input line 151.
-LaTeX Info: Redefining \pageref on input line 151.
-LaTeX Info: Redefining \nameref on input line 151.
+LaTeX Info: Redefining \nameref on input line 152.
+LaTeX Info: Redefining \ref on input line 152.
+LaTeX Info: Redefining \pageref on input line 152.
+LaTeX Info: Redefining \nameref on input line 152.
 (abschlussarbeit.out) (abschlussarbeit.out)
 \@outlinefile=\write5
 \openout5 = `abschlussarbeit.out'.
 
-<logo_thm_cg.png, id=127, 501.875pt x 101.37875pt>
+<logo_thm_cg.png, id=111, 501.875pt x 101.37875pt>
 File: logo_thm_cg.png Graphic file (type png)
 <use logo_thm_cg.png>
-Package pdftex.def Info: logo_thm_cg.png  used on input line 159.
+Package pdftex.def Info: logo_thm_cg.png  used on input line 160.
 (pdftex.def)             Requested size: 455.24408pt x 91.96397pt.
 
-Overfull \hbox (39.24408pt too wide) in paragraph at lines 159--159
+Overfull \hbox (39.24408pt too wide) in paragraph at lines 160--160
  [] 
  []
 
-LaTeX Font Info:    Trying to load font information for U+lasy on input line 15
-9.
+LaTeX Font Info:    Trying to load font information for U+lasy on input line 16
+0.
 
 (C:\Users\Benedikt Jensen\AppData\Local\Programs\MiKTeX\tex/latex/base\ulasy.fd
 File: ulasy.fd 1998/08/17 v2.2e LaTeX symbol font definitions
 )
-LaTeX Font Info:    Trying to load font information for U+msa on input line 159
+LaTeX Font Info:    Trying to load font information for U+msa on input line 160
 .
 
 (C:\Users\Benedikt Jensen\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsa
 .fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 159
+LaTeX Font Info:    Trying to load font information for U+msb on input line 160
 .
 
 (C:\Users\Benedikt Jensen\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsb
@@ -978,7 +974,7 @@ logo_thm_cg.png>] [2
 \openout2 = `acknow/acknow.aux'.
 
  (acknow/acknow.tex)
-Underfull \hbox (badness 10000) in paragraph at lines 2--182
+Underfull \hbox (badness 10000) in paragraph at lines 2--183
 
  []
 
@@ -987,7 +983,7 @@ pdfTeX warning (ext4): destination with the same identifier (name{page.i}) has
 been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.182 	\include{acknow/acknow}
+l.183 	\include{acknow/acknow}
                                [1
 
 
@@ -1011,7 +1007,7 @@ l.1 5\chapter
 
 
 ])
-Underfull \hbox (badness 10000) in paragraph at lines 5--185
+Underfull \hbox (badness 10000) in paragraph at lines 5--186
 
  []
 
@@ -1021,9 +1017,9 @@ Underfull \hbox (badness 10000) in paragraph at lines 5--185
 
 
 
-] (abschlussarbeit.toc [5]) [6] (abschlussarbeit.lof
+] (abschlussarbeit.toc) [5] [6] (abschlussarbeit.lof
 
-LaTeX Warning: Citation `Wisq2022' on page vii undefined on input line 13.
+LaTeX Warning: Citation `Wisq2022 ' on page vii undefined on input line 7.
 
 ) [7
 
@@ -1043,7 +1039,7 @@ Underfull \hbox (badness 10000) in paragraph at lines 14--15
  []
 
 )
-Underfull \hbox (badness 10000) in paragraph at lines 16--201
+Underfull \hbox (badness 10000) in paragraph at lines 16--202
 
  []
 
@@ -1077,12 +1073,7 @@ Underfull \hbox (badness 10000) in paragraph at lines 8--13
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 33--34
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 33--34
+Underfull \hbox (badness 10000) in paragraph at lines 33--38
 
  []
 
@@ -1092,278 +1083,206 @@ Underfull \hbox (badness 10000) in paragraph at lines 33--34
 
 
 ]
-<img/roboterarm_0.png, id=250, 262.48062pt x 170.6375pt>
-File: img/roboterarm_0.png Graphic file (type png)
-<use img/roboterarm_0.png>
-Package pdftex.def Info: img/roboterarm_0.png  used on input line 40.
-(pdftex.def)             Requested size: 208.0pt x 135.22394pt.
-<img/roboterarm_1.png, id=252, 262.48062pt x 170.6375pt>
-File: img/roboterarm_1.png Graphic file (type png)
-<use img/roboterarm_1.png>
-Package pdftex.def Info: img/roboterarm_1.png  used on input line 44.
-(pdftex.def)             Requested size: 208.0pt x 135.22394pt.
-
-Underfull \hbox (badness 10000) in paragraph at lines 48--49
-
- []
-
-[6 <./img/roboterarm_0.png> <./img/roboterarm_1.png>]
-<img/ccd_0.png, id=265, 260.975pt x 145.54375pt>
-File: img/ccd_0.png Graphic file (type png)
-<use img/ccd_0.png>
-Package pdftex.def Info: img/ccd_0.png  used on input line 72.
-(pdftex.def)             Requested size: 208.0pt x 116.00208pt.
-<img/ccd_1.png, id=266, 260.975pt x 145.54375pt>
-File: img/ccd_1.png Graphic file (type png)
-<use img/ccd_1.png>
-Package pdftex.def Info: img/ccd_1.png  used on input line 76.
-(pdftex.def)             Requested size: 208.0pt x 116.00208pt.
-<img/ccd_2.png, id=271, 260.975pt x 145.54375pt>
-File: img/ccd_2.png Graphic file (type png)
-<use img/ccd_2.png>
-Package pdftex.def Info: img/ccd_2.png  used on input line 83.
-(pdftex.def)             Requested size: 208.0pt x 116.00208pt.
-<img/ccd_3.png, id=272, 260.975pt x 145.54375pt>
-File: img/ccd_3.png Graphic file (type png)
-<use img/ccd_3.png>
-Package pdftex.def Info: img/ccd_3.png  used on input line 87.
-(pdftex.def)             Requested size: 208.0pt x 116.00208pt.
-
-
-LaTeX Warning: Citation `Fedor2003' on page 7 undefined on input line 91.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 68--93
+Underfull \hbox (badness 10000) in paragraph at lines 44--52
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 95--100
+Underfull \hbox (badness 10000) in paragraph at lines 54--58
+
+ []
+
+[6]
+Underfull \hbox (badness 10000) in paragraph at lines 59--60
 
  []
 
 
-Underfull \vbox (badness 2126) has occurred while \output is active []
-
- [7 <./img/ccd_0.png> <./img/ccd_1.png>]
-Underfull \hbox (badness 10000) in paragraph at lines 106--114
+Underfull \hbox (badness 10000) in paragraph at lines 59--60
 
  []
 
-[8 <./img/ccd_2.png> <./img/ccd_3.png>]
-Underfull \hbox (badness 10000) in paragraph at lines 116--120
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 121--122
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 121--122
-
- []
-
-
-LaTeX Warning: Citation `Wisq2022' on page 9 undefined on input line 125.
-
-<img/marching_square_corners.png, id=291, 60.7068pt x 62.8749pt>
+<img/marching_square_corners.png, id=237, 60.7068pt x 62.8749pt>
 File: img/marching_square_corners.png Graphic file (type png)
 <use img/marching_square_corners.png>
-Package pdftex.def Info: img/marching_square_corners.png  used on input line 12
-8.
+Package pdftex.def Info: img/marching_square_corners.png  used on input line 66
+.
 (pdftex.def)             Requested size: 124.80127pt x 129.26561pt.
-<img/marching_square_wiki.png, id=292, 203.76125pt x 213.79875pt>
+<img/marching_square_wiki.png, id=239, 203.76125pt x 213.79875pt>
 File: img/marching_square_wiki.png Graphic file (type png)
 <use img/marching_square_wiki.png>
-Package pdftex.def Info: img/marching_square_wiki.png  used on input line 132.
+Package pdftex.def Info: img/marching_square_wiki.png  used on input line 70.
 (pdftex.def)             Requested size: 208.0pt x 218.25778pt.
 
-LaTeX Warning: Citation `Bill2018' on page 9 undefined on input line 133.
+LaTeX Warning: Citation `Wisq2022 ' on page 7 undefined on input line 71.
 
 
-LaTeX Warning: Citation `Bill2018' on page 9 undefined on input line 133.
+LaTeX Warning: Citation `Wisq2022 ' on page 7 undefined on input line 71.
 
-<img/marching_square_example.png, id=295, 119.4864pt x 130.3269pt>
+<img/marching_square_example.png, id=242, 119.4864pt x 130.3269pt>
 File: img/marching_square_example.png Graphic file (type png)
 <use img/marching_square_example.png>
-Package pdftex.def Info: img/marching_square_example.png  used on input line 14
-0.
+Package pdftex.def Info: img/marching_square_example.png  used on input line 78
+.
 (pdftex.def)             Requested size: 166.39746pt x 181.49588pt.
-<img/marching_square_example_solved.png, id=296, 119.4864pt x 130.3269pt>
+<img/marching_square_example_solved.png, id=243, 119.4864pt x 130.3269pt>
 File: img/marching_square_example_solved.png Graphic file (type png)
 <use img/marching_square_example_solved.png>
 Package pdftex.def Info: img/marching_square_example_solved.png  used on input 
-line 144.
+line 82.
 (pdftex.def)             Requested size: 166.39746pt x 181.49588pt.
-[9]) [10 <./img/marching_square_corners.png> <./img/marching_square_wiki.png> <
-./img/marching_square_example.png> <./img/marching_square_example_solved.png>]
-[11]
-\openout2 = `tips/intro.aux'.
+[7]
+Underfull \hbox (badness 10000) in paragraph at lines 93--97
 
- (tips/intro.tex [12
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 93--97
+
+ []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [8 <./img/marching_square_corners.png> <./img/marching_square_wiki.png> <./img
+/marching_square_example.png> <./img/marching_square_example_solved.png>]
+Underfull \hbox (badness 10000) in paragraph at lines 99--100
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 99--100
+
+ []
+
+<img/roboterarm_0.png, id=258, 262.48062pt x 170.6375pt>
+File: img/roboterarm_0.png Graphic file (type png)
+<use img/roboterarm_0.png>
+Package pdftex.def Info: img/roboterarm_0.png  used on input line 106.
+(pdftex.def)             Requested size: 208.0pt x 135.22394pt.
+<img/roboterarm_1.png, id=259, 262.48062pt x 170.6375pt>
+File: img/roboterarm_1.png Graphic file (type png)
+<use img/roboterarm_1.png>
+Package pdftex.def Info: img/roboterarm_1.png  used on input line 110.
+(pdftex.def)             Requested size: 208.0pt x 135.22394pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 114--115
+
+ []
+
+
+Underfull \vbox (badness 2221) has occurred while \output is active []
+
+ [9]
+<img/ccd_0.png, id=269, 260.975pt x 145.54375pt>
+File: img/ccd_0.png Graphic file (type png)
+<use img/ccd_0.png>
+Package pdftex.def Info: img/ccd_0.png  used on input line 138.
+(pdftex.def)             Requested size: 208.0pt x 116.00208pt.
+<img/ccd_1.png, id=270, 260.975pt x 145.54375pt>
+File: img/ccd_1.png Graphic file (type png)
+<use img/ccd_1.png>
+Package pdftex.def Info: img/ccd_1.png  used on input line 142.
+(pdftex.def)             Requested size: 208.0pt x 116.00208pt.
+<img/ccd_2.png, id=275, 260.975pt x 145.54375pt>
+File: img/ccd_2.png Graphic file (type png)
+<use img/ccd_2.png>
+Package pdftex.def Info: img/ccd_2.png  used on input line 149.
+(pdftex.def)             Requested size: 208.0pt x 116.00208pt.
+<img/ccd_3.png, id=276, 260.975pt x 145.54375pt>
+File: img/ccd_3.png Graphic file (type png)
+<use img/ccd_3.png>
+Package pdftex.def Info: img/ccd_3.png  used on input line 153.
+(pdftex.def)             Requested size: 208.0pt x 116.00208pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 134--158
+
+ []
+
+[10 <./img/roboterarm_0.png> <./img/roboterarm_1.png>]
+Underfull \hbox (badness 10000) in paragraph at lines 171--174
+
+ []
+
+[11 <./img/ccd_0.png> <./img/ccd_1.png> <./img/ccd_2.png> <./img/ccd_3.png>]
+Overfull \hbox (9.1122pt too wide) in paragraph at lines 183--183
+ []\OT1/cmtt/m/n/10.95 position = position + velocity *  + (1/2 * acceleration 
+* deltaTime);[] 
+ []
+
+
+LaTeX Warning: Characters dropped after `\end{verbatim}' on input line 187.
+
+)
+Underfull \hbox (badness 10000) in paragraph at lines 193--208
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 193--208
+
+ []
+
+[12]
+\openout2 = `anhang/anhang.aux'.
+
+ (anhang/anhang.tex)
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [13
 
 
 
 
 ]
-Underfull \hbox (badness 10000) in paragraph at lines 12--13
-
- []
-
-LaTeX Font Info:    Font shape `OT1/cmss/m/it' in size <10.95> not available
-(Font)              Font shape `OT1/cmss/m/sl' tried instead on input line 15.
-
-Underfull \hbox (badness 10000) in paragraph at lines 14--18
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 19--20
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 21--22
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 23--32
-
- []
-
-
-Underfull \vbox (badness 1308) has occurred while \output is active []
-
- [13]
-
-LaTeX Warning: Citation `schrijver89' on page 14 undefined on input line 52.
-
-
-LaTeX Warning: Reference `fig:klein_bottle' on page 14 undefined on input line 
-52.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 52--63
-
- []
-
-
-LaTeX Warning: Reference `cha:umgebung' on page 14 undefined on input line 66.
-
-
-LaTeX Warning: Citation `conway96' on page 14 undefined on input line 80.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 78--83
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 78--83
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 78--83
-
- []
-
 [14]
-Underfull \hbox (badness 10000) in paragraph at lines 116--119
-
- []
-
-[15]
-Overfull \hbox (1.71634pt too wide) in paragraph at lines 142--142
-[]|\OT1/cmss/bx/n/10.95 Lexikoneintrag| 
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 144--144
-[]|\OT1/cmss/bx/n/10.95 Trainings-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 151--162
-
- []
-
-LaTeX Font Info:    Trying to load font information for OMS+cmtt on input line 
-167.
-LaTeX Font Info:    No file OMScmtt.fd. on input line 167.
-
-LaTeX Font Warning: Font shape `OMS/cmtt/m/n' undefined
-(Font)              using `OMS/cmsy/m/n' instead
-(Font)              for symbol `textbackslash' on input line 167.
-
-)
-Underfull \hbox (badness 10000) in paragraph at lines 165--209
-
- []
-
-
-Overfull \hbox (35.89964pt too wide) in paragraph at lines 165--209
-\OT1/cmss/m/n/10.95 teilt, kann es nat[]urlich vor-kom-men, dass ein in True-Ty
--pe ge-schrie-be-nes Wort \OT1/cmtt/m/n/10.95 abschlussarbeit.tex
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 165--209
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 165--209
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 165--209
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 165--209
-
- []
-
-[16] [17]
-\openout2 = `anhang/anhang.aux'.
-
- (anhang/anhang.tex [18
-
-
-
-
-])
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [19]
-[20]
 \openout2 = `glossar/glossar.aux'.
 
  (glossar/glossar.tex)
-Overfull \hbox (34.79132pt too wide) in paragraph at lines 11--224
+Overfull \hbox (34.79132pt too wide) in paragraph at lines 11--225
 [] 
  []
 
-[21
+[15
 
 
 
 
 
 
-] (abschlussarbeit.bbl [22
+] (abschlussarbeit.bbl [16
 
 
 
 ]
 bibitemlist
-) [23] [24
+
+Underfull \hbox (badness 10000) in paragraph at lines 11--12
+[][][]$\OT1/cmtt/m/n/10.95 https : / / gamedevelopment . tutsplus . com / tutor
+ials /
+ []
+
+
+Overfull \hbox (92.64761pt too wide) in paragraph at lines 11--12
+\OT1/cmtt/m/n/10.95 simulate-[]tearable-[]cloth-[]and-[]ragdolls-[]with-[]simpl
+e-[]verlet-[]integration-[]-[]gamedev-[]519$[][] 
+ []
+
+LaTeX Font Info:    Font shape `OT1/cmss/m/it' in size <10.95> not available
+(Font)              Font shape `OT1/cmss/m/sl' tried instead on input line 18.
+
+Underfull \hbox (badness 10000) in paragraph at lines 43--44
+[][][]$\OT1/cmtt/m/n/10.95 https : / / de . wikipedia . org / wiki / Verlet-[]A
+lgorithmus# : [] : text = Der %
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 43--44
+\OT1/cmtt/m/n/10.95 20Verlet % 2DAlgorithmus % 20ist % 20eine ,[] in % 20der % 
+20theoretischen %
+ []
+
+) [17] [18
 
 ]
 No file abschlussarbeit.ind.
@@ -1375,51 +1294,43 @@ No file abschlussarbeit.ind.
 
 (abschlussarbeit.aux (acknow/acknow.aux) (erklaerung/erklaerung.aux)
 (intro/intro.aux) (funktionsweise/funktionsweise.aux)
-(weitere_techniken/weitere_techniken.aux) (tips/intro.aux) (anhang/anhang.aux)
+(weitere_techniken/weitere_techniken.aux) (anhang/anhang.aux)
 (glossar/glossar.aux))
-
-LaTeX Font Warning: Some font shapes were not available, defaults substituted.
-
 
 LaTeX Warning: There were undefined references.
 
-
-LaTeX Warning: There were multiply-defined labels.
-
 Package rerunfilecheck Info: File `abschlussarbeit.out' has not changed.
-(rerunfilecheck)             Checksum: A1F227E4FB49C67319B09D20A89CB2DD;4618.
+(rerunfilecheck)             Checksum: B5B080876B7C7C890FF1B76E385A0949;4096.
  ) 
 Here is how much of TeX's memory you used:
- 16136 strings out of 478582
- 263115 string characters out of 2839588
- 599679 words of memory out of 3000000
- 33927 multiletter control sequences out of 15000+600000
+ 16075 strings out of 478582
+ 261709 string characters out of 2839588
+ 596032 words of memory out of 3000000
+ 33886 multiletter control sequences out of 15000+600000
  485480 words of font info for 94 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 67i,16n,77p,964b,415s stack positions out of 10000i,1000n,20000p,200000b,80000s
+ 67i,16n,77p,917b,415s stack positions out of 10000i,1000n,20000p,200000b,80000s
 <C:/Users/Benedikt Jensen/AppData/Local/Programs/MiKTeX/fonts/type1/public/am
 sfonts/cm/cmcsc10.pfb><C:/Users/Benedikt Jensen/AppData/Local/Programs/MiKTeX/f
 onts/type1/public/amsfonts/cm/cmex10.pfb><C:/Users/Benedikt Jensen/AppData/Loca
 l/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi10.pfb><C:/Users/Benedikt 
-Jensen/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi6.pfb><
+Jensen/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi8.pfb><
 C:/Users/Benedikt Jensen/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfo
-nts/cm/cmmi8.pfb><C:/Users/Benedikt Jensen/AppData/Local/Programs/MiKTeX/fonts/
-type1/public/amsfonts/cm/cmr10.pfb><C:/Users/Benedikt Jensen/AppData/Local/Prog
-rams/MiKTeX/fonts/type1/public/amsfonts/cm/cmr8.pfb><C:/Users/Benedikt Jensen/A
-ppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmss10.pfb><C:/User
+nts/cm/cmr10.pfb><C:/Users/Benedikt Jensen/AppData/Local/Programs/MiKTeX/fonts/
+type1/public/amsfonts/cm/cmr8.pfb><C:/Users/Benedikt Jensen/AppData/Local/Progr
+ams/MiKTeX/fonts/type1/public/amsfonts/cm/cmss10.pfb><C:/Users/Benedikt Jensen/
+AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmss8.pfb><C:/User
 s/Benedikt Jensen/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/
-cmss8.pfb><C:/Users/Benedikt Jensen/AppData/Local/Programs/MiKTeX/fonts/type1/p
-ublic/amsfonts/cm/cmss9.pfb><C:/Users/Benedikt Jensen/AppData/Local/Programs/Mi
-KTeX/fonts/type1/public/amsfonts/cm/cmssbx10.pfb><C:/Users/Benedikt Jensen/AppD
-ata/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmssi10.pfb><C:/Users/
-Benedikt Jensen/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cm
-sy10.pfb><C:/Users/Benedikt Jensen/AppData/Local/Programs/MiKTeX/fonts/type1/pu
-blic/amsfonts/cm/cmsy8.pfb><C:/Users/Benedikt Jensen/AppData/Local/Programs/MiK
-TeX/fonts/type1/public/amsfonts/cm/cmtt10.pfb><C:/Users/Benedikt Jensen/AppData
-/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
-Output written on abschlussarbeit.pdf (34 pages, 416123 bytes).
+cmss9.pfb><C:/Users/Benedikt Jensen/AppData/Local/Programs/MiKTeX/fonts/type1/p
+ublic/amsfonts/cm/cmssbx10.pfb><C:/Users/Benedikt Jensen/AppData/Local/Programs
+/MiKTeX/fonts/type1/public/amsfonts/cm/cmssi10.pfb><C:/Users/Benedikt Jensen/Ap
+pData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy10.pfb><C:/Users
+/Benedikt Jensen/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/c
+msy8.pfb><C:/Users/Benedikt Jensen/AppData/Local/Programs/MiKTeX/fonts/type1/pu
+blic/amsfonts/cm/cmtt10.pfb>
+Output written on abschlussarbeit.pdf (28 pages, 389277 bytes).
 PDF statistics:
- 476 PDF objects out of 1000 (max. 8388607)
- 86 named destinations out of 1000 (max. 500000)
- 304 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 426 PDF objects out of 1000 (max. 8388607)
+ 76 named destinations out of 1000 (max. 500000)
+ 272 words of extra memory for PDF output out of 10000 (max. 10000000)
 

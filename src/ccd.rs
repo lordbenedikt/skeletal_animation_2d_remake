@@ -22,6 +22,7 @@ pub fn add_target(
     mouse: Res<Input<MouseButton>>,
     mut transform_state: ResMut<transform::State>,
     egui_state: Res<egui::State>,
+    asset_server: Res<AssetServer>,
 ) {
     // Add CCD Target only if Alt + Left Mouse was pressed
     if !keys.pressed(KeyCode::LAlt) || !mouse.just_pressed(MouseButton::Left) {
@@ -37,9 +38,16 @@ pub fn add_target(
     }
     if let Some(bone_entity) = opt_bone_entity {
         commands
-            .spawn_bundle(TransformBundle::from_transform(
-                Transform::default().with_translation(cursor_pos.0.extend(0.)),
-            ))
+            .spawn_bundle(SpriteBundle {
+                transform: Transform::default().with_translation(cursor_pos.0.extend(500.)),
+                sprite: Sprite {
+                    color: COLOR_DEFAULT,
+                    custom_size: Some(Vec2::new(0.4,0.4)),
+                    ..Default::default()
+                },
+                texture: asset_server.load("img/ccd_target.png"),
+                ..Default::default()
+            })
             .insert(Target {
                 bone: bone_entity,
                 depth: egui_state.ccd_depth,
@@ -75,7 +83,7 @@ pub fn reach_for_target(
             let mut current_bone: Entity = target.bone;
             for _ in 0..depth {
                 // Rotate current bone so that current_pos, end_of_chain and target are on one line
-                let current_pos = q_bones.get(current_bone).unwrap().0.translation.truncate();
+                let current_pos = q_bones.get(current_bone).unwrap().0.affine().translation.truncate();
                 // let delta_rot = Quat::from_rotation_arc(
                 //     (end_of_chain.extend(0.) - current_pos.extend(0.)).normalize(),
                 //     (target_transform.translation - current_pos.extend(0.)).normalize(),
@@ -93,10 +101,10 @@ pub fn reach_for_target(
                     original_end_of_chain,
                 );
 
-                q_bones.get_mut(current_bone).unwrap().2.rotation *= Quat::from_rotation_z(delta_rot);
+                q_bones.get_mut(current_bone).unwrap().2.rotation *=
+                    Quat::from_rotation_z(delta_rot);
                 let end_of_chain_relative = end_of_chain - current_pos;
-                let end_of_chain_relative_rotated =
-                    end_of_chain_relative.rotate(delta_rot);
+                let end_of_chain_relative_rotated = end_of_chain_relative.rotate(Vec2::new(0., delta_rot));
                 //     Quat::mul_vece(delta_rot, end_of_chain_relative.extend(0.)).truncate();
                 end_of_chain = end_of_chain_relative_rotated + current_pos;
 
@@ -110,7 +118,7 @@ pub fn reach_for_target(
 
                 // If parent exists, continue with parent
                 if let Some(parent) = q_bones.get(current_bone).unwrap().1 {
-                    current_bone = parent.0;
+                    current_bone = parent.get();
                 } else {
                     break;
                 }
@@ -132,6 +140,6 @@ impl Vec2Angles for Vec2 {
     fn rotate(self, angle: f32) -> Self {
         let x = self.x * angle.cos() + self.y * (-angle.sin());
         let y = self.x * angle.sin() + self.y * angle.cos();
-        Vec2::new(x,y)
+        Vec2::new(x, y)
     }
 }

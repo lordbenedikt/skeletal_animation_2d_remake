@@ -87,7 +87,7 @@ pub fn system_set() -> SystemSet {
         .with_system(draw_skin_bounding_box.before(draw_skin_mesh))
         .with_system(draw_skin_mesh)
         .with_system(draw_ccd_target)
-        .with_system(draw_bones.after(draw_skin_mesh))
+        .with_system(draw_bones.after(draw_skin_mesh).after(draw_ccd_target))
         .with_system(draw_permanent_debug_shapes.before(draw_debug_shapes))
         .with_system(draw_debug_shapes.after(draw_bones))
         .with_system(clear_debug_drawer.after(draw_debug_shapes))
@@ -173,8 +173,10 @@ pub fn draw_skin_bounding_box(
 ) {
     for (mut transformable, skin) in q.iter_mut() {
         // if mesh doesn't exist, continue
-        let opt_mesh = meshes.get(skin.mesh_handle.clone().unwrap().0) ;
-        if opt_mesh.is_none() {continue;}
+        let opt_mesh = meshes.get(&skin.mesh_handle.clone().unwrap().0);
+        if opt_mesh.is_none() {
+            continue;
+        }
         let mesh = opt_mesh.unwrap();
 
         let vertices: Vec<Vec3> = mesh::get_vertices(mesh);
@@ -244,7 +246,12 @@ pub fn draw_skin_mesh(
     };
 
     for (transformable, skin) in q.iter() {
-        let mesh = meshes.get(skin.mesh_handle.clone().unwrap().0).unwrap();
+        let opt_mesh = meshes.get(&skin.mesh_handle.clone().unwrap().0);
+        if opt_mesh.is_none() {
+            continue;
+        }
+        let mesh = opt_mesh.unwrap();
+
         let vertices: Vec<Vec3> = mesh::get_vertices(mesh);
 
         let color = if transformable.is_selected {
@@ -281,7 +288,7 @@ pub fn draw_skin_mesh(
                 vertices[(line >> 16) as usize].truncate(), // 16 most significant bits
                 vertices[(line & RIGHT_HALF_BITMASK) as usize].truncate(), // 16 least significant bits
                 color,
-                2.,
+                1.,
             )
         }
     }
@@ -296,8 +303,8 @@ pub fn draw_bones(
     };
 
     for (gl_transform, _, transformable) in bone_gl_transforms.iter() {
+        let (gl_scale, gl_rotation,gl_translation) = gl_transform.to_scale_rotation_translation();
         let z = 0.001;
-        let scale = gl_transform.scale;
         let color = if transformable.is_selected {
             COLOR_SELECTED
         } else {
@@ -311,21 +318,21 @@ pub fn draw_bones(
             Vec3::new(0., 0., z),
         ];
         for i in 0..points.len() {
-            points[i].x *= scale.x;
-            points[i].y *= scale.y;
+            points[i].x *= gl_scale.x;
+            points[i].y *= gl_scale.y;
         }
         for i in 0..points.len() {
             debug_drawer.line_thick(
-                (gl_transform.translation + Quat::mul_vec3(gl_transform.rotation, points[i]))
+                (gl_translation + Quat::mul_vec3(gl_rotation, points[i]))
                     .truncate(),
-                (gl_transform.translation
-                    + Quat::mul_vec3(gl_transform.rotation, points[(i + 1) % points.len()]))
+                (gl_translation
+                    + Quat::mul_vec3(gl_rotation, points[(i + 1) % points.len()]))
                 .truncate(),
                 color,
                 3.,
             );
         }
-        debug_drawer.square(gl_transform.translation.truncate(), 7., color);
+        debug_drawer.square(gl_translation.truncate(), 7., color);
     }
 }
 
@@ -339,10 +346,20 @@ pub fn enable_debug_lines(keys: Res<Input<KeyCode>>, mut debug_drawer: ResMut<De
 }
 
 pub fn draw_ccd_target(
-    mut debug_drawer: ResMut<DebugDrawer>,
-    q: Query<&Transform, With<ccd::Target>>,
+    debug_drawer: Res<DebugDrawer>,
+    mut q: Query<(&Transformable, &mut Visibility, &mut Sprite), With<ccd::Target>>,
 ) {
-    for transform in q.iter() {
-        debug_drawer.square(transform.translation.truncate(),12.,Color::rgb(0., 1., 0.));
+    for (transformable, mut visibility, mut sprite) in q.iter_mut() {
+        if debug_drawer.bone_debug_enabled {
+            visibility.is_visible = true;
+        } else {
+            visibility.is_visible = false;
+            continue;
+        }
+        if transformable.is_selected {
+            sprite.color = COLOR_SELECTED;
+        } else {
+            sprite.color = COLOR_DEFAULT;
+        }
     }
 }

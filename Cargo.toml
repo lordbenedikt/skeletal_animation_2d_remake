@@ -6,9 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = "0.7.0"
-bevy_prototype_debug_lines = "0.7.2"
-bevy_egui = "0.14.0"
+bevy = "0.8.0"
+bevy_prototype_debug_lines = "0.8.0"
+bevy_egui = "0.15.0"
 image = "0.24.2"
 distance-field = "0.1.7"
 lyon = "1.0.0"

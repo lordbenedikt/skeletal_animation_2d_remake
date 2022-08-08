@@ -2,7 +2,7 @@ use crate::*;
 use bevy::{prelude::*, utils::HashMap};
 
 pub struct State {
-    running: bool,
+    pub running: bool,
     start_time: f64,
     running_animations: Vec<LayeredAnimation>,
 }
@@ -87,11 +87,14 @@ pub fn apply_animation(
         let current_frame_b = (current_frame_a + 1) % value.vector.len();
         let mut x = ((time_diff % anim_length_in_secs) / anim_length_in_secs) as f32;
         x = match egui_state.interpolation_function {
+            interpolate::Function::Linear => x,
             interpolate::Function::EaseInOut => interpolate::ease_in_out(x),
             interpolate::Function::EaseIn => interpolate::ease_in(x),
             interpolate::Function::EaseOut => interpolate::ease_out(x),
             interpolate::Function::EaseOutElastic => interpolate::ease_out_elastic(x),
-            interpolate::Function::Linear => x,
+            interpolate::Function::EaseInOutElastic => interpolate::ease_in_out_elastic(x),
+            interpolate::Function::EaseInOutBack => interpolate::ease_in_out_back(x),
+
         };
         let mut transform = q.get_mut(*key).unwrap();
         transform.translation = interpolate::lerp(

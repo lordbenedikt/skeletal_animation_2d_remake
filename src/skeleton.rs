@@ -1,5 +1,5 @@
 use crate::{*, skin::START_SCALE};
-use bevy::sprite::MaterialMesh2dBundle;
+use bevy::{sprite::MaterialMesh2dBundle, math::Vec3A};
 use bone::Bone;
 use cloth::Cloth;
 use skin::Skin;
@@ -193,23 +193,24 @@ pub fn assign_skins_to_bones(
 
                                     // Calculate distance from vertex to bone
                                     let v = Vec2::from_slice(&skin_vertices[i]);
-                                    let start = bone_gl_transform.translation.truncate();
+                                    let start = bone_gl_transform.affine().translation.truncate();
                                     let end = Bone::get_tip(bone_gl_transform);
                                     let distance = transform::distance_segment_point(start, end, v);
                                     // let distance_scaled = distance / bone_gl_transform.scale.y;
 
                                     // Calculate vertex position relative to bone
+                                    let (bone_gl_scale, bone_gl_rotation, bone_gl_translation) = bone_gl_transform.to_scale_rotation_translation();
                                     let mut rel_position = Vec3::from_slice(&skin_vertices[i]);
-                                    rel_position -= bone_gl_transform.translation;
+                                    rel_position -= bone_gl_translation;
                                     rel_position = Quat::mul_vec3(
-                                        bone_gl_transform.rotation.inverse(),
+                                        bone_gl_rotation.inverse(),
                                         rel_position,
                                     );
-                                    if bone_gl_transform.scale.x != 0.
-                                        && bone_gl_transform.scale.y != 0.
-                                        && bone_gl_transform.scale.z != 0.
+                                    if bone_gl_scale.x != 0.
+                                        && bone_gl_scale.y != 0.
+                                        && bone_gl_scale.z != 0.
                                     {
-                                        rel_position /= bone_gl_transform.scale;
+                                        rel_position /= bone_gl_scale;
                                     } else {
                                         println!("assign_skin_to_bones: Failed to compute relative position, because origin's scale is 0");
                                     }
@@ -262,7 +263,7 @@ pub fn apply_mesh_to_skeleton(
         let skin = opt_skin.unwrap();
 
         // if mesh doesn't exist, continue
-        let opt_mesh = meshes.get_mut(skin.mesh_handle.clone().unwrap().0);
+        let opt_mesh = meshes.get_mut(&skin.mesh_handle.clone().unwrap().0);
         if opt_mesh.is_none() {
             continue;
         }
@@ -289,9 +290,10 @@ pub fn apply_mesh_to_skeleton(
                     let mut position = skeleton.skin_mappings[i].vertex_mappings[v_i].rel_positions
                         [b_i]
                         .extend(0.);
-                    position = Quat::mul_vec3(bone_gl_transform.rotation, position);
-                    position *= bone_gl_transform.scale;
-                    position += bone_gl_transform.translation;
+                    let (bone_gl_scale, bone_gl_rotation, bone_gl_translation) = bone_gl_transform.to_scale_rotation_translation();
+                    position = Quat::mul_vec3(bone_gl_rotation, position);
+                    position *= bone_gl_scale;
+                    position += bone_gl_translation;
                     v_gl_position += weight * position;
                 } else {
                     skeleton.remove_bone(bone);

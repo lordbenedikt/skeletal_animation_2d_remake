@@ -11,21 +11,17 @@
 \contentsline {section}{\numberline {2.3}Interpolierung}{4}{section.2.3}%
 \contentsline {chapter}{\chapternumberline {3}Weiterführenede Techniken}{5}{chapter.3}%
 \contentsline {section}{\numberline {3.1}Variieren der Interpolierungsfunktion}{5}{section.3.1}%
-\contentsline {section}{\numberline {3.2}Inverse Kinematics}{6}{section.3.2}%
-\contentsline {subsection}{\numberline {3.2.1}Algebraische Methode für 2 Gelenke}{6}{subsection.3.2.1}%
-\contentsline {subsection}{\numberline {3.2.2}Cyclic Coordinate Descent}{7}{subsection.3.2.2}%
-\contentsline {section}{\numberline {3.3}Animation Layering}{8}{section.3.3}%
-\contentsline {section}{\numberline {3.4}Additive Animation Blending}{8}{section.3.4}%
-\contentsline {section}{\numberline {3.5}Meshes}{8}{section.3.5}%
-\contentsline {subsection}{\numberline {3.5.1}Mesh Generierung}{9}{subsection.3.5.1}%
-\contentsline {subsubsection}{Marching Squares Algorithmus}{9}{section*.8}%
-\contentsline {subsection}{\numberline {3.5.2}Mesh Deformierung}{11}{subsection.3.5.2}%
-\contentsline {chapter}{\chapternumberline {4}Einleitung}{13}{chapter.4}%
-\contentsline {section}{\numberline {4.1}Aufbau des Dokuments}{14}{section.4.1}%
-\contentsline {section}{\numberline {4.2}Abbildungen}{14}{section.4.2}%
-\contentsline {section}{\numberline {4.3}Literaturverweise}{14}{section.4.3}%
-\contentsline {section}{\numberline {4.4}Verwendung von Formeln und Tabellen}{14}{section.4.4}%
-\contentsline {section}{\numberline {4.5}Tipps}{16}{section.4.5}%
-\contentsline {appendix}{\chapternumberline {A}Lorem Ipsum}{19}{appendix.A}%
-\contentsline {chapter}{Glossar}{21}{appendix*.12}%
-\contentsline {chapter}{Literaturverzeichnis}{23}{appendix*.13}%
+\contentsline {section}{\numberline {3.2}Animation Layering}{6}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Additive Animation Blending}{6}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Meshes}{6}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Mesh Generierung}{7}{subsection.3.4.1}%
+\contentsline {subsubsection}{Marching Squares Algorithmus}{7}{section*.5}%
+\contentsline {subsection}{\numberline {3.4.2}Mesh Deformierung}{7}{subsection.3.4.2}%
+\contentsline {section}{\numberline {3.5}Prozedurale Animation}{9}{section.3.5}%
+\contentsline {section}{\numberline {3.6}Inverse Kinematics}{9}{section.3.6}%
+\contentsline {subsection}{\numberline {3.6.1}Algebraische Methode für 2 Gelenke}{9}{subsection.3.6.1}%
+\contentsline {subsection}{\numberline {3.6.2}Cyclic Coordinate Descent}{10}{subsection.3.6.2}%
+\contentsline {subsection}{\numberline {3.6.3}Stoff-Simulation}{11}{subsection.3.6.3}%
+\contentsline {appendix}{\chapternumberline {A}Lorem Ipsum}{13}{appendix.A}%
+\contentsline {chapter}{Glossar}{15}{appendix*.11}%
+\contentsline {chapter}{Literaturverzeichnis}{17}{appendix*.12}%

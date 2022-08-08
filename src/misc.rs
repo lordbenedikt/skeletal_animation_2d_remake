@@ -1,27 +1,21 @@
 use crate::*;
 use bevy::{
     prelude::*,
-    render::camera::{Camera2d, DepthCalculation, RenderTarget, ScalingMode},
+    render::camera::{DepthCalculation, RenderTarget},
 };
-use bevy_prototype_debug_lines::DebugLines;
 
 #[derive(Component)]
 pub struct MainCamera;
 
 pub fn setup(mut commands: Commands, mut asset_server: ResMut<AssetServer>) {
     commands.spawn_bundle(new_camera_2d()).insert(MainCamera);
-    commands.spawn_bundle(UiCameraBundle::default());
     commands.spawn_bundle(TextBundle {
-        text: Text::with_section(
+        text: Text::from_section(
             String::from("Position"),
             TextStyle {
                 font: asset_server.load("fonts/SpaceMono-Regular.ttf"),
                 font_size: 30.0,
                 color: Color::BLACK,
-            },
-            TextAlignment {
-                vertical: VerticalAlign::Top,
-                horizontal: HorizontalAlign::Left,
             },
         ),
         ..Default::default()
@@ -34,10 +28,10 @@ pub fn update_text(mut q: Query<&mut Text>, cursor_pos: Res<CursorPos>) {
     }
 }
 
-fn new_camera_2d() -> OrthographicCameraBundle<Camera2d> {
+fn new_camera_2d() -> Camera2dBundle {
     let far = 1000.0;
-    let mut camera = OrthographicCameraBundle::new_2d();
-    camera.orthographic_projection = OrthographicProjection {
+    let mut camera = Camera2dBundle::default();
+    camera.projection = OrthographicProjection {
         far,
         depth_calculation: DepthCalculation::ZDifference,
         // scaling_mode: ScalingMode::FixedHorizontal,
@@ -80,7 +74,7 @@ pub fn get_mouse_position(
         let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
 
         // matrix for undoing the projection and camera transform
-        let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix.inverse();
+        let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix().inverse();
 
         // use it to convert ndc to world-space coordinates
         let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));

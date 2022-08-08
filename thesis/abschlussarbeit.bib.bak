@@ -75,7 +75,7 @@
   doi     = {10.1109/70.86079},
 }
 
-@InProceedings{Fedor2003,
+@InProceedings{10.1145/984952.984986,
   author    = {F\^{e}dor, Martin},
   booktitle = {Proceedings of the 19th Spring Conference on Computer Graphics},
   title     = {Application of Inverse Kinematics for Skeleton Manipulation in Real-Time},
@@ -93,6 +93,26 @@
   url       = {https://doi.org/10.1145/984952.984986},
 }
 
+@Article{Febucci2018,
+  author = {Febucci},
+  title  = {Easing Functions for Animations},
+  year   = {2018},
+  url    = {https://www.febucci.com/2018/08/easing-functions/},
+}
+
+@INPROCEEDINGS{Maple2003,
+	author={Maple, C.},
+	booktitle={2003 International Conference on Geometric Modeling and Graphics, 2003. Proceedings}, 
+	title={Geometric design and space planning using the marching squares and marching cube algorithms}, 
+	year={2003},
+	volume={},
+	number={},
+	pages={90-95},
+	doi={10.1109/GMAG.2003.1219671}
+}
+
 @Comment{jabref-meta: databaseType:bibtex;}
 
 }
+
+

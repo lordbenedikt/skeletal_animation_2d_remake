@@ -18,7 +18,9 @@ use bevy_egui::EguiPlugin;
 use debug::DebugDrawer;
 use transform::*;
 
-const COLOR_SELECTED: Color = Color::rgb(1., 1., 1.);
+const COLOR_WHITE: Color = Color::rgb(1.,1.,1.);
+const COLOR_BLACK: Color = Color::rgb(0.,0.,0.);
+const COLOR_SELECTED: Color = Color::rgb(1., 0.9, 0.);
 const COLOR_DEFAULT: Color = Color::rgb(1., 0.6, 0.);
 const PIXELS_PER_UNIT: u32 = 100;
 
@@ -37,7 +39,7 @@ fn main() {
             height: 600.,
             ..Default::default()
         })
-        .insert_resource(ClearColor(Color::rgb(0.5, 0.5, 0.5)))
+        .insert_resource(ClearColor(COLOR_WHITE))
         .insert_resource(CursorPos(Vec2::new(0., 0.)))
         .insert_resource(transform::State::new())
         .insert_resource(animation::Animations::new())
