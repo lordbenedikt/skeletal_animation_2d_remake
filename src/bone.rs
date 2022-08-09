@@ -1,12 +1,14 @@
-use crate::*;
+use crate::{animation::Animatable, *};
 
-#[derive(Component)]
-pub struct Bone;
+#[derive(Component, Default)]
+pub struct Bone {
+    pub is_ccd_maneuvered: bool,
+}
 impl Bone {
     pub fn get_tip(gl_transform: &GlobalTransform) -> Vec2 {
         let (scale, rotation, translation) = gl_transform.to_scale_rotation_translation();
         let mut res = translation;
-        res += Quat::mul_vec3(rotation, Vec3::new(0., scale.y, 0.));
+        res += rotation.mul_vec3(Vec3::new(0., scale.y, 0.));
         res.truncate()
     }
 }
@@ -30,7 +32,7 @@ pub fn add_bone(
         return;
     }
     // Add bone only if CTRL and LEFT MOUSE was pressed
-    if !mouse.just_pressed(MouseButton::Left) || !keys.pressed(KeyCode::LControl) {
+    if !mouse.just_released(MouseButton::Left) || !keys.pressed(KeyCode::LControl) {
         return;
     }
     let bone_depth = 0.1;
@@ -82,8 +84,9 @@ pub fn add_bone(
                     },
                     ..Default::default()
                 })
-                .insert(Bone {})
+                .insert(Bone::default())
                 .insert(Transformable::default())
+                .insert(Animatable)
                 .id();
         });
         res
@@ -106,8 +109,9 @@ pub fn add_bone(
                 },
                 ..Default::default()
             })
-            .insert({ Bone {} })
+            .insert(Bone::default())
             .insert(Transformable::default())
+            .insert(Animatable)
             .id()
     };
     skeleton.bones.push(entity);

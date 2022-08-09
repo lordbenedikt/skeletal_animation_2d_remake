@@ -604,7 +604,7 @@ pub fn create_mesh(
     let mut normals = vec![];
     let uvs = skin.uvs.clone();
     for _ in skin.vertices.iter() {
-        normals.push([0., 0., 1.]);
+        normals.push([0., 1., 1.]);
     }
     let mut inds = skin.indices.clone();
     inds.reverse();

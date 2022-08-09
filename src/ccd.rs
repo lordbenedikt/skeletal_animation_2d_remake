@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{*, animation::Animatable};
 use bevy::math;
 use bone::Bone;
 
@@ -42,7 +42,7 @@ pub fn add_target(
                 transform: Transform::default().with_translation(cursor_pos.0.extend(500.)),
                 sprite: Sprite {
                     color: COLOR_DEFAULT,
-                    custom_size: Some(Vec2::new(0.4,0.4)),
+                    custom_size: Some(Vec2::new(0.4, 0.4)),
                     ..Default::default()
                 },
                 texture: asset_server.load("img/ccd_target.png"),
@@ -52,7 +52,8 @@ pub fn add_target(
                 bone: bone_entity,
                 depth: egui_state.ccd_depth,
             })
-            .insert(Transformable::default());
+            .insert(Transformable::default())
+            .insert(Animatable);
     }
     for (_, mut transformable) in q.iter_mut() {
         transformable.is_selected = false;
@@ -62,12 +63,12 @@ pub fn add_target(
 
 pub fn reach_for_target(
     mut commands: Commands,
-    mut q_bones: Query<(&GlobalTransform, Option<&Parent>, &mut Transform), With<Bone>>,
+    mut q_bones: Query<(&GlobalTransform, Option<&Parent>, &mut Transform, &mut Bone)>,
     q_targets: Query<(Entity, &Transform, &Target), Without<Bone>>,
 ) {
     for (entity, target_transform, target) in q_targets.iter() {
         let depth = target.depth;
-        let iterations = 5;
+        let iterations = 1;
         // If bone was removed, despawn target
         if q_bones.get(target.bone).is_err() {
             commands.entity(entity).despawn();
@@ -82,14 +83,19 @@ pub fn reach_for_target(
         for _ in 0..iterations {
             let mut current_bone: Entity = target.bone;
             for _ in 0..depth {
+
+                // Set bone's ccd_maneuvered to true
+                q_bones.get_mut(current_bone).unwrap().3.is_ccd_maneuvered = true;
+
                 // Rotate current bone so that current_pos, end_of_chain and target are on one line
-                let current_pos = q_bones.get(current_bone).unwrap().0.affine().translation.truncate();
-                // let delta_rot = Quat::from_rotation_arc(
-                //     (end_of_chain.extend(0.) - current_pos.extend(0.)).normalize(),
-                //     (target_transform.translation - current_pos.extend(0.)).normalize(),
-                // )
-                // .to_euler(EulerRot::XYZ);
-                // let delta_rot = Quat::from_euler(EulerRot::XYZ, 0., 0., delta_rot.2);
+                let current_pos = q_bones
+                    .get(current_bone)
+                    .unwrap()
+                    .0
+                    .affine()
+                    .translation
+                    .truncate();
+
                 let delta_rot = (end_of_chain - current_pos).get_angle()
                     - (target_transform.translation.truncate() - current_pos).get_angle();
 
@@ -101,11 +107,12 @@ pub fn reach_for_target(
                     original_end_of_chain,
                 );
 
-                q_bones.get_mut(current_bone).unwrap().2.rotation *=
-                    Quat::from_rotation_z(delta_rot);
+                q_bones.get_mut(current_bone).unwrap().2.rotation *= //delta_rot;
+                Quat::from_rotation_z(delta_rot);
+
                 let end_of_chain_relative = end_of_chain - current_pos;
-                let end_of_chain_relative_rotated = end_of_chain_relative.rotate(Vec2::new(0., delta_rot));
-                //     Quat::mul_vece(delta_rot, end_of_chain_relative.extend(0.)).truncate();
+                let end_of_chain_relative_rotated =
+                    end_of_chain_relative.rotate_by(delta_rot);
                 end_of_chain = end_of_chain_relative_rotated + current_pos;
 
                 // If new rotation didn't bring improvement, undo
@@ -129,17 +136,18 @@ pub fn reach_for_target(
 
 trait Vec2Angles {
     fn get_angle(self) -> f32;
-    fn rotate(self, angle: f32) -> Self;
+    fn rotate_by(self, angle: f32) -> Self;
 }
 
 impl Vec2Angles for Vec2 {
     fn get_angle(self) -> f32 {
-        let angle = self.angle_between(Vec2::new(0., 1.));
+        let angle = self.angle_between(Vec2::Y);
         angle
     }
-    fn rotate(self, angle: f32) -> Self {
-        let x = self.x * angle.cos() + self.y * (-angle.sin());
-        let y = self.x * angle.sin() + self.y * angle.cos();
-        Vec2::new(x, y)
+    fn rotate_by(self, angle: f32) -> Self {
+        Vec2::from_angle(angle).rotate(self)
+        // let x = self.x * angle.cos() + self.y * (-angle.sin());
+        // let y = self.x * angle.sin() + self.y * angle.cos();
+        // Vec2::new(x, y)
     }
 }

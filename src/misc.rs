@@ -7,6 +7,9 @@ use bevy::{
 #[derive(Component)]
 pub struct MainCamera;
 
+#[derive(Component)]
+pub struct SelectBox;
+
 pub fn setup(mut commands: Commands, mut asset_server: ResMut<AssetServer>) {
     commands.spawn_bundle(new_camera_2d()).insert(MainCamera);
     commands.spawn_bundle(TextBundle {
@@ -20,11 +23,22 @@ pub fn setup(mut commands: Commands, mut asset_server: ResMut<AssetServer>) {
         ),
         ..Default::default()
     });
+    commands
+        .spawn_bundle(SpriteBundle {
+            sprite: Sprite {
+                color: Color::rgba(0., 0., 0., 0.2),
+                ..Default::default()
+            },
+            visibility: Visibility { is_visible: false },
+            ..Default::default()
+        })
+        .insert(SelectBox);
 }
 
-pub fn update_text(mut q: Query<&mut Text>, cursor_pos: Res<CursorPos>) {
+pub fn update_text(mut q: Query<&mut Text>, egui_state: Res<egui::State>) {
     for mut text in q.iter_mut() {
-        text.sections[0].value = format!("cursor: {}", cursor_pos.0);
+        text.sections[0].value =
+            format!("keyframe: {}", egui_state.animation.selected_keyframe_index);
     }
 }
 
@@ -84,4 +98,27 @@ pub fn get_mouse_position(
 
         cursor_pos.0 = Vec2::new(world_pos.x, world_pos.y);
     }
+}
+
+pub fn map(value: f32, from: [f32; 2], to: [f32; 2]) -> f32 {
+    if from[0] == from[1] || to[0] == to[1] {
+        return to[0];
+    }
+    if value <= from[0] && value <= from[1] {
+        if from[0] < from[1] {
+            return to[0];
+        } else {
+            return to[1];
+        }
+    }
+    if value >= from[0] && value >= from[1] {
+        if from[0] < from[1] {
+            return to[1];
+        } else {
+            return to[0];
+        }
+    }
+    let progress = (value - from[0]) / (from[1] - from[0]);
+    let to_diff = to[1] - to[0];
+    to[0] + progress * to_diff
 }

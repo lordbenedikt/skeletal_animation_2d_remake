@@ -27,16 +27,14 @@ const PIXELS_PER_UNIT: u32 = 100;
 // RESOURCES
 pub struct CursorPos(Vec2);
 
-// struct Meshes(Vec<Entity>);
-struct Vertices(Vec<Vec2>);
-
 fn main() {
     App::new()
         // RESOURCES
         .insert_resource(WindowDescriptor {
             title: "Skeletal Animation".to_string(),
-            width: 800.,
-            height: 600.,
+            // width: 800.,
+            // height: 600.,
+            mode: bevy::window::WindowMode::BorderlessFullscreen,
             ..Default::default()
         })
         .insert_resource(ClearColor(COLOR_WHITE))
@@ -67,7 +65,7 @@ fn main() {
         .add_system(misc::update_text)
         .add_system_set(egui::system_set().label("ui_action"))
         .add_system_set(skin::system_set().label("skin_systems"))
-        .add_system_set(cloth::system_set().label("update_cloth"))
+        .add_system_set(cloth::system_set().label("update_cloth").before("skin_systems"))
         .add_system_set(skeleton::system_set().after("skin_systems"))
         .add_system_set(bone::system_set().label("bone_systems"))
         .add_system_set(ccd::system_set().label("ccd_systems"))

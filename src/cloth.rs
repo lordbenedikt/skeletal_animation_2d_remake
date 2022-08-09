@@ -1,12 +1,24 @@
 use crate::*;
 use skin::Skin;
 
-#[derive(Component, Default)]
+#[derive(Component)]
 pub struct Cloth {
     point_masses: Vec<PointMass>,
     links: Vec<Link>,
     stiffness: u32,
     is_tearable: bool,
+    scale: f32,
+}
+impl Default for Cloth {
+    fn default() -> Self {
+        Self {
+            point_masses: vec![],
+            links: vec![],
+            stiffness: 0,
+            is_tearable: false,
+            scale: 1.0,
+        }
+    }
 }
 impl Cloth {
     pub fn from_skin(skin: Skin, meshes: &Assets<Mesh>) -> Self {
@@ -25,9 +37,8 @@ impl Cloth {
         let links: Vec<Link> = vec![];
         let mut cloth = Self {
             point_masses,
-            links,
             stiffness: 4,
-            is_tearable: false,
+            ..Default::default()
         };
         if let Indices::U16(indices) = mesh.indices().unwrap() {
             for i in (0..indices.len()).step_by(3) {
@@ -62,7 +73,10 @@ impl Cloth {
         cloth
     }
     pub fn new(pos: Vec3, w: f32, h: f32, cols: usize, rows: usize) -> Self {
-        let mut cloth = Cloth::default().with_stiffness(4);
+        let mut cloth = Cloth {
+            stiffness: 4,
+            ..Default::default()
+        };
         let cell_w = w / cols as f32;
         let cell_h = h / rows as f32;
         for row in 0..=rows {
@@ -107,12 +121,12 @@ impl Cloth {
                 }
 
                 let diff = pm1.position - pm0.position;
-                if self.is_tearable && diff.length() > link.tear_distance {
+                if self.is_tearable && diff.length() > link.tear_distance * self.scale {
                     self.links.swap_remove(i);
                 } else {
-                    let correction_amount = link.resting_distance - diff.length();
+                    let correction_amount = link.resting_distance * self.scale - diff.length();
 
-                    // If one point mass is point, only move the other, else distribute correction
+                    // If one point mass is pinned, only move the other, else distribute correction
                     let mass_distribution = if pm0.pin.is_some() {
                         0.
                     } else if pm1.pin.is_some() {
@@ -129,6 +143,14 @@ impl Cloth {
             }
         }
     }
+    pub fn with_stiffness(mut self, stiffness: u32) -> Self {
+        self.stiffness = stiffness;
+        self
+    }
+    pub fn with_scale(mut self, scale: f32) -> Self {
+        self.scale = scale;
+        self
+    }
     fn update(&mut self, in_motion: bool) {
         if in_motion {
             for point_mass in self.point_masses.iter_mut() {
@@ -143,10 +165,6 @@ impl Cloth {
             let end = self.point_masses[link.indices[1]].position;
             debug_drawer.line(start.truncate(), end.truncate(), COLOR_DEFAULT);
         }
-    }
-    pub fn with_stiffness(mut self, stiffness: u32) -> Self {
-        self.stiffness = stiffness;
-        self
     }
     pub fn vertex_is_free(&self, index: usize) -> bool {
         self.point_masses[index].pin.is_none()
@@ -249,7 +267,9 @@ pub fn update_cloth(
 
 pub fn apply_mesh_to_cloth(mut meshes: ResMut<Assets<Mesh>>, q: Query<(&Cloth, &Skin)>) {
     for (cloth, skin) in q.iter() {
-        let mesh = meshes.get_mut(&skin.mesh_handle.clone().unwrap().0).unwrap();
+        let mesh = meshes
+            .get_mut(&skin.mesh_handle.clone().unwrap().0)
+            .unwrap();
 
         // update mesh vertices
         let mut vertices: Vec<[f32; 3]> = vec![];
@@ -262,18 +282,27 @@ pub fn apply_mesh_to_cloth(mut meshes: ResMut<Assets<Mesh>>, q: Query<(&Cloth, &
                 vertices.push([pm.position[0], pm.position[1], pm.position[2]]);
             }
         }
-        let mut colors: Vec<u32> = vec![];
-        for i in 0..cloth.point_masses.len() {
-            let pm = &cloth.point_masses[i];
-            let lightest = 0.;
-            let color = pm.position.z;
-            let r = 255;
-            colors.push(Color::RED.as_linear_rgba_u32());
+
+        // // set color of vertices according to z-component
+        // let mut colors: Vec<[f32;4]> = vec![];
+        // for i in 0..cloth.point_masses.len() {
+        //     let pm = &cloth.point_masses[i];
+        //     let lightest = 0.;
+        //     let color = misc::map(pm.position.z, [89., 91.], [0.9, 1.4]);
+        //     // dbg!(pm.position.z);
+        //     colors.push([color,color,color,1.]);
+        // }
+
+        // Determing z-ordering direction of vertices (ascending or descending)
+        let mut indices_iter = mesh.indices().unwrap().iter();
+        if vertices[indices_iter.next().unwrap()][2] > vertices[indices_iter.last().unwrap()][2] {
+            let mut indices = vec![];
+            for index in mesh.indices().unwrap().iter() {
+                indices.push(index as u16);
+            }
+            indices.reverse();
+            mesh.set_indices(Some(Indices::U16(indices)));
         }
-        // mesh.insert_attribute(
-        //     MeshVertexAttribute::new("Vertex_Color", 1, VertexFormat::Uint32),
-        //     v_color,
-        // );
 
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
         // mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);

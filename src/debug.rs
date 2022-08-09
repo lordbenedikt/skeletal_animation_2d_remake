@@ -84,8 +84,9 @@ pub struct Square {
 
 pub fn system_set() -> SystemSet {
     SystemSet::new()
-        .with_system(draw_skin_bounding_box.before(draw_skin_mesh))
+        .with_system(draw_skin_bounding_box.before(draw_debug_shapes))
         .with_system(draw_skin_mesh)
+        .with_system(draw_select_box)
         .with_system(draw_ccd_target)
         .with_system(draw_bones.after(draw_skin_mesh).after(draw_ccd_target))
         .with_system(draw_permanent_debug_shapes.before(draw_debug_shapes))
@@ -360,6 +361,32 @@ pub fn draw_ccd_target(
             sprite.color = COLOR_SELECTED;
         } else {
             sprite.color = COLOR_DEFAULT;
+        }
+    }
+}
+
+pub fn draw_select_box(
+    mut debug_drawer: ResMut<DebugDrawer>,
+    transform_state: Res<transform::State>,
+    cursor_pos: Res<CursorPos>,
+    mut q: Query<(&mut Transform, &mut Visibility), With<misc::SelectBox>>,
+) {
+    let a = transform_state.cursor_anchor;
+    let b = cursor_pos.0;
+    dbg!(transform_state.drag_select);
+    if transform_state.drag_select {
+        for (mut transform,mut visibility) in q.iter_mut() {
+            transform.translation = ((a + b) / 2.).extend(800.);
+            transform.scale = Vec3::new((a.x - b.x).abs(), (a.y - b.y).abs(), 1.);
+            visibility.is_visible = true;
+        }
+        debug_drawer.line_thick(a, Vec2::new(a.x,b.y), COLOR_BLACK, 2.0);
+        debug_drawer.line_thick(a, Vec2::new(b.x,a.y), COLOR_BLACK, 2.0);
+        debug_drawer.line_thick(b, Vec2::new(a.x,b.y), COLOR_BLACK, 2.0);
+        debug_drawer.line_thick(b, Vec2::new(b.x,a.y), COLOR_BLACK, 2.0);
+    } else {
+        for (_,mut visibility) in q.iter_mut() {
+            visibility.is_visible = false;
         }
     }
 }

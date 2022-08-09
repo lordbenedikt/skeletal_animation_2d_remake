@@ -7,6 +7,7 @@ pub struct State {
     pub cursor_anchor: Vec2,
     pub original_transforms: Vec<Transform>,
     pub selected_entities: Vec<Entity>,
+    pub drag_select: bool,
 }
 impl State {
     pub fn new() -> State {
@@ -15,6 +16,7 @@ impl State {
             cursor_anchor: Vec2::new(0., 0.),
             original_transforms: vec![],
             selected_entities: vec![],
+            drag_select: false,
         }
     }
 }
@@ -74,6 +76,7 @@ pub fn system_set() -> SystemSet {
         .with_system(remove.before(complete_action))
         .with_system(select.before(complete_action))
         .with_system(complete_action)
+        .with_system(start_stop_drag_select.after(transform).after(select))
 }
 
 pub fn start_action(
@@ -84,7 +87,7 @@ pub fn start_action(
 ) {
     // // WIP
     // Switch between scale modi
-    // if keys.just_pressed(KeyCode::S) {
+    // if keys.just_released(KeyCode::S) {
     //     if state.action == Action::Scale {
     //         state.action = Action::ScaleX;
     //         return;
@@ -102,11 +105,11 @@ pub fn start_action(
     if state.action != Action::None {
         return;
     }
-    if keys.just_pressed(KeyCode::G) {
+    if keys.just_released(KeyCode::G) {
         state.action = Action::Translate;
-    } else if keys.just_pressed(KeyCode::S) {
+    } else if keys.just_released(KeyCode::S) {
         state.action = Action::Scale;
-    } else if keys.just_pressed(KeyCode::R) {
+    } else if keys.just_released(KeyCode::R) {
         state.action = Action::Rotate;
     } else {
         return;
@@ -238,7 +241,7 @@ pub fn remove(
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
     // Remove transformable only if DELETE was pressed
-    if !keys.just_pressed(KeyCode::Delete) {
+    if !keys.just_released(KeyCode::Delete) {
         return;
     }
     for (entity, transformable, skin, bone) in q.iter() {
@@ -255,12 +258,36 @@ pub fn remove(
 pub fn complete_action(mouse: Res<Input<MouseButton>>, mut state: ResMut<State>) {
     // If current action is a transformation finnish this action
     if state.action != Action::None && state.action != Action::Done {
-        if mouse.just_pressed(MouseButton::Left) {
+        if mouse.just_released(MouseButton::Left) {
             state.action = Action::Done
         }
     // Otherwise set state.action to None in case it was Done
     } else {
         state.action = Action::None;
+    }
+}
+
+pub fn start_stop_drag_select(
+    mouse: Res<Input<MouseButton>>,
+    mut state: ResMut<State>,
+    cursor_pos: Res<CursorPos>,
+) {
+    // Stop Drag Select
+    if mouse.just_released(MouseButton::Left) {
+        state.drag_select = false;
+    }
+
+    // Select/Unselect only if action is not already taken and if left mouse was pressed
+    if !mouse.pressed(MouseButton::Left) || state.action != Action::None || state.drag_select {
+        return;
+    }
+
+    if mouse.just_pressed(MouseButton::Left) {
+        state.cursor_anchor = cursor_pos.0;
+    }
+
+    if cursor_pos.0.distance(state.cursor_anchor) > 10. / PIXELS_PER_UNIT as f32 {
+        state.drag_select = true;
     }
 }
 
@@ -273,70 +300,107 @@ pub fn select(
     mut update_selection_evw: EventWriter<UpdateSelectionEvent>,
 ) {
     // Select/Unselect only if action is not already taken and if left mouse was pressed
-    if !mouse.just_pressed(MouseButton::Left) || state.action != Action::None {
+    if !mouse.just_released(MouseButton::Left) || state.action != Action::None {
         return;
     }
 
-    let mut closest_entity: Option<Entity> = None;
-    let mut shortest_distance = 999.;
-    for (gl_transform, transformable, entity) in q.iter_mut() {
-        let distance: f32 = if let Shape::Rectangle(min, max) = transformable.collision_shape {
-            Vec2::distance((min + max) / 2., cursor_pos.0)
-        } else if let Shape::Line(start, end) = transformable.collision_shape {
-            distance_segment_point(start, end, cursor_pos.0)
-        } else {
-            // assert transformable.collision_shape == Shape::None
-            let length = gl_transform.to_scale_rotation_translation().0.y;
-            let center = gl_transform.affine().translation
-                + Quat::mul_vec3a(
-                    gl_transform.to_scale_rotation_translation().1,
-                    Vec3A::new(0., length / 3., 0.),
-                );
-            Vec2::distance(center.truncate(), cursor_pos.0)
-        };
-        if distance < shortest_distance {
-            if let Shape::Rectangle(min, max) = transformable.collision_shape {
-                if min.x <= cursor_pos.0.x
-                    && min.y <= cursor_pos.0.y
-                    && max.x >= cursor_pos.0.x
-                    && max.y >= cursor_pos.0.y
-                {
-                    closest_entity = Some(entity);
-                    shortest_distance = distance;
-                }
+    let mut select_entities: Vec<Entity> = vec![];
+
+    if !state.drag_select {
+        let mut shortest_distance = 999.;
+        for (gl_transform, transformable, entity) in q.iter_mut() {
+            let distance: f32 = if let Shape::Rectangle(min, max) = transformable.collision_shape {
+                Vec2::distance((min + max) / 2., cursor_pos.0)
             } else if let Shape::Line(start, end) = transformable.collision_shape {
-                if distance < 1. {
-                    closest_entity = Some(entity);
-                    shortest_distance = distance;
-                }
+                distance_segment_point(start, end, cursor_pos.0)
             } else {
-                if distance < 1. {
-                    closest_entity = Some(entity);
-                    shortest_distance = distance;
-                }
-            }
-        }
-    }
-    // Select/Unselect transformable
-    if let Some(closest) = closest_entity {
-        let (_, mut transformable, _) = q.get_mut(closest).unwrap();
-        transformable.is_selected = !transformable.is_selected;
-    }
-    // If Shift is not pressed replace selection, otherwise add to selection
-    if !keys.pressed(KeyCode::LShift) {
-        for (_, mut transformable, entity) in q.iter_mut() {
-            match closest_entity {
-                Some(closest) => {
-                    if entity != closest {
-                        transformable.is_selected = false;
+                // assert transformable.collision_shape == Shape::None
+                let length = gl_transform.to_scale_rotation_translation().0.y;
+                let center = gl_transform.affine().translation
+                    + Quat::mul_vec3a(
+                        gl_transform.to_scale_rotation_translation().1,
+                        Vec3A::new(0., length / 3., 0.),
+                    );
+                Vec2::distance(center.truncate(), cursor_pos.0)
+            };
+            if distance < shortest_distance {
+                if let Shape::Rectangle(min, max) = transformable.collision_shape {
+                    if min.x <= cursor_pos.0.x
+                        && min.y <= cursor_pos.0.y
+                        && max.x >= cursor_pos.0.x
+                        && max.y >= cursor_pos.0.y
+                    {
+                        if !select_entities.is_empty() {
+                            select_entities.clear();
+                        }
+                        select_entities.push(entity);
+                        shortest_distance = distance;
+                    }
+                } else if let Shape::Line(start, end) = transformable.collision_shape {
+                    if distance < 1. {
+                        if !select_entities.is_empty() {
+                            select_entities.clear();
+                        }
+                        select_entities.push(entity);
+                        shortest_distance = distance;
+                    }
+                } else {
+                    if distance < 1. {
+                        if !select_entities.is_empty() {
+                            select_entities.clear();
+                        }
+                        select_entities.push(entity);
+                        shortest_distance = distance;
                     }
                 }
-                None => {
-                    transformable.is_selected = false;
-                }
+            }
+        }
+    } else {
+        for (gl_transform, transformable, entity) in q.iter_mut() {
+            let center: Vec2 = if let Shape::Rectangle(min, max) = transformable.collision_shape {
+                (min + max) / 2.
+            } else if let Shape::Line(start, end) = transformable.collision_shape {
+                (start + end) / 2.
+            } else {
+                // assert transformable.collision_shape == Shape::None
+                let length = gl_transform.to_scale_rotation_translation().0.y;
+                let center = Vec3::from(gl_transform.affine().translation)
+                    + Quat::mul_vec3(
+                        gl_transform.to_scale_rotation_translation().1,
+                        Vec3::new(0., length / 3., 0.),
+                    );
+                center.truncate()
+            };
+
+            let is_outside_rect = (center.x < cursor_pos.0.x && center.x < state.cursor_anchor.x) || (center.x > cursor_pos.0.x && center.x > state.cursor_anchor.x) ||
+            (center.y < cursor_pos.0.y && center.y < state.cursor_anchor.y) || (center.y > cursor_pos.0.y && center.y > state.cursor_anchor.y);
+            if !is_outside_rect {
+                select_entities.push(entity);
             }
         }
     }
+
+    // If Shift is not pressed..
+    if !keys.pressed(KeyCode::LShift) {
+        // ..clear selection first
+        for (_, mut transformable, entity) in q.iter_mut() {
+            transformable.is_selected = false;
+        }
+    }
+
+    if state.drag_select {
+        // Add to Selection
+        for &e in select_entities.iter() {
+            q.get_mut(e).unwrap().1.is_selected = true;
+        }
+    } else {
+        // Select/Unselect transformable
+        for &e in select_entities.iter() {
+            let mut transformable = q.get_mut(e).unwrap().1;
+            transformable.is_selected = !transformable.is_selected;
+        }
+    }
+
     update_selection_evw.send_default();
 }
 

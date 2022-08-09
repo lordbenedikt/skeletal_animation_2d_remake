@@ -1,7 +1,7 @@
 use std::fmt::Display;
 use std::ops::*;
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Function {
     Linear,
     EaseIn,
@@ -10,6 +10,22 @@ pub enum Function {
     EaseOutElastic,
     EaseInOutElastic,
     EaseInOutBack,
+}
+impl Function {
+    /// Get a vector containing all interpolation functions
+    pub fn all() -> impl ExactSizeIterator<Item = Function> {
+        [
+            Self::Linear,
+            Self::EaseIn,
+            Self::EaseOut,
+            Self::EaseInOut,
+            Self::EaseOutElastic,
+            Self::EaseInOutElastic,
+            Self::EaseInOutBack,
+        ]
+        .iter()
+        .copied()
+    }
 }
 impl ToString for Function {
     fn to_string(&self) -> String {
