@@ -1,4 +1,4 @@
-use crate::{*, bone::Bone};
+use crate::{bone::Bone, *};
 use bevy::{prelude::*, utils::HashMap};
 
 pub struct State {
@@ -61,7 +61,7 @@ struct ComponentAnimation {
 }
 impl ComponentAnimation {
     pub fn remove_keyframe(&mut self, index: usize) {
-        for i in 0..self.keyframe_indices.len() {
+        for i in (0..self.keyframe_indices.len()).rev() {
             if self.keyframe_indices[i] == index {
                 self.keyframe_indices.remove(i);
                 self.transforms.remove(i);
@@ -157,7 +157,7 @@ pub fn apply_animation(
     if anim.keyframes.is_empty() {
         return;
     }
-    let anim_length_in_secs = anim.keyframes.iter().last().unwrap() - anim.keyframes[0];
+    let anim_length_in_secs = anim.keyframes.iter().last().unwrap() - anim.keyframes[0] + 1.;
     let time_diff = (time.seconds_since_startup() - state.start_time) % anim_length_in_secs;
     for (key, bone_animation) in &anims
         .map
@@ -165,7 +165,7 @@ pub fn apply_animation(
         .unwrap()
         .bone_animations
     {
-        if q.get_mut(*key).is_err()  || bone_animation.keyframe_indices.len()==0 {
+        if q.get_mut(*key).is_err() || bone_animation.keyframe_indices.len() == 0 {
             continue;
         }
         if let Some(bone) = q.get_mut(*key).unwrap().1 {
@@ -182,8 +182,14 @@ pub fn apply_animation(
         }
         let current_frame_b = (current_frame_a + 1) % bone_animation.keyframe_indices.len();
 
-        let keyframe_length_in_secs =
-            anim.keyframes[current_frame_b] - anim.keyframes[current_frame_a];
+        // Calculate keyframe length
+        let keyframe_length_in_secs = if current_frame_b == 0 {
+            // if loop is ending, set to 1.
+            1.
+        } else {
+            anim.keyframes[current_frame_b] - anim.keyframes[current_frame_a]
+        };
+
         let mut x = if anim_length_in_secs == 0.0 {
             0.0
         } else {
@@ -239,7 +245,8 @@ pub fn create_key_frame(
     anims_mut.keyframes.push(if anims_mut.keyframes.len() == 0 {
         0.0
     } else {
-        anims_mut.keyframes.iter().last().unwrap() + egui_state.animation.keyframe_length as f64 / 1000.
+        anims_mut.keyframes.iter().last().unwrap()
+            + egui_state.animation.keyframe_length as f64 / 1000.
     });
 
     for (transform, entity) in q.iter() {

@@ -1,12 +1,12 @@
-use bevy::math::Vec3A;
+use bevy::{math::Vec3A, utils::{HashSet, HashMap}};
 
 use crate::{bone::Bone, *};
 
 pub struct State {
     pub action: transform::Action,
     pub cursor_anchor: Vec2,
-    pub original_transforms: Vec<Transform>,
-    pub selected_entities: Vec<Entity>,
+    pub original_transforms: HashMap<Entity, Transform>,
+    pub selected_entities: HashSet<Entity>,
     pub drag_select: bool,
 }
 impl State {
@@ -14,15 +14,12 @@ impl State {
         State {
             action: transform::Action::None,
             cursor_anchor: Vec2::new(0., 0.),
-            original_transforms: vec![],
-            selected_entities: vec![],
+            original_transforms: HashMap::new(),
+            selected_entities: HashSet::new(),
             drag_select: false,
         }
     }
 }
-
-#[derive(Default)]
-pub struct UpdateSelectionEvent;
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Action {
@@ -70,7 +67,6 @@ pub enum Shape {
 
 pub fn system_set() -> SystemSet {
     SystemSet::new()
-        .with_system(update_selection)
         .with_system(start_action)
         .with_system(transform)
         .with_system(remove.before(complete_action))
@@ -105,6 +101,7 @@ pub fn start_action(
     if state.action != Action::None {
         return;
     }
+
     if keys.just_released(KeyCode::G) {
         state.action = Action::Translate;
     } else if keys.just_released(KeyCode::S) {
@@ -120,7 +117,7 @@ pub fn start_action(
     state.original_transforms.clear();
     for e in state.selected_entities.clone() {
         let transform = q.get(e).unwrap();
-        state.original_transforms.push(transform.clone());
+        state.original_transforms.insert(e, transform.clone());
     }
     // Don't start action if no transformables are selected
     if state.selected_entities.len() == 0 {
@@ -135,10 +132,11 @@ pub fn transform(
 ) {
     match state.action {
         Action::Translate => {
-            for i in 0..state.selected_entities.len() {
-                if let Some(parent) = q.get(state.selected_entities[i]).unwrap().1 {
-                    let parent_entity = parent.get();
+            for (&entity, &orig_transform) in state.original_transforms.iter() {
+                if let Some(parent) = q.get(entity).unwrap().1 {
+
                     // Calculate transform relative to parent entity
+                    let parent_entity = parent.get();
                     let parent_gl_transform = q.get(parent_entity).unwrap().0;
                     let v_diff = cursor_pos.0 - state.cursor_anchor;
                     let v_diff_vec3 = Vec3::new(v_diff.x, v_diff.y, 0.);
@@ -147,22 +145,23 @@ pub fn transform(
                     let rel_translation =
                         Quat::mul_vec3(Quat::inverse(parent_gl_rotation), v_diff_vec3)
                             / Vec3::new(parent_gl_scale.x, parent_gl_scale.y, 1.);
-                    q.get_mut(state.selected_entities[i]).unwrap().2.translation =
-                        state.original_transforms[i].translation + rel_translation;
+                    q.get_mut(entity).unwrap().2.translation =
+                        orig_transform.translation + rel_translation;
                 } else {
+
                     // Entity has no parent
                     let v_diff = cursor_pos.0 - state.cursor_anchor;
                     let v_diff_vec3 = Vec3::new(v_diff.x, v_diff.y, 0.);
-                    q.get_mut(state.selected_entities[i]).unwrap().2.translation =
-                        state.original_transforms[i].translation + v_diff_vec3;
+                    q.get_mut(entity).unwrap().2.translation =
+                    orig_transform.translation + v_diff_vec3;
                 }
             }
         }
         Action::Rotate => {
-            for i in 0..state.selected_entities.len() {
+            for (&entity, &orig_transform) in state.original_transforms.iter() {
                 // Get transformable's global transform, vector from transformable to cursor anchor
                 // and vector from transformable to current cursor position
-                let gl_transform = q.get(state.selected_entities[i]).unwrap().0;
+                let gl_transform = q.get(entity).unwrap().0;
                 let mut v_diff_anchor =
                     state.cursor_anchor - gl_transform.affine().translation.truncate();
                 let mut v_diff = cursor_pos.0 - gl_transform.affine().translation.truncate();
@@ -174,8 +173,8 @@ pub fn transform(
                     v_diff = Vec2::new(0., 1.);
                 }
                 // Assign changed rotation to transformable's transform
-                let mut transform = q.get_mut(state.selected_entities[i]).unwrap().2;
-                transform.rotation = state.original_transforms[i].rotation
+                let mut transform = q.get_mut(entity).unwrap().2;
+                transform.rotation = orig_transform.rotation
                     * Quat::from_rotation_arc(
                         v_diff_anchor.normalize().extend(0.),
                         v_diff.normalize().extend(0.),
@@ -183,48 +182,48 @@ pub fn transform(
             }
         }
         Action::Scale => {
-            for i in 0..state.selected_entities.len() {
+            for (&entity, &orig_transform) in state.original_transforms.iter() {
                 // Get transformable's global transform, vector from transformable cursor anchor
                 // and vector from transformable to current cursor position
-                let gl_transform = q.get(state.selected_entities[i]).unwrap().0;
+                let gl_transform = q.get(entity).unwrap().0;
                 let v_diff_anchor =
                     state.cursor_anchor - gl_transform.affine().translation.truncate();
                 let v_diff = cursor_pos.0 - gl_transform.affine().translation.truncate();
                 let distance_to_anchor = f32::max(0.1, v_diff_anchor.length());
                 let distance_to_cursor = f32::max(0.1, v_diff.length());
                 let scale_ratio = distance_to_cursor / distance_to_anchor;
-                let mut transform = q.get_mut(state.selected_entities[i]).unwrap().2;
-                transform.scale = state.original_transforms[i].scale * scale_ratio;
+                let mut transform = q.get_mut(entity).unwrap().2;
+                transform.scale = orig_transform.scale * scale_ratio;
             }
         }
         Action::ScaleX => {
-            for i in 0..state.selected_entities.len() {
+            for (&entity, &orig_transform) in state.original_transforms.iter() {
                 // Get transformable's global transform, vector from transformable cursor anchor
                 // and vector from transformable to current cursor position
-                let gl_transform = q.get(state.selected_entities[i]).unwrap().0;
+                let gl_transform = q.get(entity).unwrap().0;
                 let v_diff_anchor =
                     state.cursor_anchor - gl_transform.affine().translation.truncate();
                 let v_diff = cursor_pos.0 - gl_transform.affine().translation.truncate();
                 let distance_to_anchor = f32::max(0.1, v_diff_anchor.length());
                 let distance_to_cursor = f32::max(0.1, v_diff.length());
                 let scale_ratio = distance_to_cursor / distance_to_anchor;
-                let mut transform = q.get_mut(state.selected_entities[i]).unwrap().2;
-                transform.scale.x = state.original_transforms[i].scale.x * scale_ratio;
+                let mut transform = q.get_mut(entity).unwrap().2;
+                transform.scale.x = orig_transform.scale.x * scale_ratio;
             }
         }
         Action::ScaleY => {
-            for i in 0..state.selected_entities.len() {
+            for (&entity, &orig_transform) in state.original_transforms.iter() {
                 // Get transformable's global transform, vector from transformable cursor anchor
                 // and vector from transformable to current cursor position
-                let gl_transform = q.get(state.selected_entities[i]).unwrap().0;
+                let gl_transform = q.get(entity).unwrap().0;
                 let v_diff_anchor =
                     state.cursor_anchor - gl_transform.affine().translation.truncate();
                 let v_diff = cursor_pos.0 - gl_transform.affine().translation.truncate();
                 let distance_to_anchor = f32::max(0.1, v_diff_anchor.length());
                 let distance_to_cursor = f32::max(0.1, v_diff.length());
                 let scale_ratio = distance_to_cursor / distance_to_anchor;
-                let mut transform = q.get_mut(state.selected_entities[i]).unwrap().2;
-                transform.scale.y = state.original_transforms[i].scale.y * scale_ratio;
+                let mut transform = q.get_mut(entity).unwrap().2;
+                transform.scale.y = orig_transform.scale.y * scale_ratio;
             }
         }
         Action::None => (),
@@ -297,7 +296,6 @@ pub fn select(
     keys: Res<Input<KeyCode>>,
     cursor_pos: Res<CursorPos>,
     mut q: Query<(&GlobalTransform, &mut Transformable, Entity)>,
-    mut update_selection_evw: EventWriter<UpdateSelectionEvent>,
 ) {
     // Select/Unselect only if action is not already taken and if left mouse was pressed
     if !mouse.just_released(MouseButton::Left) || state.action != Action::None {
@@ -372,8 +370,10 @@ pub fn select(
                 center.truncate()
             };
 
-            let is_outside_rect = (center.x < cursor_pos.0.x && center.x < state.cursor_anchor.x) || (center.x > cursor_pos.0.x && center.x > state.cursor_anchor.x) ||
-            (center.y < cursor_pos.0.y && center.y < state.cursor_anchor.y) || (center.y > cursor_pos.0.y && center.y > state.cursor_anchor.y);
+            let is_outside_rect = (center.x < cursor_pos.0.x && center.x < state.cursor_anchor.x)
+                || (center.x > cursor_pos.0.x && center.x > state.cursor_anchor.x)
+                || (center.y < cursor_pos.0.y && center.y < state.cursor_anchor.y)
+                || (center.y > cursor_pos.0.y && center.y > state.cursor_anchor.y);
             if !is_outside_rect {
                 select_entities.push(entity);
             }
@@ -384,24 +384,35 @@ pub fn select(
     if !keys.pressed(KeyCode::LShift) {
         // ..clear selection first
         for (_, mut transformable, entity) in q.iter_mut() {
-            transformable.is_selected = false;
+            if transformable.is_selected {
+                state.selected_entities.remove(&entity);
+                transformable.is_selected = false;
+            }
         }
     }
 
     if state.drag_select {
         // Add to Selection
         for &e in select_entities.iter() {
-            q.get_mut(e).unwrap().1.is_selected = true;
+            let mut transformable = q.get_mut(e).unwrap().1;
+            if !transformable.is_selected {
+                state.selected_entities.insert(e);
+                transformable.is_selected = true;
+            }
         }
     } else {
         // Select/Unselect transformable
         for &e in select_entities.iter() {
             let mut transformable = q.get_mut(e).unwrap().1;
-            transformable.is_selected = !transformable.is_selected;
+            if transformable.is_selected {
+                state.selected_entities.remove(&e);
+                transformable.is_selected = false;
+            } else {
+                state.selected_entities.insert(e);
+                transformable.is_selected = true;
+            }
         }
     }
-
-    update_selection_evw.send_default();
 }
 
 pub fn get_relative_transform(origin: &GlobalTransform, gl_transform: &Transform) -> Transform {
@@ -447,19 +458,4 @@ pub fn distance_segment_point(start: Vec2, end: Vec2, v: Vec2) -> f32 {
     let t = f32::max(0., f32::min(1., Vec2::dot(v - start, end - start) / length));
     let projection: Vec2 = start + t * (end - start);
     return Vec2::distance(v, projection);
-}
-
-pub fn update_selection(
-    q: Query<(&Transformable, Entity)>,
-    mut state: ResMut<State>,
-    mut update_selection_evr: EventReader<UpdateSelectionEvent>,
-) {
-    for _ in update_selection_evr.iter() {
-        state.selected_entities.clear();
-        for (transformable, entity) in q.iter() {
-            if transformable.is_selected {
-                state.selected_entities.push(entity);
-            }
-        }
-    }
 }

@@ -10,7 +10,11 @@ pub struct MainCamera;
 #[derive(Component)]
 pub struct SelectBox;
 
-pub fn setup(mut commands: Commands, mut asset_server: ResMut<AssetServer>) {
+pub fn setup(
+    mut commands: Commands,
+    mut asset_server: ResMut<AssetServer>,
+    clear_color: Res<ClearColor>,
+) {
     commands.spawn_bundle(new_camera_2d()).insert(MainCamera);
     commands.spawn_bundle(TextBundle {
         text: Text::from_section(
@@ -26,7 +30,7 @@ pub fn setup(mut commands: Commands, mut asset_server: ResMut<AssetServer>) {
     commands
         .spawn_bundle(SpriteBundle {
             sprite: Sprite {
-                color: Color::rgba(0., 0., 0., 0.2),
+                color: clear_color.0.invert(),
                 ..Default::default()
             },
             visibility: Visibility { is_visible: false },
@@ -121,4 +125,14 @@ pub fn map(value: f32, from: [f32; 2], to: [f32; 2]) -> f32 {
     let progress = (value - from[0]) / (from[1] - from[0]);
     let to_diff = to[1] - to[0];
     to[0] + progress * to_diff
+}
+
+pub trait ColorUtils {
+    fn invert(&self) -> Self;
+}
+impl ColorUtils for Color {
+    fn invert(&self) -> Self {
+        let col = self.as_rgba();
+        Color::rgba(1. - col.r(), 1. - col.g(), 1. - col.b(), 0.2)
+    }
 }

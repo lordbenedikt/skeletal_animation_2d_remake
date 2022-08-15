@@ -22,7 +22,7 @@ pub fn add_bone(
     mouse: Res<Input<MouseButton>>,
     keys: Res<Input<KeyCode>>,
     cursor_pos: Res<CursorPos>,
-    mut q: Query<(&GlobalTransform, &mut Bone, Entity, &mut Transformable)>,
+    mut q: Query<(&GlobalTransform, Option<&mut Bone>, Entity, &mut Transformable)>,
     mut transform_state: ResMut<transform::State>,
     mut skeleton: ResMut<skeleton::Skeleton>,
 ) {
@@ -37,8 +37,8 @@ pub fn add_bone(
     }
     let bone_depth = 0.1;
     let mut opt_parent: Option<Entity> = None;
-    for (_, _, entity, transformable) in q.iter() {
-        if transformable.is_selected {
+    for (_, opt_bone, entity, transformable) in q.iter() {
+        if transformable.is_selected && opt_bone.is_some() {
             opt_parent = Some(entity);
             break;
         }
@@ -48,26 +48,19 @@ pub fn add_bone(
         let mut res = Entity::from_bits(0);
         let (parent_gl_transform, _, _, _) = q.get(parent).unwrap();
 
-        let gl_translation = Bone::get_tip(parent_gl_transform).extend(0.); // New bones global transform
-                                                                            // dbg!(&parent_gl_transform);
-        let v_diff = Vec3::new(cursor_pos.0.x, cursor_pos.0.y, 0.) - gl_translation; // Vector representing new bone's protrusion
+        let gl_translation = Bone::get_tip(parent_gl_transform).extend(0.);                // New bones global transform
+        let v_diff = Vec3::new(cursor_pos.0.x, cursor_pos.0.y, 0.) - gl_translation;    // Vector representing new bone's protrusion
         let length = v_diff.length();
         let gl_scale = Vec3::new(length, length, 1.);
         let gl_rotation =
             Quat::from_rotation_arc(Vec3::new(0., 1., 0.).normalize(), v_diff.normalize());
-        // let translation = Quat::mul_vec3(Quat::inverse(parent_gl_transform.rotation), v_diff)
-        //     / Vec3::new(parent_gl_transform.scale.x, parent_gl_transform.scale.y, 1.);
+
         let mut gl_transform = Transform {
             scale: gl_scale,
             rotation: gl_rotation,
             translation: gl_translation,
         };
-        // dbg!(&parent_gl_transform);
-        // dbg!(&parent_gl_transform.rotation.to_euler(EulerRot::XYZ));
-        // dbg!(&gl_transform);
-        // dbg!(cursor_pos.0);
-        // dbg!(gl_transform.rotation.to_euler(EulerRot::XYZ));
-        // println!();
+
         gl_transform.scale.z = 1.;
         let transform = transform::get_relative_transform(parent_gl_transform, &gl_transform);
 
@@ -120,4 +113,8 @@ pub fn add_bone(
         transformable.is_selected = false;
     }
     transform_state.action = Action::Done;
+
+    // Clear selection_entities and push new entity
+    transform_state.selected_entities.clear();
+    transform_state.selected_entities.insert(entity);
 }

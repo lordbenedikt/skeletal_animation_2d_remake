@@ -57,7 +57,7 @@ impl Default for State {
 pub fn system_set() -> SystemSet {
     SystemSet::new()
         .with_system(ui_action)
-        .with_system(get_selection_values)
+        .with_system(get_selection_stats)
 }
 
 fn skin_menu(ui: &mut Ui, state: &mut State, mut add_skin_evw: EventWriter<AddSkinEvent>) {
@@ -166,7 +166,7 @@ fn ccd_settings(ui: &mut Ui, state: &mut State) {
     );
 }
 
-pub fn get_selection_values(
+pub fn get_selection_stats(
     mut state: ResMut<State>,
     transform_state: Res<transform::State>,
     skeleton: Res<skeleton::Skeleton>,
@@ -174,47 +174,23 @@ pub fn get_selection_values(
 ) {
     state.skin_bound_status_is_valid = false;
 
-    // Skip if no entities are selected
-    if let Some(e) = transform_state.selected_entities.last() {
-        if q.get(*e).unwrap().0.is_some() {
-            state.skin_bound_status_is_valid = true;
-            state.skin_is_bound = false;
-            for mapping in skeleton.skin_mappings.iter() {
-                if mapping.skin.unwrap() == *e {
-                    state.skin_is_bound = true;
-                    break;
+    // If at least one entity is selected
+    if let Some(e) = transform_state.selected_entities.iter().next() {
+        // If entity exists
+        if let Ok((opt_skin, _, _)) = q.get(*e) {
+            // If entity has Skin component
+            if opt_skin.is_some() {
+                state.skin_bound_status_is_valid = true;
+                state.skin_is_bound = false;
+                for mapping in skeleton.skin_mappings.iter() {
+                    if mapping.skin.unwrap() == *e {
+                        state.skin_is_bound = true;
+                        break;
+                    }
                 }
             }
         }
     }
-
-    // let mut skin_selected = false;
-    // state.skin_bound_status_is_valid = true;
-    // for e in transform_state.selected_entities.clone() {
-    //     // If entity is skin
-    //     if q.get(e).unwrap().0.is_some() {
-    //         // If selected skins have different states continue
-    //         if !state.skin_bound_status_is_valid {
-    //             continue;
-    //         }
-
-    // let mut is_bound = false;
-    // for mapping in skeleton.skin_mappings.iter() {
-    //     if mapping.skin.unwrap() == e {
-    //         is_bound = true;
-    //         break;
-    //     }
-    // }
-    //         if skin_selected {
-    //             if state.skin_is_bound != is_bound{
-    //                 state.skin_bound_status_is_valid = false;
-    //             }
-    //         } else {
-    //             state.skin_is_bound = is_bound;
-    //             skin_selected = true;
-    //         }
-    //     }
-    // }
 }
 
 fn animation_menu(

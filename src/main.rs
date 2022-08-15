@@ -19,6 +19,7 @@ use debug::DebugDrawer;
 use transform::*;
 
 const COLOR_WHITE: Color = Color::rgb(1.,1.,1.);
+const COLOR_GRAY: Color = Color::rgb(0.5,0.5,0.5);
 const COLOR_BLACK: Color = Color::rgb(0.,0.,0.);
 const COLOR_SELECTED: Color = Color::rgb(1., 0.9, 0.);
 const COLOR_DEFAULT: Color = Color::rgb(1., 0.6, 0.);
@@ -37,7 +38,7 @@ fn main() {
             mode: bevy::window::WindowMode::BorderlessFullscreen,
             ..Default::default()
         })
-        .insert_resource(ClearColor(COLOR_WHITE))
+        .insert_resource(ClearColor(COLOR_BLACK))
         .insert_resource(CursorPos(Vec2::new(0., 0.)))
         .insert_resource(transform::State::new())
         .insert_resource(animation::Animations::new())
@@ -48,7 +49,6 @@ fn main() {
         .insert_resource(egui::State::default())
         // EVENTS
         .add_event::<skin::AddSkinEvent>()
-        .add_event::<transform::UpdateSelectionEvent>()
         // PLUGINS
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
@@ -70,15 +70,17 @@ fn main() {
         .add_system_set(bone::system_set().label("bone_systems"))
         .add_system_set(ccd::system_set().label("ccd_systems"))
         .add_system_set(
+            debug::system_set()
+                .after("bone_systems")
+                .after("update_cloth")
+                .label("debug_systems"),
+        )
+        .add_system_set(
             transform::system_set()
                 .after("ui_action")
                 .after("bone_systems")
-                .after("ccd_systems"),
-        )
-        .add_system_set(
-            debug::system_set()
-                .after("bone_systems")
-                .after("update_cloth"),
+                .after("ccd_systems")
+                .before("debug_systems"),
         )
         .add_system_set(animation::system_set())
         // RUN
