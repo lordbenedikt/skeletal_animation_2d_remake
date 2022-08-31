@@ -1,4 +1,4 @@
 # Skeletal Animation Editor
 
-![ease in out](thesis/videos/pooh.gif)
-![ease out elastic](thesis/videos/pooh_elastic.gif)
+![ease in out](img/pooh.gif)
+![ease out elastic](img/pooh_elastic.gif)
