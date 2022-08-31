@@ -66,6 +66,8 @@ impl ComponentAnimation {
                 self.keyframe_indices.remove(i);
                 self.transforms.remove(i);
                 self.interpolation_functions.remove(i);
+            } else if self.keyframe_indices[i] > index {
+                self.keyframe_indices[i] -= 1;
             }
         }
     }

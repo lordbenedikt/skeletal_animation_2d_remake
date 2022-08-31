@@ -21,7 +21,7 @@ use transform::*;
 use bevy_prototype_lyon::prelude::*;
 
 const COLOR_WHITE: Color = Color::rgb(1.,1.,1.);
-const COLOR_GRAY: Color = Color::rgb(0.5,0.5,0.5);
+const COLOR_GRAY: Color = Color::rgb(0.3,0.3,0.3);
 const COLOR_BLACK: Color = Color::rgb(0.,0.,0.);
 const COLOR_SELECTED: Color = Color::rgb(1., 0.9, 0.);
 const COLOR_DEFAULT: Color = Color::rgb(1., 0.6, 0.);

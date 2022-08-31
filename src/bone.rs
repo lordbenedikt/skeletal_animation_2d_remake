@@ -1,4 +1,4 @@
-use crate::{animation::Animatable, *};
+use crate::{animation::Animatable, *, skeleton::Skeleton};
 
 #[derive(Component, Default)]
 pub struct Bone {
@@ -19,19 +19,28 @@ impl Bone {
 }
 
 pub fn system_set() -> SystemSet {
-    SystemSet::new().with_system(add_bone)
+    SystemSet::new().with_system(add_bone_on_mouse_click)
 }
 
 pub fn add_bone(
+    mut commands: Commands,
+    mut skeleton: ResMut<Skeleton>,
+    bone: Bone,
+    parent: Entity,
+)
+{
+
+}
+
+pub fn add_bone_on_mouse_click(
     mut commands: Commands,
     mouse: Res<Input<MouseButton>>,
     keys: Res<Input<KeyCode>>,
     cursor_pos: Res<CursorPos>,
     mut q: Query<(&GlobalTransform, Option<&mut Bone>, Entity, &mut Transformable)>,
     mut transform_state: ResMut<transform::State>,
-    mut skeleton: ResMut<skeleton::Skeleton>,
+    mut skeleton: ResMut<Skeleton>,
 ) {
-    let show_sprite = false;
     // Return if action is already taken
     if transform_state.action != Action::None {
         return;
@@ -78,7 +87,7 @@ pub fn add_bone(
                     },
                     transform,
                     visibility: Visibility {
-                        is_visible: show_sprite,
+                        is_visible: false,
                     },
                     ..Default::default()
                 })
@@ -92,10 +101,7 @@ pub fn add_bone(
         // Spawn without parent
         commands
             .spawn_bundle(SpriteBundle {
-                sprite: Sprite {
-                    color: Color::rgb(0.4, 0.4, 0.4),
-                    ..Default::default()
-                },
+                sprite: Sprite::default(),
                 transform: Transform {
                     translation: Vec3::new(cursor_pos.0.x, cursor_pos.0.y, bone_depth),
                     rotation: Quat::from_rotation_z(0.),
@@ -103,7 +109,7 @@ pub fn add_bone(
                     ..Default::default()
                 },
                 visibility: Visibility {
-                    is_visible: show_sprite,
+                    is_visible: false,
                 },
                 ..Default::default()
             })
