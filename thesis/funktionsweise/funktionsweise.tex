@@ -11,7 +11,7 @@
 \section{Skin und Skelett}
 \label{sec:skin_und_skelett}
 %
-Damit sich ein Charakter animieren lässt, müssen zunächst folgende Bestandteile erstellt werden. Der Skin (engl.: Haut) ist die Erscheinung der zu animierenden Figur. Sie besteht aus einer oder mehreren Bilddateien, welche zusammen die gesamte Figur abbilden.
+Damit sich ein Charakter animieren lässt, müssen zunächst folgende Bestandteile erstellt werden. Die Skin (engl.: Haut) ist die Erscheinung der zu animierenden Figur. Sie besteht aus einer oder mehreren Bilddateien, welche zusammen die gesamte Figur abbilden.
 Das Skelett ist eine Ansammlung von transformierbaren Knochen. Grundlegende Transformationen sind Rotation, Verschiebung und Skalierung. Es ist auch möglich weitere Merkmale wie z.B. Einfärbung, Weichzeichnung, Skew (engl.: Schiefstellung) miteinzubeziehen.
 \subsection{Hierarchische Knochenstruktur}
 Um eine realitätsnahe Animation zu ermöglichen, werden die Knochen des Skeletts hierarchisch angeordnet. Knochen stehen zueinander in einer Eltern-Kind-Beziehung. Der Knochen, welcher einem anderen in dieser Hierarchie übergeordnet ist, wird als Eltern-Knochen bezeichnet. Entsprechend wird ein untergeordneter Knochen Kind-Knochen genannt. Kind-Knochen ererben die Transformationswerte des Eltern-Knochen, zu welchen ihre eigenen Transformationswerte hinzugefügt werden. Mit dieser Aufstellung wird die Illusion geschaffen, dass Kind-Knochen an den Eltern-Knochen befestigt sind, sowie eine Hand an einem Arm. Die Berechnung der Position und Orientierung des letzten Elements in einer kinematischen Kette auf diese Weise wird als „Forward Kinematics“ bezeichnet.

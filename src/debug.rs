@@ -1,4 +1,5 @@
 use bevy::utils::{HashMap, HashSet};
+use bevy_prototype_lyon::render::Shape;
 
 use crate::{*, misc::ColorUtils};
 
@@ -11,6 +12,7 @@ pub struct DebugDrawer {
     squares_permanent: Vec<Square>,
     pub bone_debug_enabled: bool,
     pub mesh_debug_enabled: bool,
+    pub test_entities: Vec<Entity>,
 }
 impl DebugDrawer {
     pub fn line(&mut self, start: Vec2, end: Vec2, color: Color) {
@@ -61,6 +63,7 @@ impl Default for DebugDrawer {
             squares_permanent: vec![],
             bone_debug_enabled: true,
             mesh_debug_enabled: false,
+            test_entities: vec![],
         }
     }
 }
@@ -136,16 +139,48 @@ fn draw_square(square: &Square, lines: &mut DebugLines) {
     );
 }
 
-pub fn draw_all_debug_shapes(mut debug_drawer: ResMut<DebugDrawer>, mut lines: ResMut<DebugLines>) {
-    let scalar = 0.01;
-    // draw for one frame
-    for line in debug_drawer.lines.iter() {
-        if line.weight == 1f32 {
-            lines.line_colored(line.start.extend(0.), line.end.extend(0.), 0., line.color);
-        } else {
-            draw_line_thick(line, &mut lines);
+pub fn draw_all_debug_shapes(mut debug_drawer: ResMut<DebugDrawer>, mut lines: ResMut<DebugLines>, mut commands: Commands, q: Query<Entity>, cursor_pos: Res<CursorPos>) {
+
+    for i in (0..debug_drawer.test_entities.len()).rev() {
+        let entity = debug_drawer.test_entities[i];
+        if q.get(entity).is_ok() {
+            debug_drawer.test_entities.swap_remove(i);
+            commands.entity(entity).despawn();
         }
     }
+
+    let scalar = 1. / PIXELS_PER_UNIT as f32;
+    while !debug_drawer.lines.is_empty() {
+        let mut path_builder = PathBuilder::new();
+        let first_line = debug_drawer.lines[debug_drawer.lines.len()-1].clone();
+        for i in (0..debug_drawer.lines.len()).rev() {
+            let line = &debug_drawer.lines[i];
+            if line.color == first_line.color && line.weight == first_line.weight {
+                path_builder.move_to(line.start);
+                path_builder.line_to(line.end);
+                debug_drawer.lines.swap_remove(i);
+            }
+        }
+        let lines = path_builder.build();
+        let mut geometry = GeometryBuilder::build_as(
+            &PathBuilder::new().build(),
+            DrawMode::Stroke(StrokeMode::new(first_line.color,first_line.weight * scalar)),
+            Transform::from_translation(Vec3::new(0.,0.,700.)),
+        );
+        geometry.path = lines;
+        debug_drawer.test_entities.push(
+            commands.spawn_bundle(geometry).id()
+        );
+    }
+
+    // // draw for one frame
+    // for line in debug_drawer.lines.iter() {
+    //     if line.weight == 1f32 {
+    //         lines.line_colored(line.start.extend(0.), line.end.extend(0.), 0., line.color);
+    //     } else {
+    //         draw_line_thick(line, &mut lines);
+    //     }
+    // }
     for i in 0..debug_drawer.squares.len() {
         let square = &debug_drawer.squares[i].clone();
         draw_square(square, &mut lines);
@@ -197,7 +232,7 @@ pub fn draw_skin_bounding_box(
 
         let average = sum / vertices.len() as f32;
         transformable.collision_shape =
-            Shape::Rectangle(Vec2::from_slice(&min), Vec2::from_slice(&max));
+            transform::Shape::Rectangle(Vec2::from_slice(&min), Vec2::from_slice(&max));
 
         let color = if transformable.is_selected {
             COLOR_SELECTED

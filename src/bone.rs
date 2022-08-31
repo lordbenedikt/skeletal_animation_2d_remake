@@ -11,6 +11,11 @@ impl Bone {
         res += rotation.mul_vec3(Vec3::new(0., scale.y, 0.));
         res.truncate()
     }
+    pub fn get_true_tip(gl_transform: &Transform) -> Vec2 {
+        let mut res = gl_transform.translation;
+        res += gl_transform.rotation.mul_vec3(Vec3::new(0., gl_transform.scale.y, 0.));
+        res.truncate()
+    }
 }
 
 pub fn system_set() -> SystemSet {

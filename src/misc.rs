@@ -39,10 +39,10 @@ pub fn setup(
         .insert(SelectBox);
 }
 
-pub fn update_text(mut q: Query<&mut Text>, egui_state: Res<egui::State>) {
+pub fn update_text(mut q: Query<&mut Text>, egui_state: Res<egui::State>, cursor_pos: Res<CursorPos>) {
     for mut text in q.iter_mut() {
         text.sections[0].value =
-            format!("keyframe: {}", egui_state.animation.selected_keyframe_index);
+            format!("position: {}", cursor_pos.0);
     }
 }
 

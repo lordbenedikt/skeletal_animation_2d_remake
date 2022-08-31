@@ -1,4 +1,4 @@
-use crate::{*, animation::Animatable};
+use crate::{animation::Animatable, *};
 use bevy::math;
 use bone::Bone;
 
@@ -37,23 +37,29 @@ pub fn add_target(
         }
     }
     if let Some(bone_entity) = opt_bone_entity {
-        commands
-            .spawn_bundle(SpriteBundle {
-                transform: Transform::default().with_translation(cursor_pos.0.extend(500.)),
-                sprite: Sprite {
-                    color: COLOR_DEFAULT,
-                    custom_size: Some(Vec2::new(0.4, 0.4)),
+        transform_state.selected_entities.clear();
+        transform_state.selected_entities.insert(
+            commands
+                .spawn_bundle(SpriteBundle {
+                    transform: Transform::default().with_translation(cursor_pos.0.extend(500.)),
+                    sprite: Sprite {
+                        color: COLOR_DEFAULT,
+                        custom_size: Some(Vec2::new(0.4, 0.4)),
+                        ..Default::default()
+                    },
+                    texture: asset_server.load("img/ccd_target.png"),
                     ..Default::default()
-                },
-                texture: asset_server.load("img/ccd_target.png"),
-                ..Default::default()
-            })
-            .insert(Target {
-                bone: bone_entity,
-                depth: egui_state.ccd_depth,
-            })
-            .insert(Transformable::default())
-            .insert(Animatable);
+                })
+                .insert(Target {
+                    bone: bone_entity,
+                    depth: egui_state.ccd_depth,
+                })
+                .insert(Transformable::default())
+                .insert(Animatable)
+                .id(),
+        );
+    } else {
+        return;
     }
     for (_, mut transformable) in q.iter_mut() {
         transformable.is_selected = false;
@@ -68,22 +74,42 @@ pub fn reach_for_target(
 ) {
     for (entity, target_transform, target) in q_targets.iter() {
         let depth = target.depth;
-        let iterations = 1;
+        let iterations = 20;
         // If bone was removed, despawn target
         if q_bones.get(target.bone).is_err() {
             commands.entity(entity).despawn();
             return;
         };
 
+        // Had to write this part twice for some reason, NOT PRETTY!!, need to look into finding a better solution
+        // Manually propagate transform to always have global transform that is up to date
+        let get_true_gl_transform = |entity: Entity| -> Transform {
+            let mut current_entity: Entity = entity;
+            let mut res = q_bones.get(entity).unwrap().2.clone();
+            // While parent exists, combine with parent's transform
+            while let Some(parent) = q_bones.get(current_entity).unwrap().1.clone() {
+                current_entity = parent.get();
+                res = transform::combined_transform(
+                    q_bones.get(current_entity).unwrap().2.clone(),
+                    res,
+                );
+            }
+            res
+        };
+
         // Get tip of last bone of chain
         let last_bone_gl_transform = q_bones.get(target.bone).unwrap().0.clone();
-        let mut end_of_chain: Vec2 = Bone::get_tip(&last_bone_gl_transform);
+        let mut end_of_chain: Vec2 = Bone::get_true_tip(&get_true_gl_transform(target.bone));
+        // let mut end_of_chain: Vec2 = Bone::get_tip(&last_bone_gl_transform);
+
+        // // Get tip of last bone of chain
+        // let last_bone_gl_transform = q_bones.get(target.bone).unwrap().0.clone();
+        // let mut end_of_chain: Vec2 = Bone::get_tip(&last_bone_gl_transform);
 
         // Perform CCD
         for _ in 0..iterations {
             let mut current_bone: Entity = target.bone;
             for _ in 0..depth {
-
                 // Set bone's ccd_maneuvered to true
                 q_bones.get_mut(current_bone).unwrap().3.is_ccd_maneuvered = true;
 
@@ -100,7 +126,7 @@ pub fn reach_for_target(
                     - (target_transform.translation.truncate() - current_pos).get_angle();
 
                 // Store values before change
-                let original_rotation = q_bones.get_mut(current_bone).unwrap().2.rotation;
+                let original_rotation = q_bones.get_mut(current_bone).unwrap().2.rotation.clone();
                 let original_end_of_chain = end_of_chain;
                 let original_distance = Vec2::distance(
                     target_transform.translation.truncate(),
@@ -110,10 +136,24 @@ pub fn reach_for_target(
                 q_bones.get_mut(current_bone).unwrap().2.rotation *= //delta_rot;
                 Quat::from_rotation_z(delta_rot);
 
+                // Manually propagate transform to always have global transform that is up to date
+                let get_true_gl_transformmm = |entity: Entity| -> Transform {
+                    let mut current_entity: Entity = entity;
+                    let mut res = q_bones.get(entity).unwrap().2.clone();
+                    // While parent exists, combine with parent's transform
+                    while let Some(parent) = q_bones.get(current_entity).unwrap().1.clone() {
+                        current_entity = parent.get();
+                        res = transform::combined_transform(
+                            q_bones.get(current_entity).unwrap().2.clone(),
+                            res,
+                        );
+                    }
+                    res
+                };
+
                 let end_of_chain_relative = end_of_chain - current_pos;
-                let end_of_chain_relative_rotated =
-                    end_of_chain_relative.rotate_by(delta_rot);
-                end_of_chain = end_of_chain_relative_rotated + current_pos;
+                let end_of_chain_relative_rotated = end_of_chain_relative.rotate_by(delta_rot);
+                end_of_chain = Bone::get_true_tip(&get_true_gl_transformmm(target.bone));
 
                 // If new rotation didn't bring improvement, undo
                 let new_distance =

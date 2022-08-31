@@ -1,4 +1,7 @@
-use bevy::{math::Vec3A, utils::{HashSet, HashMap}};
+use bevy::{
+    math::Vec3A,
+    utils::{HashMap, HashSet},
+};
 
 use crate::{bone::Bone, *};
 
@@ -134,7 +137,6 @@ pub fn transform(
         Action::Translate => {
             for (&entity, &orig_transform) in state.original_transforms.iter() {
                 if let Some(parent) = q.get(entity).unwrap().1 {
-
                     // Calculate transform relative to parent entity
                     let parent_entity = parent.get();
                     let parent_gl_transform = q.get(parent_entity).unwrap().0;
@@ -148,12 +150,11 @@ pub fn transform(
                     q.get_mut(entity).unwrap().2.translation =
                         orig_transform.translation + rel_translation;
                 } else {
-
                     // Entity has no parent
                     let v_diff = cursor_pos.0 - state.cursor_anchor;
                     let v_diff_vec3 = Vec3::new(v_diff.x, v_diff.y, 0.);
                     q.get_mut(entity).unwrap().2.translation =
-                    orig_transform.translation + v_diff_vec3;
+                        orig_transform.translation + v_diff_vec3;
                 }
             }
         }
@@ -458,4 +459,12 @@ pub fn distance_segment_point(start: Vec2, end: Vec2, v: Vec2) -> f32 {
     let t = f32::max(0., f32::min(1., Vec2::dot(v - start, end - start) / length));
     let projection: Vec2 = start + t * (end - start);
     return Vec2::distance(v, projection);
+}
+
+pub fn combined_transform(parent: Transform, child: Transform) -> Transform {
+    Transform {
+        translation: parent.translation + parent.rotation.mul_vec3(child.translation * parent.scale),
+        rotation: parent.rotation * child.rotation,
+        scale: parent.scale * child.scale,
+    }
 }

@@ -10,6 +10,7 @@ mod skin;
 mod transform;
 mod egui;
 mod ccd;
+mod save_load;
 
 use bevy::{prelude::*, render::mesh::*, sprite::Mesh2dHandle};
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
@@ -17,6 +18,7 @@ use bevy_prototype_debug_lines::{DebugLines, DebugLinesPlugin};
 use bevy_egui::EguiPlugin;
 use debug::DebugDrawer;
 use transform::*;
+use bevy_prototype_lyon::prelude::*;
 
 const COLOR_WHITE: Color = Color::rgb(1.,1.,1.);
 const COLOR_GRAY: Color = Color::rgb(0.5,0.5,0.5);
@@ -51,6 +53,7 @@ fn main() {
         .add_event::<skin::AddSkinEvent>()
         // PLUGINS
         .add_plugins(DefaultPlugins)
+        .add_plugin(ShapePlugin)
         .add_plugin(EguiPlugin)
         .add_plugin(DebugLinesPlugin::default())
         // .add_plugin(LogDiagnosticsPlugin::default())
@@ -83,6 +86,7 @@ fn main() {
                 .before("debug_systems"),
         )
         .add_system_set(animation::system_set())
+        .add_system_set(save_load::system_set())
         // RUN
         .run();
 }
