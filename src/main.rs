@@ -40,7 +40,7 @@ fn main() {
             mode: bevy::window::WindowMode::BorderlessFullscreen,
             ..Default::default()
         })
-        .insert_resource(ClearColor(COLOR_BLACK))
+        .insert_resource(ClearColor(COLOR_GRAY))
         .insert_resource(CursorPos(Vec2::new(0., 0.)))
         .insert_resource(transform::State::new())
         .insert_resource(animation::Animations::new())
