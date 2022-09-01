@@ -74,18 +74,26 @@ pub fn system_set() -> SystemSet {
         .with_system(transform)
         .with_system(remove.before(complete_action))
         .with_system(select.before(complete_action))
+        .with_system(
+            start_stop_drag_select
+                .after(transform)
+                .after(select)
+                .before(complete_action),
+        )
         .with_system(complete_action)
-        .with_system(start_stop_drag_select.after(transform).after(select))
 }
 
 pub fn start_action(
     cursor_pos: Res<CursorPos>,
     mut state: ResMut<State>,
+    egui_state: Res<egui::State>,
     keys: Res<Input<KeyCode>>,
     q: Query<&Transform, With<Transform>>,
 ) {
-    // // WIP
-    // Switch between scale modi
+    // // // WIP
+    // // // Currently doesn't work with parent-child-hierarchies
+    // // // To fix it might be necessary to implement own parent-child-system system
+    // // Switch between scale modi
     // if keys.just_released(KeyCode::S) {
     //     if state.action == Action::Scale {
     //         state.action = Action::ScaleX;
@@ -269,7 +277,9 @@ pub fn complete_action(mouse: Res<Input<MouseButton>>, mut state: ResMut<State>)
 
 pub fn start_stop_drag_select(
     mouse: Res<Input<MouseButton>>,
+    keys: Res<Input<KeyCode>>,
     mut state: ResMut<State>,
+    egui_state: Res<egui::State>,
     cursor_pos: Res<CursorPos>,
 ) {
     // Stop Drag Select
@@ -277,8 +287,13 @@ pub fn start_stop_drag_select(
         state.drag_select = false;
     }
 
-    // Select/Unselect only if action is not already taken and if left mouse was pressed
-    if !mouse.pressed(MouseButton::Left) || state.action != Action::None || state.drag_select {
+    // Select/Unselect only if action is not already taken, left mouse was pressed and ui_hover is false
+    if !mouse.pressed(MouseButton::Left)
+        || keys.pressed(KeyCode::LControl)
+        || state.action != Action::None
+        || state.drag_select
+        || egui_state.ui_hover
+    {
         return;
     }
 
@@ -286,7 +301,9 @@ pub fn start_stop_drag_select(
         state.cursor_anchor = cursor_pos.0;
     }
 
-    if cursor_pos.0.distance(state.cursor_anchor) > 10. / PIXELS_PER_UNIT as f32 {
+    if !egui_state.ui_drag
+        && cursor_pos.0.distance(state.cursor_anchor) > 10. / PIXELS_PER_UNIT as f32
+    {
         state.drag_select = true;
     }
 }
@@ -294,12 +311,17 @@ pub fn start_stop_drag_select(
 pub fn select(
     mouse: Res<Input<MouseButton>>,
     mut state: ResMut<State>,
+    egui_state: Res<egui::State>,
     keys: Res<Input<KeyCode>>,
     cursor_pos: Res<CursorPos>,
     mut q: Query<(&GlobalTransform, &mut Transformable, Entity)>,
 ) {
-    // Select/Unselect only if action is not already taken and if left mouse was pressed
-    if !mouse.just_released(MouseButton::Left) || state.action != Action::None {
+    // Select/Unselect only if conditions are fulfilled
+    if !mouse.just_released(MouseButton::Left)
+        || state.action != Action::None
+        || (egui_state.ui_hover && !state.drag_select)
+        || egui_state.ui_drag
+    {
         return;
     }
 
@@ -463,7 +485,8 @@ pub fn distance_segment_point(start: Vec2, end: Vec2, v: Vec2) -> f32 {
 
 pub fn combined_transform(parent: Transform, child: Transform) -> Transform {
     Transform {
-        translation: parent.translation + parent.rotation.mul_vec3(child.translation * parent.scale),
+        translation: parent.translation
+            + parent.rotation.mul_vec3(child.translation * parent.scale),
         rotation: parent.rotation * child.rotation,
         scale: parent.scale * child.scale,
     }

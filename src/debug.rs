@@ -1,7 +1,6 @@
-use bevy::utils::{HashMap, HashSet};
-use bevy_prototype_lyon::render::Shape;
+use bevy::utils::HashSet;
 
-use crate::{*, misc::ColorUtils};
+use crate::{misc::ColorUtils, *};
 
 const RIGHT_HALF_BITMASK: u32 = (1 << 16) - 1;
 
@@ -91,56 +90,58 @@ pub fn system_set() -> SystemSet {
         .with_system(draw_skin_mesh.before(draw_all_debug_shapes))
         .with_system(draw_select_box.before(draw_all_debug_shapes))
         .with_system(draw_ccd_target)
-        .with_system(draw_bones.after(draw_skin_mesh).after(draw_ccd_target).before(draw_all_debug_shapes))
+        .with_system(
+            draw_bones
+                .after(draw_skin_mesh)
+                .after(draw_ccd_target)
+                .before(draw_all_debug_shapes),
+        )
         .with_system(draw_permanent_debug_shapes)
         .with_system(draw_all_debug_shapes.after(draw_bones))
         .with_system(clear_debug_drawer.after(draw_all_debug_shapes))
         .with_system(enable_debug_lines)
 }
 
-fn draw_line_thick(line: &Line, lines: &mut DebugLines) {
-    let diff = (line.end - line.start).extend(0.);
-    let right =
-        Quat::mul_vec3(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2), diff).normalize();
-    let mut offset = -line.weight / 2.;
-    loop {
-        if offset > line.weight / 2. {
-            break;
-        }
-        lines.line_colored(
-            line.start.extend(0.) + offset * right * SCALAR,
-            line.end.extend(0.) + offset * right * SCALAR,
-            0.,
-            line.color,
-        );
-        offset += 0.5;
-    }
-}
+// fn draw_line_thick(line: &Line, lines: &mut DebugLines) {
+//     let diff = (line.end - line.start).extend(0.);
+//     let right =
+//         Quat::mul_vec3(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2), diff).normalize();
+//     let mut offset = -line.weight / 2.;
+//     loop {
+//         if offset > line.weight / 2. {
+//             break;
+//         }
+//         lines.line_colored(
+//             line.start.extend(0.) + offset * right * SCALAR,
+//             line.end.extend(0.) + offset * right * SCALAR,
+//             0.,
+//             line.color,
+//         );
+//         offset += 0.5;
+//     }
+// }
 
-fn draw_square(square: &Square, lines: &mut DebugLines) {
+fn draw_square(square: &Square, debug_drawer: &mut DebugDrawer) {
     let frac_s_2_scaled = square.s as f32 / 2. * SCALAR;
-    draw_line_thick(
-        &Line {
-            start: square.center - Vec2::new(frac_s_2_scaled, 0.),
-            end: square.center + Vec2::new(frac_s_2_scaled, 0.),
-            color: square.color,
-            weight: square.s,
-        },
-        lines,
+    debug_drawer.line_thick(
+        square.center - Vec2::new(frac_s_2_scaled, 0.),
+        square.center + Vec2::new(frac_s_2_scaled, 0.),
+        square.color,
+        square.s,
     );
-    draw_line_thick(
-        &Line {
-            start: square.center - Vec2::new(0., frac_s_2_scaled),
-            end: square.center + Vec2::new(0., frac_s_2_scaled),
-            color: square.color,
-            weight: square.s,
-        },
-        lines,
-    );
+    // debug_drawer.line_thick(
+    //     square.center - Vec2::new(0., frac_s_2_scaled),
+    //     square.center + Vec2::new(0., frac_s_2_scaled),
+    //     square.color,
+    //     square.s,
+    // );
 }
 
-pub fn draw_all_debug_shapes(mut debug_drawer: ResMut<DebugDrawer>, mut lines: ResMut<DebugLines>, mut commands: Commands, q: Query<Entity>, cursor_pos: Res<CursorPos>) {
-
+pub fn draw_all_debug_shapes(
+    mut debug_drawer: ResMut<DebugDrawer>,
+    mut commands: Commands,
+    q: Query<Entity>,
+) {
     for i in (0..debug_drawer.test_entities.len()).rev() {
         let entity = debug_drawer.test_entities[i];
         if q.get(entity).is_ok() {
@@ -148,11 +149,15 @@ pub fn draw_all_debug_shapes(mut debug_drawer: ResMut<DebugDrawer>, mut lines: R
             commands.entity(entity).despawn();
         }
     }
+    for i in 0..debug_drawer.squares.len() {
+        let square = &debug_drawer.squares[i].clone();
+        draw_square(square, &mut debug_drawer);
+    }
 
     let scalar = 1. / PIXELS_PER_UNIT as f32;
     while !debug_drawer.lines.is_empty() {
         let mut path_builder = PathBuilder::new();
-        let first_line = debug_drawer.lines[debug_drawer.lines.len()-1].clone();
+        let first_line = debug_drawer.lines[debug_drawer.lines.len() - 1].clone();
         for i in (0..debug_drawer.lines.len()).rev() {
             let line = &debug_drawer.lines[i];
             if line.color == first_line.color && line.weight == first_line.weight {
@@ -164,26 +169,16 @@ pub fn draw_all_debug_shapes(mut debug_drawer: ResMut<DebugDrawer>, mut lines: R
         let lines = path_builder.build();
         let mut geometry = GeometryBuilder::build_as(
             &PathBuilder::new().build(),
-            DrawMode::Stroke(StrokeMode::new(first_line.color,first_line.weight * scalar)),
-            Transform::from_translation(Vec3::new(0.,0.,700.)),
+            DrawMode::Stroke(StrokeMode::new(
+                first_line.color,
+                first_line.weight * scalar,
+            )),
+            Transform::from_translation(Vec3::new(0., 0., 700.)),
         );
         geometry.path = lines;
-        debug_drawer.test_entities.push(
-            commands.spawn_bundle(geometry).id()
-        );
-    }
-
-    // // draw for one frame
-    // for line in debug_drawer.lines.iter() {
-    //     if line.weight == 1f32 {
-    //         lines.line_colored(line.start.extend(0.), line.end.extend(0.), 0., line.color);
-    //     } else {
-    //         draw_line_thick(line, &mut lines);
-    //     }
-    // }
-    for i in 0..debug_drawer.squares.len() {
-        let square = &debug_drawer.squares[i].clone();
-        draw_square(square, &mut lines);
+        debug_drawer
+            .test_entities
+            .push(commands.spawn_bundle(geometry).id());
     }
 }
 
@@ -339,7 +334,7 @@ pub fn draw_bones(
     };
 
     for (gl_transform, _, transformable) in bone_gl_transforms.iter() {
-        let (gl_scale, gl_rotation,gl_translation) = gl_transform.to_scale_rotation_translation();
+        let (gl_scale, gl_rotation, gl_translation) = gl_transform.to_scale_rotation_translation();
         let z = 0.001;
         let color = if transformable.is_selected {
             COLOR_SELECTED
@@ -359,11 +354,9 @@ pub fn draw_bones(
         }
         for i in 0..points.len() {
             debug_drawer.line_thick(
-                (gl_translation + Quat::mul_vec3(gl_rotation, points[i]))
+                (gl_translation + Quat::mul_vec3(gl_rotation, points[i])).truncate(),
+                (gl_translation + Quat::mul_vec3(gl_rotation, points[(i + 1) % points.len()]))
                     .truncate(),
-                (gl_translation
-                    + Quat::mul_vec3(gl_rotation, points[(i + 1) % points.len()]))
-                .truncate(),
                 color,
                 3.,
             );
@@ -410,18 +403,18 @@ pub fn draw_select_box(
     let a = transform_state.cursor_anchor;
     let b = cursor_pos.0;
     if transform_state.drag_select {
-        for (mut transform,mut visibility) in q.iter_mut() {
+        for (mut transform, mut visibility) in q.iter_mut() {
             transform.translation = ((a + b) / 2.).extend(800.);
             transform.scale = Vec3::new((a.x - b.x).abs(), (a.y - b.y).abs(), 1.);
             visibility.is_visible = true;
         }
         let color = clear_color.0.invert();
-        debug_drawer.line_thick(a, Vec2::new(a.x,b.y), color, 2.0);
-        debug_drawer.line_thick(a, Vec2::new(b.x,a.y), color, 2.0);
-        debug_drawer.line_thick(b, Vec2::new(a.x,b.y), color, 2.0);
-        debug_drawer.line_thick(b, Vec2::new(b.x,a.y), color, 2.0);
+        debug_drawer.line_thick(a, Vec2::new(a.x, b.y), color, 2.0);
+        debug_drawer.line_thick(a, Vec2::new(b.x, a.y), color, 2.0);
+        debug_drawer.line_thick(b, Vec2::new(a.x, b.y), color, 2.0);
+        debug_drawer.line_thick(b, Vec2::new(b.x, a.y), color, 2.0);
     } else {
-        for (_,mut visibility) in q.iter_mut() {
+        for (_, mut visibility) in q.iter_mut() {
             visibility.is_visible = false;
         }
     }

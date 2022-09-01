@@ -2,7 +2,7 @@ use crate::{animation::Animatable, *};
 use bevy::math;
 use bone::Bone;
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct Target {
     pub bone: Entity,
     pub depth: u8,

@@ -14,7 +14,6 @@ mod save_load;
 
 use bevy::{prelude::*, render::mesh::*, sprite::Mesh2dHandle};
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
-use bevy_prototype_debug_lines::{DebugLines, DebugLinesPlugin};
 use bevy_egui::EguiPlugin;
 use debug::DebugDrawer;
 use transform::*;
@@ -51,11 +50,11 @@ fn main() {
         .insert_resource(egui::State::default())
         // EVENTS
         .add_event::<skin::AddSkinEvent>()
+        .add_event::<animation::ShowKeyframeEvent>()
         // PLUGINS
         .add_plugins(DefaultPlugins)
         .add_plugin(ShapePlugin)
         .add_plugin(EguiPlugin)
-        .add_plugin(DebugLinesPlugin::default())
         // .add_plugin(LogDiagnosticsPlugin::default())
         // .add_plugin(FrameTimeDiagnosticsPlugin::default())
         // STARTUP SYSTEMS

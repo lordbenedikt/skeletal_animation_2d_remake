@@ -111,6 +111,10 @@ pub fn free_skins(
 
     // remove skin from skeleton
     for i in (0..skeleton.skin_mappings.len()).rev() {
+        if skeleton.skin_mappings[i].skin.is_none() {
+            skeleton.skin_mappings.swap_remove(i);
+            continue;
+        }
         if let Ok((transformable, mut transform)) =
             q.get_mut(skeleton.skin_mappings[i].skin.unwrap())
         {
@@ -151,7 +155,11 @@ pub fn assign_skins_to_bones(
             continue;
         }
         let mut new_skin = true;
-        for i in 0..skeleton.skin_mappings.len() {
+        for i in (0..skeleton.skin_mappings.len()).rev() {
+            if skeleton.skin_mappings[i].skin.is_none() {
+                skeleton.skin_mappings.swap_remove(i);
+                continue;
+            }
             if skeleton.skin_mappings[i].skin.unwrap() == entity {
                 new_skin = false;
                 relevant_skins.push(i);
@@ -250,7 +258,7 @@ pub fn apply_mesh_to_skeleton(
     }
 
     // for each SKIN
-    for i in 0..skeleton.skin_mappings.len() {
+    for i in (0..skeleton.skin_mappings.len()).rev() {
         // If vertices haven't been mapped for this skin
         if skeleton.skin_mappings[i].vertex_mappings.is_empty() {
             continue;
@@ -259,6 +267,7 @@ pub fn apply_mesh_to_skeleton(
 
         // if skin doesn't exist, continue
         if skeleton.skin_mappings[i].skin.is_none() {
+            skeleton.skin_mappings.swap_remove(i);
             continue;
         }
         let opt_skin = q_skins.get(skeleton.skin_mappings[i].skin.unwrap());

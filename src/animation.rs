@@ -1,6 +1,11 @@
 use crate::{bone::Bone, *};
 use bevy::{prelude::*, utils::HashMap};
 
+pub struct ShowKeyframeEvent {
+    pub animation_name: String,
+    pub keyframe_index: usize,
+}
+
 pub struct State {
     pub running: bool,
     start_time: f64,
@@ -39,7 +44,7 @@ pub struct Animatable;
 #[derive(Default)]
 pub struct Animation {
     pub keyframes: Vec<f64>,
-    bone_animations: HashMap<Entity, ComponentAnimation>,
+    pub comp_animations: HashMap<Entity, ComponentAnimation>,
 }
 impl Animation {
     pub fn remove_keyframe(&mut self, index: usize) {
@@ -47,17 +52,17 @@ impl Animation {
             return;
         }
         self.keyframes.remove(index);
-        for bone_animation in self.bone_animations.values_mut() {
+        for bone_animation in self.comp_animations.values_mut() {
             bone_animation.remove_keyframe(index);
         }
     }
 }
 
 #[derive(Default)]
-struct ComponentAnimation {
-    keyframe_indices: Vec<usize>,
-    transforms: Vec<Transform>,
-    interpolation_functions: Vec<interpolate::Function>,
+pub struct ComponentAnimation {
+    pub keyframe_indices: Vec<usize>,
+    pub transforms: Vec<Transform>,
+    pub interpolation_functions: Vec<interpolate::Function>,
 }
 impl ComponentAnimation {
     pub fn remove_keyframe(&mut self, index: usize) {
@@ -77,7 +82,8 @@ pub fn system_set() -> SystemSet {
     SystemSet::new()
         .with_system(start_stop)
         .with_system(apply_animation)
-        .with_system(create_key_frame)
+        .with_system(create_keyframe)
+        .with_system(show_keyframe)
 }
 
 pub fn start_stop(keys: Res<Input<KeyCode>>, mut state: ResMut<State>, time: Res<Time>) {
@@ -86,61 +92,6 @@ pub fn start_stop(keys: Res<Input<KeyCode>>, mut state: ResMut<State>, time: Res
         state.start_time = time.seconds_since_startup();
     }
 }
-
-// pub fn apply_animation_old(
-//     mut q: Query<&mut Transform, With<bone::Bone>>,
-//     state: ResMut<State>,
-//     egui_state: Res<egui::State>,
-//     anims: Res<Animations>,
-//     time: Res<Time>,
-// ) {
-//     // Only apply if any animation is available and running == true
-//     if anims.map.is_empty() || state.running == false {
-//         return;
-//     }
-//     let anim_length_in_secs = egui_state.keyframe_length as f64 / 1000.;
-//     let time_diff = time.seconds_since_startup() - state.start_time;
-//     for (key, bone_animation) in &anims
-//         .map
-//         .get(&egui_state.current_animation)
-//         .unwrap()
-//         .bone_animations
-//     {
-//         if q.get_mut(*key).is_err() {
-//             continue;
-//         }
-
-//         let current_frame_a =
-//             f64::floor(time_diff / anim_length_in_secs) as usize % bone_animation.transforms.len();
-//         let current_frame_b = (current_frame_a + 1) % bone_animation.transforms.len();
-//         let mut x = ((time_diff % anim_length_in_secs) / anim_length_in_secs) as f32;
-//         x = match egui_state.interpolation_function {
-//             interpolate::Function::Linear => x,
-//             interpolate::Function::EaseInOut => interpolate::ease_in_out(x),
-//             interpolate::Function::EaseIn => interpolate::ease_in(x),
-//             interpolate::Function::EaseOut => interpolate::ease_out(x),
-//             interpolate::Function::EaseOutElastic => interpolate::ease_out_elastic(x),
-//             interpolate::Function::EaseInOutElastic => interpolate::ease_in_out_elastic(x),
-//             interpolate::Function::EaseInOutBack => interpolate::ease_in_out_back(x),
-//         };
-//         let mut transform = q.get_mut(*key).unwrap();
-//         transform.translation = interpolate::lerp(
-//             bone_animation.transforms[current_frame_a].translation,
-//             bone_animation.transforms[current_frame_b].translation,
-//             x,
-//         );
-//         transform.rotation = Quat::lerp(
-//             bone_animation.transforms[current_frame_a].rotation,
-//             bone_animation.transforms[current_frame_b].rotation,
-//             x,
-//         );
-//         transform.scale = interpolate::lerp(
-//             bone_animation.transforms[current_frame_a].scale,
-//             bone_animation.transforms[current_frame_b].scale,
-//             x,
-//         );
-//     }
-// }
 
 pub fn apply_animation(
     mut q: Query<(&mut Transform, Option<&Bone>), With<Animatable>>,
@@ -165,7 +116,7 @@ pub fn apply_animation(
         .map
         .get(&egui_state.animation.name)
         .unwrap()
-        .bone_animations
+        .comp_animations
     {
         if q.get_mut(*key).is_err() || bone_animation.keyframe_indices.len() == 0 {
             continue;
@@ -225,7 +176,7 @@ pub fn apply_animation(
     }
 }
 
-pub fn create_key_frame(
+pub fn create_keyframe(
     q: Query<(&Transform, Entity), With<Animatable>>,
     keys: Res<Input<KeyCode>>,
     egui_state: Res<egui::State>,
@@ -252,12 +203,12 @@ pub fn create_key_frame(
     });
 
     for (transform, entity) in q.iter() {
-        if !anims_mut.bone_animations.contains_key(&entity) {
+        if !anims_mut.comp_animations.contains_key(&entity) {
             anims_mut
-                .bone_animations
+                .comp_animations
                 .insert(entity, ComponentAnimation::default());
         }
-        let bone_animation = anims_mut.bone_animations.get_mut(&entity).unwrap();
+        let bone_animation = anims_mut.comp_animations.get_mut(&entity).unwrap();
         bone_animation
             .interpolation_functions
             .push(egui_state.interpolation_function);
@@ -269,5 +220,29 @@ pub fn create_key_frame(
             rotation: transform.rotation,
             scale: transform.scale,
         });
+    }
+}
+
+pub fn show_keyframe(
+    mut show_keyframe_evr: EventReader<ShowKeyframeEvent>,
+    mut q: Query<&mut Transform>,
+    state: Res<State>,
+    animations: ResMut<Animations>,
+) {
+    if state.running {
+        return;
+    }
+    for ev in show_keyframe_evr.iter() {
+        // Set Transforms to values stored in keyframe
+        for (&entity, comp_animation) in animations.map.get(&ev.animation_name).unwrap().comp_animations.iter() {
+            for i in 0..comp_animation.keyframe_indices.len() {
+                if comp_animation.keyframe_indices[i] == ev.keyframe_index {
+                    let mut transform = q.get_mut(entity).unwrap();
+                    transform.translation = comp_animation.transforms[i].translation;
+                    transform.scale = comp_animation.transforms[i].scale;
+                    transform.rotation = comp_animation.transforms[i].rotation;
+                }
+            }
+        }
     }
 }

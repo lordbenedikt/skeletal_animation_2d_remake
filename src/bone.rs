@@ -1,4 +1,4 @@
-use crate::{animation::Animatable, *, skeleton::Skeleton};
+use crate::{animation::Animatable, skeleton::Skeleton, *};
 
 #[derive(Component, Default)]
 pub struct Bone {
@@ -13,7 +13,9 @@ impl Bone {
     }
     pub fn get_true_tip(gl_transform: &Transform) -> Vec2 {
         let mut res = gl_transform.translation;
-        res += gl_transform.rotation.mul_vec3(Vec3::new(0., gl_transform.scale.y, 0.));
+        res += gl_transform
+            .rotation
+            .mul_vec3(Vec3::new(0., gl_transform.scale.y, 0.));
         res.truncate()
     }
 }
@@ -22,27 +24,23 @@ pub fn system_set() -> SystemSet {
     SystemSet::new().with_system(add_bone_on_mouse_click)
 }
 
-pub fn add_bone(
-    mut commands: Commands,
-    mut skeleton: ResMut<Skeleton>,
-    bone: Bone,
-    parent: Entity,
-)
-{
-
-}
-
 pub fn add_bone_on_mouse_click(
     mut commands: Commands,
     mouse: Res<Input<MouseButton>>,
     keys: Res<Input<KeyCode>>,
     cursor_pos: Res<CursorPos>,
-    mut q: Query<(&GlobalTransform, Option<&mut Bone>, Entity, &mut Transformable)>,
+    egui_state: Res<egui::State>,
+    mut q: Query<(
+        &GlobalTransform,
+        Option<&mut Bone>,
+        Entity,
+        &mut Transformable,
+    )>,
     mut transform_state: ResMut<transform::State>,
     mut skeleton: ResMut<Skeleton>,
 ) {
     // Return if action is already taken
-    if transform_state.action != Action::None {
+    if transform_state.action != Action::None || egui_state.ui_hover {
         return;
     }
     // Add bone only if CTRL and LEFT MOUSE was pressed
@@ -62,8 +60,8 @@ pub fn add_bone_on_mouse_click(
         let mut res = Entity::from_bits(0);
         let (parent_gl_transform, _, _, _) = q.get(parent).unwrap();
 
-        let gl_translation = Bone::get_tip(parent_gl_transform).extend(0.);                // New bones global transform
-        let v_diff = Vec3::new(cursor_pos.0.x, cursor_pos.0.y, 0.) - gl_translation;    // Vector representing new bone's protrusion
+        let gl_translation = Bone::get_tip(parent_gl_transform).extend(0.); // New bones global transform
+        let v_diff = Vec3::new(cursor_pos.0.x, cursor_pos.0.y, 0.) - gl_translation; // Vector representing new bone's protrusion
         let length = v_diff.length();
         let gl_scale = Vec3::new(length, length, 1.);
         let gl_rotation =
@@ -86,9 +84,7 @@ pub fn add_bone_on_mouse_click(
                         ..Default::default()
                     },
                     transform,
-                    visibility: Visibility {
-                        is_visible: false,
-                    },
+                    visibility: Visibility { is_visible: false },
                     ..Default::default()
                 })
                 .insert(Bone::default())
@@ -108,9 +104,7 @@ pub fn add_bone_on_mouse_click(
                     scale: Vec3::new(1., 1., 1.),
                     ..Default::default()
                 },
-                visibility: Visibility {
-                    is_visible: false,
-                },
+                visibility: Visibility { is_visible: false },
                 ..Default::default()
             })
             .insert(Bone::default())

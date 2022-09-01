@@ -1,7 +1,8 @@
 use std::fmt::Display;
 use std::ops::*;
+use serde::*;
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Function {
     Linear,
     EaseIn,

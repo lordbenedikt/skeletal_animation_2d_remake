@@ -575,6 +575,9 @@ pub fn update_mesh(
     for (gl_transform, skin, entity) in q.iter() {
         let mut is_part_of_skeleton = false;
         for mapping in skeleton.skin_mappings.iter() {
+            if mapping.skin.is_none() {
+                continue;
+            }
             if mapping.skin.unwrap() == entity {
                 is_part_of_skeleton = true;
                 break;

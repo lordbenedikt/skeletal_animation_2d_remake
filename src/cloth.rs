@@ -1,6 +1,6 @@
 use crate::*;
-use skin::Skin;
 use serde::*;
+use skin::Skin;
 
 #[derive(Serialize, Deserialize, Component, Clone)]
 pub struct Cloth {
@@ -262,9 +262,11 @@ pub fn update_cloth(
 
 pub fn apply_mesh_to_cloth(mut meshes: ResMut<Assets<Mesh>>, q: Query<(&Cloth, &Skin)>) {
     for (cloth, skin) in q.iter() {
-        let mesh = meshes
-            .get_mut(&skin.mesh_handle.clone().unwrap().0)
-            .unwrap();
+        let opt_mesh = meshes.get_mut(&skin.mesh_handle.clone().unwrap().0);
+        if opt_mesh.is_none() {
+            return;
+        }
+        let mesh = opt_mesh.unwrap();
 
         // update mesh vertices
         let mut vertices: Vec<[f32; 3]> = vec![];

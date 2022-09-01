@@ -1,4 +1,4 @@
-use crate::{skin::AddSkinEvent, *};
+use crate::{animation::{Animations, ShowKeyframeEvent}, skin::AddSkinEvent, *};
 use bevy_egui::{
     egui::{
         self,
@@ -37,6 +37,8 @@ pub struct State {
     pub skin_is_bound: bool,
     pub skin_bound_status_is_valid: bool,
     pub animation: AnimationState,
+    pub ui_hover: bool,
+    pub ui_drag: bool,
 }
 impl Default for State {
     fn default() -> Self {
@@ -50,6 +52,8 @@ impl Default for State {
             skin_is_bound: false,
             skin_bound_status_is_valid: false,
             animation: AnimationState::default(),
+            ui_hover: false,
+            ui_drag: false,
         }
     }
 }
@@ -128,18 +132,41 @@ fn skin_menu(ui: &mut Ui, state: &mut State, mut add_skin_evw: EventWriter<AddSk
     ui.end_row();
 }
 
-fn animation_settings(ui: &mut Ui, state: &mut State, anim_state: &animation::State) {
+fn animation_settings(
+    ui: &mut Ui,
+    state: &mut State,
+    anim_state: &animation::State,
+    anims: &mut Animations,
+) {
     ui.label("Animation Settings");
     ui.horizontal(|ui| {
-        let widget = egui::ComboBox::from_id_source("easing_function")
+        let function_combo_box = egui::ComboBox::from_id_source("easing_function")
             .selected_text(state.interpolation_function.to_string())
             .show_ui(ui, |ui| {
                 for function in Function::all() {
-                    ui.selectable_value(
-                        &mut state.interpolation_function,
-                        function,
-                        function.to_string(),
-                    );
+                    if ui
+                        .selectable_value(
+                            &mut state.interpolation_function,
+                            function,
+                            function.to_string(),
+                        )
+                        .changed()
+                    {
+                        // Easing Function was changed
+                        dbg!("changed");
+                        for (_, anim) in anims.map.iter_mut() {
+                            for (_, comp_anim) in anim.comp_animations.iter_mut() {
+                                for i in 0..comp_anim.keyframe_indices.len() {
+                                    if comp_anim.keyframe_indices[i]
+                                        == state.animation.selected_keyframe_index
+                                    {
+                                        comp_anim.interpolation_functions[i] =
+                                            state.interpolation_function;
+                                    }
+                                }
+                            }
+                        }
+                    };
                 }
             });
         ui.add(
@@ -183,6 +210,9 @@ pub fn get_selection_stats(
                 state.skin_bound_status_is_valid = true;
                 state.skin_is_bound = false;
                 for mapping in skeleton.skin_mappings.iter() {
+                    if mapping.skin.is_none() {
+                        continue;
+                    }
                     if mapping.skin.unwrap() == *e {
                         state.skin_is_bound = true;
                         break;
@@ -197,10 +227,13 @@ fn animation_menu(
     ui: &mut egui::Ui,
     state: &mut State,
     mouse: &Input<MouseButton>,
+    keys: &Input<KeyCode>,
     animations: &mut animation::Animations,
     anim_state: &animation::State,
+    show_keyframe_evw: EventWriter<animation::ShowKeyframeEvent>,
+    q: Query<&mut Transform>,
 ) {
-    animation_settings(ui, state, anim_state);
+    animation_settings(ui, state, anim_state, animations);
 
     let widget = egui::ComboBox::from_id_source("current_animation")
         .selected_text(&state.animation.name)
@@ -220,33 +253,36 @@ fn animation_menu(
     //         state.animation.name = state.animation.new_name.clone();
     //     };
     // });
-    if ui.button("remove keyframe").clicked() {
-        let opt_animation = animations.map.get_mut(&state.animation.name);
-        if let Some(animation) = opt_animation {
-            if state.animation.selected_keyframe_index == 0 {
-                for i in (1..animation.keyframes.len()).rev() {
-                    animation.keyframes[i] -= animation.keyframes[1];
+    ui.horizontal(|ui| {
+        if ui.button("remove keyframe").clicked() {
+            let opt_animation = animations.map.get_mut(&state.animation.name);
+            if let Some(animation) = opt_animation {
+                if state.animation.selected_keyframe_index == 0 {
+                    for i in (1..animation.keyframes.len()).rev() {
+                        animation.keyframes[i] -= animation.keyframes[1];
+                    }
                 }
+                animation.remove_keyframe(state.animation.selected_keyframe_index);
             }
-            animation.remove_keyframe(state.animation.selected_keyframe_index);
-        }
-    };
+        };
+    });
 
-    animation_plot(ui, state, mouse, animations);
+    animation_plot(ui, state, mouse, keys, animations, show_keyframe_evw, q);
 }
 
 fn animation_plot(
     ui: &mut egui::Ui,
     state: &mut State,
     mouse: &Input<MouseButton>,
+    keys: &Input<KeyCode>,
     animations: &mut animation::Animations,
+    mut show_keyframe_evw: EventWriter<animation::ShowKeyframeEvent>,
+    mut q: Query<&mut Transform>,
 ) -> egui::Response {
-    use egui::plot::{Line, Points, Values};
-
     egui::plot::Plot::new("example_plot")
         .height(50.0)
         .center_y_axis(true)
-        .allow_drag(false)
+        .allow_drag(!keys.pressed(KeyCode::LControl))
         .show_y(false)
         .data_aspect(1.0)
         .show(ui, |plot_ui| {
@@ -299,9 +335,33 @@ fn animation_plot(
                     // Select keyframe
                     if mouse.just_pressed(MouseButton::Left) {
                         state.animation.selected_keyframe_index = hovered_keyframe;
+                        // Show keyframe
+                        show_keyframe_evw.send(ShowKeyframeEvent{
+                            animation_name: state.animation.name.clone(),
+                            keyframe_index: state.animation.selected_keyframe_index,
+                        });
+                        // Show interpolation function of current keyframe in ui
+                        for (_, comp_anim) in anim.comp_animations.iter() {
+                            let mut stop = false;
+                            for i in 0..comp_anim.keyframe_indices.len() {
+                                if comp_anim.keyframe_indices[i]
+                                    == state.animation.selected_keyframe_index
+                                {
+                                    state.interpolation_function =
+                                        comp_anim.interpolation_functions[i];
+                                    stop = true;
+                                    break;
+                                }
+                            }
+                            if stop {
+                                break;
+                            }
+                        }
                     }
                     // Move keyframe
-                    if plot_ui.pointer_coordinate_drag_delta().x != 0.0 {
+                    if keys.pressed(KeyCode::LControl)
+                        && plot_ui.pointer_coordinate_drag_delta().x != 0.0
+                    {
                         // Determine amount of disposition
                         let move_amount = if state.animation.selected_keyframe_index == 0 {
                             0.0
@@ -344,23 +404,52 @@ pub fn ui_action(
     mut state: ResMut<State>,
     mut transform_state: ResMut<transform::State>,
     mut add_skin_evw: EventWriter<AddSkinEvent>,
+    show_keyframe_evw: EventWriter<animation::ShowKeyframeEvent>,
     mut animations: ResMut<animation::Animations>,
     mouse: Res<Input<MouseButton>>,
+    keys: Res<Input<KeyCode>>,
     anim_state: Res<animation::State>,
+    mut q: Query<&mut Transform>,
 ) {
+    // Hide window when transforming
+    if transform_state.action != transform::Action::None
+        && transform_state.action != transform::Action::Done
+    {
+        return;
+    }
+
+    // Show Window
     let response = egui::Window::new("Menu")
         .resizable(false)
         .show(egui_context.ctx_mut(), |ui| {
             skin_menu(ui, &mut state, add_skin_evw);
             ccd_settings(ui, &mut state);
-            animation_menu(ui, &mut state, &mouse, &mut animations, &anim_state);
+            animation_menu(
+                ui,
+                &mut state,
+                &mouse,
+                &keys,
+                &mut animations,
+                &anim_state,
+                show_keyframe_evw,
+                q,
+            );
         })
         .unwrap()
         .response;
 
+    // Check whether mouse is hovering window
     if let Some(hover_pos) = egui_context.ctx_mut().pointer_hover_pos() {
-        if response.rect.contains(hover_pos) && mouse.get_just_pressed().count() != 0 {
-            transform_state.action = transform::Action::Done;
+        if response.rect.contains(hover_pos) {
+            state.ui_hover = true;
+            if mouse.just_pressed(MouseButton::Left) {
+                state.ui_drag = true;
+            }
+        } else {
+            state.ui_hover = false;
+            if mouse.just_pressed(MouseButton::Left) {
+                state.ui_drag = false;
+            }
         }
     }
 }
