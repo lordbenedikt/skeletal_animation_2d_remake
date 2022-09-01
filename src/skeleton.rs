@@ -1,7 +1,8 @@
-use crate::{*, skin::START_SCALE};
-use bevy::{sprite::MaterialMesh2dBundle, math::Vec3A};
+use crate::{skin::START_SCALE, *};
+use bevy::{math::Vec3A, sprite::MaterialMesh2dBundle};
 use bone::Bone;
 use cloth::Cloth;
+use serde::*;
 use skin::Skin;
 
 const VERTEX_BONE_MAX_DISTANCE: f32 = 1.;
@@ -20,7 +21,7 @@ impl Skeleton {
     }
 }
 
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct SkinMapping {
     pub skin: Option<Entity>,
     pub vertex_mappings: Vec<VertexMapping>,
@@ -49,12 +50,12 @@ impl SkinMapping {
     }
 }
 
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct VertexMapping {
-    is_free: bool,
-    weights: Vec<f32>,
-    bones: Vec<Entity>,
-    rel_positions: Vec<Vec2>,
+    pub is_free: bool,
+    pub weights: Vec<f32>,
+    pub bones: Vec<Entity>,
+    pub rel_positions: Vec<Vec2>,
 }
 impl VertexMapping {
     fn normalize(&mut self) {
@@ -110,12 +111,14 @@ pub fn free_skins(
 
     // remove skin from skeleton
     for i in (0..skeleton.skin_mappings.len()).rev() {
-        if let Ok((transformable, mut transform)) = q.get_mut(skeleton.skin_mappings[i].skin.unwrap()) {
+        if let Ok((transformable, mut transform)) =
+            q.get_mut(skeleton.skin_mappings[i].skin.unwrap())
+        {
             if transformable.is_selected {
                 skeleton.skin_mappings.swap_remove(i);
-                transform.translation = Vec3::new(0.,0.,0.);
+                transform.translation = Vec3::new(0., 0., 0.);
                 transform.rotation = Quat::IDENTITY;
-                transform.scale = Vec3::new(START_SCALE,START_SCALE,START_SCALE);
+                transform.scale = Vec3::new(START_SCALE, START_SCALE, START_SCALE);
             }
         }
     }
@@ -199,13 +202,12 @@ pub fn assign_skins_to_bones(
                                     // let distance_scaled = distance / bone_gl_transform.scale.y;
 
                                     // Calculate vertex position relative to bone
-                                    let (bone_gl_scale, bone_gl_rotation, bone_gl_translation) = bone_gl_transform.to_scale_rotation_translation();
+                                    let (bone_gl_scale, bone_gl_rotation, bone_gl_translation) =
+                                        bone_gl_transform.to_scale_rotation_translation();
                                     let mut rel_position = Vec3::from_slice(&skin_vertices[i]);
                                     rel_position -= bone_gl_translation;
-                                    rel_position = Quat::mul_vec3(
-                                        bone_gl_rotation.inverse(),
-                                        rel_position,
-                                    );
+                                    rel_position =
+                                        Quat::mul_vec3(bone_gl_rotation.inverse(), rel_position);
                                     if bone_gl_scale.x != 0.
                                         && bone_gl_scale.y != 0.
                                         && bone_gl_scale.z != 0.
@@ -256,6 +258,9 @@ pub fn apply_mesh_to_skeleton(
         let mut vertices: Vec<[f32; 3]> = vec![];
 
         // if skin doesn't exist, continue
+        if skeleton.skin_mappings[i].skin.is_none() {
+            continue;
+        }
         let opt_skin = q_skins.get(skeleton.skin_mappings[i].skin.unwrap());
         if opt_skin.is_err() {
             continue;
@@ -290,7 +295,8 @@ pub fn apply_mesh_to_skeleton(
                     let mut position = skeleton.skin_mappings[i].vertex_mappings[v_i].rel_positions
                         [b_i]
                         .extend(0.);
-                    let (bone_gl_scale, bone_gl_rotation, bone_gl_translation) = bone_gl_transform.to_scale_rotation_translation();
+                    let (bone_gl_scale, bone_gl_rotation, bone_gl_translation) =
+                        bone_gl_transform.to_scale_rotation_translation();
                     position = Quat::mul_vec3(bone_gl_rotation, position);
                     position *= bone_gl_scale;
                     position += bone_gl_translation;

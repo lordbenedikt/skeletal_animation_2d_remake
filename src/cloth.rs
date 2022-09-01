@@ -1,7 +1,8 @@
 use crate::*;
 use skin::Skin;
+use serde::*;
 
-#[derive(Component)]
+#[derive(Serialize, Deserialize, Component, Clone)]
 pub struct Cloth {
     point_masses: Vec<PointMass>,
     links: Vec<Link>,
@@ -171,7 +172,7 @@ impl Cloth {
     }
 }
 
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct PointMass {
     position: Vec3,
     last_position: Vec3,
@@ -210,6 +211,7 @@ impl PointMass {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Link {
     resting_distance: f32,
     tear_distance: f32,
@@ -233,13 +235,6 @@ pub fn system_set() -> SystemSet {
     SystemSet::new()
         .with_system(apply_mesh_to_cloth.before(update_cloth))
         .with_system(update_cloth)
-}
-
-pub fn create_cloth(mut commands: Commands) {
-    // let skin = Skin::grid_mesh("Unbenannt.png", 10, 10);
-    // let cloth = Cloth::new(Vec2::new(0., 0.), 5., 4., 10, 10);
-
-    // commands.spawn().insert(cloth).insert(skin);
 }
 
 pub fn update_cloth(
@@ -293,16 +288,16 @@ pub fn apply_mesh_to_cloth(mut meshes: ResMut<Assets<Mesh>>, q: Query<(&Cloth, &
         //     colors.push([color,color,color,1.]);
         // }
 
-        // Determing z-ordering direction of vertices (ascending or descending)
-        let mut indices_iter = mesh.indices().unwrap().iter();
-        if vertices[indices_iter.next().unwrap()][2] > vertices[indices_iter.last().unwrap()][2] {
-            let mut indices = vec![];
-            for index in mesh.indices().unwrap().iter() {
-                indices.push(index as u16);
-            }
-            indices.reverse();
-            mesh.set_indices(Some(Indices::U16(indices)));
-        }
+        // // Determing z-ordering direction of vertices (ascending or descending)
+        // let mut indices_iter = mesh.indices().unwrap().iter();
+        // if vertices[indices_iter.next().unwrap()][2] > vertices[indices_iter.last().unwrap()][2] {
+        //     let mut indices = vec![];
+        //     for index in mesh.indices().unwrap().iter() {
+        //         indices.push(index as u16);
+        //     }
+        //     indices.reverse();
+        //     mesh.set_indices(Some(Indices::U16(indices)));
+        // }
 
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
         // mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);

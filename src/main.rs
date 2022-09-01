@@ -61,7 +61,6 @@ fn main() {
         // STARTUP SYSTEMS
         .add_startup_system(misc::setup)
         .add_startup_system(skin::add_startup_skins)
-        .add_startup_system(cloth::create_cloth)
         // SYSTEMS
         // .add_system(add_vertex)
         .add_system(misc::get_mouse_position.label("input_handling"))

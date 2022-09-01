@@ -1,6 +1,10 @@
 use crate::animation::Animatable;
 use crate::bone::Bone;
+use crate::cloth::Cloth;
+use crate::skeleton::{Skeleton, SkinMapping};
+use crate::skin::Skin;
 use crate::*;
+use bevy::sprite::MaterialMesh2dBundle;
 use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -8,8 +12,10 @@ use std::io::Write;
 use std::{fs, io::Error};
 
 #[derive(Serialize, Deserialize, Clone)]
-struct CompleteJson {
+struct SkeletonJson {
     bones: Vec<BoneJson>,
+    skins: Vec<SkinJson>,
+    skin_mappings: Vec<SkinMapping>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -29,18 +35,51 @@ impl PartialEq for BoneJson {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct SkinJson {
+    entity: Entity,
+    filename: String,
+    dimensions: [u32; 2],
+    vertices: Vec<[f32; 3]>,
+    uvs: Vec<[f32; 2]>,
+    indices: Vec<u16>,
+    depth: f32,
+    cloth: Option<Cloth>,
+}
+impl SkinJson {
+    fn as_skin(&self) -> Skin {
+        Skin {
+            filename: self.filename.clone(),
+            dimensions: self.dimensions.clone(),
+            vertices: self.vertices.clone(),
+            uvs: self.uvs.clone(),
+            indices: self.indices.clone(),
+            mesh_handle: None,
+            depth: self.depth,
+        }
+    }
+}
+
 pub fn system_set() -> SystemSet {
     SystemSet::new().with_system(save).with_system(load)
 }
 
-fn save(q: Query<(Entity, &Bone, &Transform, Option<&Parent>)>, keys: Res<Input<KeyCode>>) {
+fn save(
+    mut set: ParamSet<(
+        Query<(Entity, &Bone, &Transform, Option<&Parent>)>,
+        Query<(Entity, &Skin, Option<&Cloth>)>,
+    )>,
+    skeleton: Res<Skeleton>,
+    keys: Res<Input<KeyCode>>,
+) {
     if keys.pressed(KeyCode::LControl) {
         let save_slot = get_just_pressed_number(keys);
         if save_slot == -1 {
             return;
         }
         let mut res = Entity::from_bits(0);
-        let bones = q
+        let bones = set
+            .p0()
             .iter()
             .map(|(entity, bone, transform, opt_parent)| BoneJson {
                 entity,
@@ -54,10 +93,32 @@ fn save(q: Query<(Entity, &Bone, &Transform, Option<&Parent>)>, keys: Res<Input<
                 rotation: transform.rotation,
             })
             .collect::<Vec<BoneJson>>();
-        let serialized = serde_json::to_string(&CompleteJson { bones }).unwrap();
+        let skins = set
+            .p1()
+            .iter()
+            .map(|(entity, skin, opt_cloth)| SkinJson {
+                entity,
+                filename: skin.filename.clone(),
+                dimensions: skin.dimensions,
+                uvs: skin.uvs.clone(),
+                vertices: skin.vertices.clone(),
+                indices: skin.indices.clone(),
+                depth: skin.depth,
+                cloth: if let Some(cloth) = opt_cloth {
+                    Some(cloth.clone())
+                } else {
+                    None
+                },
+            })
+            .collect::<Vec<SkinJson>>();
+        let serialized = serde_json::to_string(&SkeletonJson {
+            bones,
+            skins,
+            skin_mappings: skeleton.skin_mappings.clone(),
+        })
+        .unwrap();
         let mut file = fs::File::create(format!("anims/animation_{}.json", save_slot)).unwrap();
         file.write_all(serialized.as_bytes()).unwrap();
-        // dbg!(&serialized);
     }
 }
 
@@ -97,9 +158,14 @@ fn save(q: Query<(Entity, &Bone, &Transform, Option<&Parent>)>, keys: Res<Input<
 // res
 // }
 
-fn load_bone_recursive_no_parent(commands: &mut Commands, bones: &Vec<BoneJson>, index: usize) {
+fn load_bone_recursive_no_parent(
+    commands: &mut Commands,
+    bones: &Vec<BoneJson>,
+    spawned_bones: &mut HashMap<Entity, Entity>,
+    index: usize,
+) {
     let current_bone = bones[index].clone();
-    commands
+    let bone_entity = commands
         .spawn_bundle(SpriteBundle {
             sprite: Sprite::default(),
             transform: Transform {
@@ -119,15 +185,22 @@ fn load_bone_recursive_no_parent(commands: &mut Commands, bones: &Vec<BoneJson>,
         .with_children(|p| {
             for i in 0..bones.len() {
                 if bones[i].parent.is_some() && bones[i].parent.unwrap() == current_bone.entity {
-                    load_bone_recursive_with_parent(p, bones, i);
+                    load_bone_recursive_with_parent(p, bones, spawned_bones, i);
                 }
             }
-        });
+        })
+        .id();
+    spawned_bones.insert(current_bone.entity, bone_entity);
 }
 
-fn load_bone_recursive_with_parent(parent: &mut ChildBuilder, bones: &Vec<BoneJson>, index: usize) {
+fn load_bone_recursive_with_parent(
+    parent: &mut ChildBuilder,
+    bones: &Vec<BoneJson>,
+    spawned_bones: &mut HashMap<Entity, Entity>,
+    index: usize,
+) {
     let current_bone = bones[index].clone();
-    parent
+    let bone_entity = parent
         .spawn_bundle(SpriteBundle {
             sprite: Sprite::default(),
             transform: Transform {
@@ -147,16 +220,21 @@ fn load_bone_recursive_with_parent(parent: &mut ChildBuilder, bones: &Vec<BoneJs
         .with_children(|p| {
             for i in 0..bones.len() {
                 if bones[i].parent.is_some() && bones[i].parent.unwrap() == current_bone.entity {
-                    load_bone_recursive_with_parent(p, bones, i);
+                    load_bone_recursive_with_parent(p, bones, spawned_bones, i);
                 }
             }
-        });
+        })
+        .id();
+    spawned_bones.insert(current_bone.entity, bone_entity);
 }
 
 fn load(
     // asset_server: Res<AssetServer>,
     keys: Res<Input<KeyCode>>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    asset_server: Res<AssetServer>,
+    mut skeleton: ResMut<Skeleton>,
     mut q: ParamSet<(Query<Entity, With<Bone>>, Query<(Entity, &skin::Skin)>)>,
     mut commands: Commands,
     mut transform_state: ResMut<transform::State>,
@@ -169,19 +247,79 @@ fn load(
         for entity in q.p0().iter() {
             commands.entity(entity).despawn();
         }
-        for (entity,skin) in q.p1().iter() {
+        for (entity, skin) in q.p1().iter() {
             commands.entity(entity).despawn();
             meshes.remove(skin.mesh_handle.clone().unwrap().0);
         }
         let json = fs::read_to_string(format!("anims/animation_{}.json", save_slot)).unwrap();
-        let data: CompleteJson = serde_json::from_str(&json).unwrap();
-        // let bones_to_spawn: Vec<BoneJson> = data.bones.iter().map(|b| (*b).clone()).collect();
-        // let spawned_bones: HashMap<ID, Entity> = HashMap::new();
+        let mut data: SkeletonJson = serde_json::from_str(&json).unwrap();
+
+        // Json ID to spawned entity ID
+        let mut spawned_bones: HashMap<Entity, Entity> = HashMap::new();
+        let mut spawned_skins: HashMap<Entity, Entity> = HashMap::new();
+
+        // Spawn Bones
         for i in 0..data.bones.len() {
             if data.bones[i].parent.is_none() {
-                load_bone_recursive_no_parent(&mut commands, &data.bones, i);
+                load_bone_recursive_no_parent(&mut commands, &data.bones, &mut spawned_bones, i);
             }
         }
+        // Spawn Skins
+        for i in 0..data.skins.len() {
+            let mut skin = data.skins[i].as_skin();
+
+            let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, skin.vertices.clone());
+            mesh.insert_attribute(
+                Mesh::ATTRIBUTE_NORMAL,
+                vec![[0., 0., 1.]; skin.vertices.len()],
+            );
+            mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, skin.uvs.clone());
+            mesh.set_indices(Some(Indices::U16(skin.indices.clone())));
+
+            let handle: Mesh2dHandle = meshes.add(mesh).into();
+            skin.mesh_handle = Some(handle.clone());
+
+            commands.spawn_bundle(MaterialMesh2dBundle {
+                mesh: handle.clone(),
+                material: materials.add(ColorMaterial::from(asset_server.load(&skin.filename))),
+                ..default()
+            });
+            let skin_entity = commands
+                .spawn_bundle(TransformBundle::from_transform(Transform {
+                    scale: Vec3::new(3.5, 3.5, 1.),
+                    ..default()
+                }))
+                .insert(Transformable {
+                    is_selected: false,
+                    ..default()
+                })
+                .insert(skin)
+                .id();
+            if let Some(cloth) = data.skins[i].cloth.clone() {
+                commands.entity(skin_entity).insert(cloth);
+            }
+            spawned_skins.insert(data.skins[i].entity, commands.entity(skin_entity).id());
+        }
+
+        // Build Skeleton
+        skeleton.bones = spawned_bones.values().into_iter().map(|&e| e).collect();
+        for skin_mapping in data.skin_mappings.iter_mut() {
+            if let Some(json_entity) = skin_mapping.skin {
+                let opt_new_entity = spawned_skins.get(&json_entity);
+                skin_mapping.skin = if let Some(new_entity) = opt_new_entity {
+                    Some(*new_entity)
+                } else {
+                    None
+                };
+            }
+            for vertex_mapping in skin_mapping.vertex_mappings.iter_mut() {
+                for bone in vertex_mapping.bones.iter_mut() {
+                    *bone = *spawned_bones.get(bone).unwrap();
+                }
+            }
+        }
+        skeleton.skin_mappings = data.skin_mappings;
 
         transform_state.selected_entities.clear();
     }

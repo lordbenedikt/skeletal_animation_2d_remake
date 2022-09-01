@@ -691,9 +691,9 @@ pub fn add_startup_skins(
 }
 
 fn add_skin(
-    mut commands: &mut Commands,
-    mut meshes: &mut Assets<Mesh>,
-    mut materials: &mut Assets<ColorMaterial>,
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<ColorMaterial>,
     asset_server: &AssetServer,
     filename: &str,
     cols: u16,
