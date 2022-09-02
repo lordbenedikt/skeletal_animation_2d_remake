@@ -1,4 +1,8 @@
-use crate::{animation::{Animations, ShowKeyframeEvent}, skin::AddSkinEvent, *};
+use crate::{
+    animation::{Animations, ShowKeyframeEvent},
+    skin::AddSkinEvent,
+    *,
+};
 use bevy_egui::{
     egui::{
         self,
@@ -153,7 +157,6 @@ fn animation_settings(
                         .changed()
                     {
                         // Easing Function was changed
-                        dbg!("changed");
                         for (_, anim) in anims.map.iter_mut() {
                             for (_, comp_anim) in anim.comp_animations.iter_mut() {
                                 for i in 0..comp_anim.keyframe_indices.len() {
@@ -235,25 +238,20 @@ fn animation_menu(
 ) {
     animation_settings(ui, state, anim_state, animations);
 
-    let widget = egui::ComboBox::from_id_source("current_animation")
-        .selected_text(&state.animation.name)
-        .show_ui(ui, |ui| {
-            for animation_name in animations.map.keys() {
-                ui.selectable_value(
-                    &mut state.animation.name,
-                    String::from(animation_name),
-                    animation_name,
-                );
-            }
-        });
-    // ui.horizontal(|ui| {
-    //     ui.text_edit_singleline(&mut state.animation.new_name);
-    //     if ui.button("Create Animation").clicked() {
-    //         animations.map.insert(state.animation.new_name.clone(), animation::Animation::default());
-    //         state.animation.name = state.animation.new_name.clone();
-    //     };
-    // });
     ui.horizontal(|ui| {
+        // Choose Animation
+        egui::ComboBox::from_id_source("current_animation")
+            .selected_text(&state.animation.name)
+            .show_ui(ui, |ui| {
+                for animation_name in animations.map.keys() {
+                    ui.selectable_value(
+                        &mut state.animation.name,
+                        String::from(animation_name),
+                        animation_name,
+                    );
+                }
+            });
+        // Remove Keyframe
         if ui.button("remove keyframe").clicked() {
             let opt_animation = animations.map.get_mut(&state.animation.name);
             if let Some(animation) = opt_animation {
@@ -266,8 +264,18 @@ fn animation_menu(
             }
         };
     });
-
     animation_plot(ui, state, mouse, keys, animations, show_keyframe_evw, q);
+    // Add Animation
+    ui.horizontal(|ui| {
+        ui.text_edit_singleline(&mut state.animation.new_name);
+        if ui.button("Add Animation").clicked() && !state.animation.new_name.is_empty() {
+            animations.map.insert(
+                state.animation.new_name.clone(),
+                animation::Animation::default(),
+            );
+            state.animation.name = state.animation.new_name.clone();
+        };
+    });
 }
 
 fn animation_plot(
@@ -336,7 +344,7 @@ fn animation_plot(
                     if mouse.just_pressed(MouseButton::Left) {
                         state.animation.selected_keyframe_index = hovered_keyframe;
                         // Show keyframe
-                        show_keyframe_evw.send(ShowKeyframeEvent{
+                        show_keyframe_evw.send(ShowKeyframeEvent {
                             animation_name: state.animation.name.clone(),
                             keyframe_index: state.animation.selected_keyframe_index,
                         });

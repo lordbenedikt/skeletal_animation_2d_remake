@@ -342,6 +342,7 @@ fn load(
     mut commands: Commands,
     mut animations: ResMut<Animations>,
     mut transform_state: ResMut<transform::State>,
+    mut egui_state: ResMut<egui::State>,
 ) {
     if keys.pressed(KeyCode::LAlt) {
         let save_slot = get_just_pressed_number(keys);
@@ -470,6 +471,13 @@ fn load(
 
         // Load Animations
         animations.map = data.animations.as_animations(&spawned_entities).map;
+
+        // Select first Animation
+        egui_state.animation.name = if let Some(name) = animations.map.keys().next() {
+            name.clone()
+        } else {
+            String::new()
+        };
     }
 }
 

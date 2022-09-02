@@ -240,11 +240,18 @@ pub fn system_set() -> SystemSet {
 pub fn update_cloth(
     meshes: Res<Assets<Mesh>>,
     mut q: Query<(&mut Cloth, &Skin)>,
-    mut debug_drawer: ResMut<DebugDrawer>,
     animation_state: Res<animation::State>,
 ) {
     for (mut cloth, skin) in q.iter_mut() {
-        // apply pinned point masses to skeleton (get positions from mesh, updated in skeleton.rs)
+        // APPLY PINNED POINT MASSES TO SKELETON (get positions from mesh, updated in skeleton.rs)
+        // If handle is none, continue
+        if skin.mesh_handle.clone().is_none() {
+            continue;
+        }
+        // If mesh is none, continue
+        if meshes.get(&skin.mesh_handle.clone().unwrap().0).is_none() {
+            continue;
+        }
         let mesh = meshes.get(&skin.mesh_handle.clone().unwrap().0).unwrap();
         for i in 0..cloth.point_masses.len() {
             // if point mass isn't pinned continue with next point mass
