@@ -473,7 +473,7 @@ fn load(
         animations.map = data.animations.as_animations(&spawned_entities).map;
 
         // Select first Animation
-        egui_state.animation.name = if let Some(name) = animations.map.keys().next() {
+        egui_state.animations[0].name = if let Some(name) = animations.map.keys().next() {
             name.clone()
         } else {
             String::new()
