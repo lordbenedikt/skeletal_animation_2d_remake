@@ -14,11 +14,11 @@ use bevy_egui::{
 use interpolate::Function;
 use std::{fs, ops::RangeInclusive};
 
-pub struct AnimationState {
+pub struct PlotState {
     pub name: String,
     pub selected_keyframe_index: usize,
 }
-impl Default for AnimationState {
+impl Default for PlotState {
     fn default() -> Self {
         Self {
             name: String::from("anim_0"),
@@ -38,7 +38,7 @@ pub struct State {
     pub ccd_depth: u8,
     pub skin_is_bound: bool,
     pub skin_bound_status_is_valid: bool,
-    pub animations: Vec<AnimationState>,
+    pub plots: Vec<PlotState>,
     pub ui_hover: bool,
     pub ui_drag: bool,
     pub new_animation_name: String,
@@ -56,7 +56,7 @@ impl Default for State {
             ccd_depth: 2,
             skin_is_bound: false,
             skin_bound_status_is_valid: false,
-            animations: vec![AnimationState::default()],
+            plots: vec![PlotState::default()],
             ui_hover: false,
             ui_drag: false,
             new_animation_name: String::from(""),
@@ -198,17 +198,17 @@ fn animation_single(
     show_keyframe_evw: &mut EventWriter<animation::ShowKeyframeEvent>,
     q: &Query<&mut Transform>,
 ) {
-    if layer_index >= state.animations.len() {
+    if layer_index >= state.plots.len() {
         return;
     }
     ui.horizontal(|ui| {
         // Choose Animation
         egui::ComboBox::from_id_source(format!("current_animation_{}", layer_index))
-            .selected_text(&state.animations[layer_index].name)
+            .selected_text(&state.plots[layer_index].name)
             .show_ui(ui, |ui| {
                 for animation_name in animations.map.keys() {
                     ui.selectable_value(
-                        &mut state.animations[layer_index].name,
+                        &mut state.plots[layer_index].name,
                         String::from(animation_name),
                         animation_name,
                     );
@@ -233,7 +233,7 @@ fn animation_single(
                                 for (_, comp_anim) in anim.comp_animations.iter_mut() {
                                     for i in 0..comp_anim.keyframe_indices.len() {
                                         if comp_anim.keyframe_indices[i]
-                                            == state.animations[layer_index].selected_keyframe_index
+                                            == state.plots[layer_index].selected_keyframe_index
                                         {
                                             comp_anim.interpolation_functions[i] =
                                                 state.interpolation_function;
@@ -246,24 +246,26 @@ fn animation_single(
                 });
         // Remove Keyframe
         if ui.button("remove keyframe").clicked() {
-            let opt_animation = animations.map.get_mut(&state.animations[layer_index].name);
+            let opt_animation = animations.map.get_mut(&state.plots[layer_index].name);
             if let Some(animation) = opt_animation {
-                if state.animations[layer_index].selected_keyframe_index == 0 {
+                if state.plots[layer_index].selected_keyframe_index == 0 {
                     for i in (1..animation.keyframes.len()).rev() {
                         animation.keyframes[i] -= animation.keyframes[1];
                     }
                 }
-                animation.remove_keyframe(state.animations[layer_index].selected_keyframe_index);
+                animation.remove_keyframe(state.plots[layer_index].selected_keyframe_index);
             }
         };
-        // Remove Layer
-        if ui.button("remove layer").clicked() {
-            state.animations.remove(layer_index);
-            if state.edit_animation == state.animations.len() {
-                state.edit_animation = core::cmp::max(0, state.animations.len()-1);
-            }
-            return;
-        };
+        // Remove Plot
+        if state.plots.len() > 1 {
+            if ui.button("remove plot").clicked() {
+                state.plots.remove(layer_index);
+                if state.edit_animation == state.plots.len() {
+                    state.edit_animation = core::cmp::max(0, state.plots.len() - 1);
+                }
+                return;
+            };
+        }
         // Show edit label, if currently editing this animation
         if state.edit_animation == layer_index {
             ui.label("Edit");
@@ -284,29 +286,100 @@ fn animations_all(
     ui: &mut egui::Ui,
     state: &mut State,
     animations: &mut animation::Animations,
-    anim_state: &animation::State,
+    anim_state: &mut animation::State,
     mouse: &Input<MouseButton>,
     keys: &Input<KeyCode>,
     show_keyframe_evw: &mut EventWriter<animation::ShowKeyframeEvent>,
     q: &Query<&mut Transform>,
 ) {
-    ui.label("Animations");
     ui.horizontal(|ui| {
-        ui.add(
-            egui::DragValue::new(&mut state.keyframe_length)
-                .speed(1)
-                .clamp_range(1..=10000)
-                .suffix("ms"),
-        );
-        ui.label("Length");
-        ui.label(if anim_state.running {
-            "    Playing"
-        } else {
-            "    Paused"
+        ui.vertical(|ui| {
+            // General Animation Settings
+            ui.label("Animations                        ");
+            if ui.button(anim_state.blending_style.to_string()).clicked() {
+                if anim_state.blending_style == animation::BlendingStyle::FourWayAdditive {
+                    anim_state.blending_style = animation::BlendingStyle::Layering;
+                } else if anim_state.blending_style == animation::BlendingStyle::Layering {
+                    anim_state.blending_style = animation::BlendingStyle::FourWayAdditive;
+                }
+            };
+            ui.horizontal(|ui| {
+                ui.add(
+                    egui::DragValue::new(&mut state.keyframe_length)
+                        .speed(1)
+                        .clamp_range(1..=10000)
+                        .suffix("ms"),
+                );
+                ui.label("Length");
+            });
+            ui.label(if anim_state.running {
+                "    Playing"
+            } else {
+                "    Paused"
+            });
+        });
+        ui.vertical(|ui| {
+            // LAYERS
+            ui.label("Layers");
+            let mut current_layer = 0;
+            for row in 0..((anim_state.layers.len() + 2) / 2) {
+                ui.horizontal(|ui| {
+                    for col in 0..2 {
+                        if current_layer < anim_state.layers.len() {
+                            // Show ComboBox to choose animation for current layer
+                            ui.label(format!("{}", current_layer + 1));
+                            egui::ComboBox::from_id_source(format!("layer_{}", current_layer))
+                                .selected_text(&anim_state.layers[current_layer])
+                                .show_ui(ui, |ui| {
+                                    for animation_name in animations.map.keys() {
+                                        ui.selectable_value(
+                                            &mut anim_state.layers[current_layer],
+                                            String::from(animation_name),
+                                            animation_name,
+                                        );
+                                    }
+                                });
+                            if ui
+                                .add(egui::Button::new("✖").fill(Color32::from_black_alpha(0)))
+                                .clicked()
+                            {
+                                anim_state.layers.remove(current_layer);
+                            }
+                        } else if current_layer == anim_state.layers.len() {
+                            // Show ComboBox to choose animation for a new layer
+                            ui.label(format!("{}", current_layer + 1));
+                            egui::ComboBox::from_id_source(format!(
+                                "layer_{}",
+                                anim_state.layers.len()
+                            ))
+                            .selected_text("add layer")
+                            .show_ui(ui, |ui| {
+                                for animation_name in animations.map.keys() {
+                                    let mut new_layer = String::new();
+                                    if ui
+                                        .selectable_value(
+                                            &mut new_layer,
+                                            String::from(animation_name),
+                                            animation_name,
+                                        )
+                                        .clicked()
+                                    {
+                                        anim_state.layers.push(new_layer);
+                                    };
+                                }
+                            });
+                        }
+                        current_layer += 1;
+                    }
+                });
+            }
         });
     });
 
-    for i in 0..state.animations.len() {
+    ui.separator();
+
+    // PLOTS
+    for i in 0..state.plots.len() {
         animation_single(
             ui,
             state,
@@ -329,8 +402,8 @@ fn animations_all(
                 animation::Animation::default(),
             );
         };
-        if ui.button("Add Layer").clicked() {
-            state.animations.push(AnimationState {
+        if ui.button("Add Plot").clicked() {
+            state.plots.push(PlotState {
                 name: String::new(),
                 selected_keyframe_index: 0,
             });
@@ -348,7 +421,7 @@ fn animation_plot(
     show_keyframe_evw: &mut EventWriter<animation::ShowKeyframeEvent>,
 ) {
     // if layer doesn't exist, return
-    if layer_index >= state.animations.len() {
+    if layer_index >= state.plots.len() {
         return;
     }
     let response = egui::plot::Plot::new(format!("example_plot_{}", layer_index))
@@ -358,7 +431,7 @@ fn animation_plot(
         .show_y(false)
         .data_aspect(1.0)
         .show(ui, |plot_ui| {
-            if let Some(anim) = animations.map.get_mut(&state.animations[layer_index].name) {
+            if let Some(anim) = animations.map.get_mut(&state.plots[layer_index].name) {
                 // Create values for keyframe markers
                 let values_all: Vec<Value> = anim
                     .keyframes
@@ -369,7 +442,7 @@ fn animation_plot(
                 let mut values_selected: Vec<Value> = vec![];
                 for i in 0..values_all.len() {
                     let new_value = values_all[i];
-                    if i == state.animations[layer_index].selected_keyframe_index {
+                    if i == state.plots[layer_index].selected_keyframe_index {
                         values_selected.push(new_value);
                     } else {
                         values_not_selected.push(new_value);
@@ -406,18 +479,18 @@ fn animation_plot(
                 if let Some(hovered_keyframe) = opt_hovered_keyframe {
                     // Select keyframe
                     if mouse.just_pressed(MouseButton::Left) {
-                        state.animations[layer_index].selected_keyframe_index = hovered_keyframe;
+                        state.plots[layer_index].selected_keyframe_index = hovered_keyframe;
                         // Show keyframe
                         show_keyframe_evw.send(ShowKeyframeEvent {
-                            animation_name: state.animations[layer_index].name.clone(),
-                            keyframe_index: state.animations[layer_index].selected_keyframe_index,
+                            animation_name: state.plots[layer_index].name.clone(),
+                            keyframe_index: state.plots[layer_index].selected_keyframe_index,
                         });
                         // Show interpolation function of current keyframe in ui
                         for (_, comp_anim) in anim.comp_animations.iter() {
                             let mut stop = false;
                             for i in 0..comp_anim.keyframe_indices.len() {
                                 if comp_anim.keyframe_indices[i]
-                                    == state.animations[layer_index].selected_keyframe_index
+                                    == state.plots[layer_index].selected_keyframe_index
                                 {
                                     state.interpolation_function =
                                         comp_anim.interpolation_functions[i];
@@ -435,23 +508,22 @@ fn animation_plot(
                         && plot_ui.pointer_coordinate_drag_delta().x != 0.0
                     {
                         // Determine amount of disposition
-                        let move_amount =
-                            if state.animations[layer_index].selected_keyframe_index == 0 {
-                                0.0
-                            } else {
-                                let current_x = anim.keyframes
-                                    [state.animations[layer_index].selected_keyframe_index];
-                                let min_x = anim.keyframes
-                                    [state.animations[layer_index].selected_keyframe_index - 1];
-                                f64::max(
-                                    plot_ui.pointer_coordinate_drag_delta().x as f64,
-                                    min_x - current_x,
-                                )
-                            };
+                        let move_amount = if state.plots[layer_index].selected_keyframe_index == 0 {
+                            0.0
+                        } else {
+                            let current_x =
+                                anim.keyframes[state.plots[layer_index].selected_keyframe_index];
+                            let min_x = anim.keyframes
+                                [state.plots[layer_index].selected_keyframe_index - 1];
+                            f64::max(
+                                plot_ui.pointer_coordinate_drag_delta().x as f64,
+                                min_x - current_x,
+                            )
+                        };
 
                         // Move keyframe and all following keyframes by move_amount
-                        for i in state.animations[layer_index].selected_keyframe_index
-                            ..anim.keyframes.len()
+                        for i in
+                            state.plots[layer_index].selected_keyframe_index..anim.keyframes.len()
                         {
                             anim.keyframes[i] += move_amount;
                         }
@@ -488,7 +560,7 @@ pub fn animation_menu(
     mut animations: ResMut<animation::Animations>,
     mouse: Res<Input<MouseButton>>,
     keys: Res<Input<KeyCode>>,
-    anim_state: Res<animation::State>,
+    mut anim_state: ResMut<animation::State>,
     mut q: Query<&mut Transform>,
 ) {
     // Hide window when transforming
@@ -507,7 +579,7 @@ pub fn animation_menu(
                 ui,
                 &mut state,
                 &mut animations,
-                &anim_state,
+                &mut anim_state,
                 &mouse,
                 &keys,
                 &mut show_keyframe_evw,

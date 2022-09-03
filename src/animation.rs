@@ -6,25 +6,41 @@ pub struct ShowKeyframeEvent {
     pub keyframe_index: usize,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum BlendingStyle {
+    Layering,
+    FourWayAdditive,
+}
+impl BlendingStyle {
+    /// Get a vector containing all interpolation functions
+    pub fn all() -> impl ExactSizeIterator<Item = BlendingStyle> {
+        [Self::Layering, Self::FourWayAdditive].iter().copied()
+    }
+}
+impl ToString for BlendingStyle {
+    fn to_string(&self) -> String {
+        match self {
+            BlendingStyle::Layering => String::from("layering"),
+            BlendingStyle::FourWayAdditive => String::from("4 way additive"),
+        }
+    }
+}
+
 pub struct State {
     pub running: bool,
+    pub layers: Vec<String>,
+    pub blending_style: BlendingStyle,
     start_time: f64,
-    running_animations: Vec<LayeredAnimation>,
 }
 impl State {
     pub fn new() -> State {
         State {
             running: false,
             start_time: 0.,
-            running_animations: Vec::new(),
+            layers: vec![String::from("anim_0")],
+            blending_style: BlendingStyle::Layering,
         }
     }
-}
-
-pub struct LayeredAnimation {
-    start_time: f64,
-    duration: f64,
-    animations: Vec<String>,
 }
 
 pub struct Animations {
@@ -34,9 +50,7 @@ impl Animations {
     pub fn new() -> Animations {
         let mut map = HashMap::new();
         map.insert(String::from("anim_0"), Animation::default());
-        Animations {
-            map,
-        }
+        Animations { map }
     }
 }
 
@@ -98,7 +112,6 @@ pub fn start_stop(keys: Res<Input<KeyCode>>, mut state: ResMut<State>, time: Res
 pub fn apply_animation(
     mut q: Query<(&mut Transform, Option<&Bone>), With<Animatable>>,
     state: ResMut<State>,
-    mut egui_state: ResMut<egui::State>,
     anims: Res<Animations>,
     time: Res<Time>,
 ) {
@@ -106,83 +119,160 @@ pub fn apply_animation(
     if anims.map.is_empty() || state.running == false {
         return;
     }
-    // let anim_length_in_secs = egui_state.keyframe_length as f64 / 1000.;
-    let anim: &Animation;
-    for (anim_name, anim) in anims.map.iter() {
-        // if anims.map.get(&egui_state.animation.name).is_none() {
-        //     let anim_name = anims.map.keys().next().unwrap().clone();
-        //     anim = anims.map.get(&anim_name).unwrap();
-        //     egui_state.animation.name = anim_name.clone();
-        // } else {
-        //     anim = anims.map.get(&egui_state.animation.name).unwrap();
-        // }
-        // if no keyframes exist, return
-        if anim.keyframes.is_empty() {
-            return;
-        }
-        let anim_length_in_secs = anim.keyframes.iter().last().unwrap() - anim.keyframes[0]; // + 1.;
-        let time_diff = (time.seconds_since_startup() - state.start_time) % anim_length_in_secs;
-        for (&key, comp_animation) in anim.comp_animations.iter() {
-            if q.get_mut(key).is_err() || comp_animation.keyframe_indices.len() == 0 {
+
+    if state.blending_style == BlendingStyle::Layering {
+        for anim_name in state.layers.iter() {
+            let mut anim = anims.map.get(anim_name).unwrap();
+            if anims.map.get(anim_name).is_some() {
+                anim = anims.map.get(anim_name).unwrap();
+            } else {
                 continue;
             }
-            if let Some(bone) = q.get_mut(key).unwrap().1 {
-                if bone.is_ccd_maneuvered {
+            if anim.keyframes.is_empty() {
+                return;
+            }
+            let anim_length_in_secs = anim.keyframes.iter().last().unwrap() - anim.keyframes[0]; // + 1.;
+            let time_diff = (time.seconds_since_startup() - state.start_time) % anim_length_in_secs;
+            for (&key, comp_animation) in anim.comp_animations.iter() {
+                if q.get_mut(key).is_err() || comp_animation.keyframe_indices.len() == 0 {
                     continue;
                 }
-            }
-
-            let mut current_frame_a = 0;
-            for i in 0..comp_animation.keyframe_indices.len() {
-                if time_diff > anim.keyframes[comp_animation.keyframe_indices[i]] {
-                    current_frame_a = i;
+                if let Some(bone) = q.get_mut(key).unwrap().1 {
+                    if bone.is_ccd_maneuvered {
+                        continue;
+                    }
                 }
+
+                let mut current_frame_a = 0;
+                for i in 0..comp_animation.keyframe_indices.len() {
+                    if time_diff > anim.keyframes[comp_animation.keyframe_indices[i]] {
+                        current_frame_a = i;
+                    }
+                }
+                let mut current_frame_b =
+                    (current_frame_a + 1) % comp_animation.keyframe_indices.len();
+
+                // Calculate keyframe length
+                let keyframe_length_in_secs = if current_frame_b == 0 {
+                    // if loop is ending, set to 1.
+                    1.
+                } else {
+                    anim.keyframes[comp_animation.keyframe_indices[current_frame_b]]
+                        - anim.keyframes[comp_animation.keyframe_indices[current_frame_a]]
+                };
+
+                let mut x = if anim_length_in_secs == 0.0 {
+                    0.0
+                } else {
+                    let comp_time_diff = time_diff
+                        % anim.keyframes[*comp_animation.keyframe_indices.iter().last().unwrap()];
+                    ((comp_time_diff
+                        - anim.keyframes[comp_animation.keyframe_indices[current_frame_a]])
+                        / keyframe_length_in_secs) as f32
+                };
+                x = match comp_animation.interpolation_functions[current_frame_b] {
+                    interpolate::Function::Linear => x,
+                    interpolate::Function::EaseInOut => interpolate::ease_in_out(x),
+                    interpolate::Function::EaseIn => interpolate::ease_in(x),
+                    interpolate::Function::EaseOut => interpolate::ease_out(x),
+                    interpolate::Function::EaseOutElastic => interpolate::ease_out_elastic(x),
+                    interpolate::Function::EaseInOutElastic => interpolate::ease_in_out_elastic(x),
+                    interpolate::Function::EaseInOutBack => interpolate::ease_in_out_back(x),
+                };
+                let (mut transform, _) = q.get_mut(key).unwrap();
+                transform.translation = interpolate::lerp(
+                    comp_animation.transforms[current_frame_a].translation,
+                    comp_animation.transforms[current_frame_b].translation,
+                    x,
+                );
+                transform.rotation = Quat::lerp(
+                    comp_animation.transforms[current_frame_a].rotation,
+                    comp_animation.transforms[current_frame_b].rotation,
+                    x,
+                );
+                transform.scale = interpolate::lerp(
+                    comp_animation.transforms[current_frame_a].scale,
+                    comp_animation.transforms[current_frame_b].scale,
+                    x,
+                );
             }
-            let mut current_frame_b = (current_frame_a + 1) % comp_animation.keyframe_indices.len();
-
-            // Calculate keyframe length
-            let keyframe_length_in_secs = if current_frame_b == 0 {
-                // if loop is ending, set to 1.
-                1.
+        }
+    } else if state.blending_style == BlendingStyle::FourWayAdditive {
+        for anim_name in state.layers.iter() {
+            let mut anim = anims.map.get(anim_name).unwrap();
+            if anims.map.get(anim_name).is_some() {
+                anim = anims.map.get(anim_name).unwrap();
             } else {
-                anim.keyframes[comp_animation.keyframe_indices[current_frame_b]]
-                    - anim.keyframes[comp_animation.keyframe_indices[current_frame_a]]
-            };
+                continue;
+            }
+            if anim.keyframes.is_empty() {
+                return;
+            }
+            let anim_length_in_secs = anim.keyframes.iter().last().unwrap() - anim.keyframes[0]; // + 1.;
+            let time_diff = (time.seconds_since_startup() - state.start_time) % anim_length_in_secs;
+            for (&key, comp_animation) in anim.comp_animations.iter() {
+                if q.get_mut(key).is_err() || comp_animation.keyframe_indices.len() == 0 {
+                    continue;
+                }
+                if let Some(bone) = q.get_mut(key).unwrap().1 {
+                    if bone.is_ccd_maneuvered {
+                        continue;
+                    }
+                }
 
-            let mut x = if anim_length_in_secs == 0.0 {
-                0.0
-            } else {
-                let comp_time_diff = time_diff
-                    % anim.keyframes[*comp_animation.keyframe_indices.iter().last().unwrap()];
-                ((comp_time_diff
-                    - anim.keyframes[comp_animation.keyframe_indices[current_frame_a]])
-                    / keyframe_length_in_secs) as f32
-            };
-            x = match comp_animation.interpolation_functions[current_frame_b] {
-                interpolate::Function::Linear => x,
-                interpolate::Function::EaseInOut => interpolate::ease_in_out(x),
-                interpolate::Function::EaseIn => interpolate::ease_in(x),
-                interpolate::Function::EaseOut => interpolate::ease_out(x),
-                interpolate::Function::EaseOutElastic => interpolate::ease_out_elastic(x),
-                interpolate::Function::EaseInOutElastic => interpolate::ease_in_out_elastic(x),
-                interpolate::Function::EaseInOutBack => interpolate::ease_in_out_back(x),
-            };
-            let (mut transform, _) = q.get_mut(key).unwrap();
-            transform.translation = interpolate::lerp(
-                comp_animation.transforms[current_frame_a].translation,
-                comp_animation.transforms[current_frame_b].translation,
-                x,
-            );
-            transform.rotation = Quat::lerp(
-                comp_animation.transforms[current_frame_a].rotation,
-                comp_animation.transforms[current_frame_b].rotation,
-                x,
-            );
-            transform.scale = interpolate::lerp(
-                comp_animation.transforms[current_frame_a].scale,
-                comp_animation.transforms[current_frame_b].scale,
-                x,
-            );
+                let mut current_frame_a = 0;
+                for i in 0..comp_animation.keyframe_indices.len() {
+                    if time_diff > anim.keyframes[comp_animation.keyframe_indices[i]] {
+                        current_frame_a = i;
+                    }
+                }
+                let mut current_frame_b =
+                    (current_frame_a + 1) % comp_animation.keyframe_indices.len();
+
+                // Calculate keyframe length
+                let keyframe_length_in_secs = if current_frame_b == 0 {
+                    // if loop is ending, set to 1.
+                    1.
+                } else {
+                    anim.keyframes[comp_animation.keyframe_indices[current_frame_b]]
+                        - anim.keyframes[comp_animation.keyframe_indices[current_frame_a]]
+                };
+
+                let mut x = if anim_length_in_secs == 0.0 {
+                    0.0
+                } else {
+                    let comp_time_diff = time_diff
+                        % anim.keyframes[*comp_animation.keyframe_indices.iter().last().unwrap()];
+                    ((comp_time_diff
+                        - anim.keyframes[comp_animation.keyframe_indices[current_frame_a]])
+                        / keyframe_length_in_secs) as f32
+                };
+                x = match comp_animation.interpolation_functions[current_frame_b] {
+                    interpolate::Function::Linear => x,
+                    interpolate::Function::EaseInOut => interpolate::ease_in_out(x),
+                    interpolate::Function::EaseIn => interpolate::ease_in(x),
+                    interpolate::Function::EaseOut => interpolate::ease_out(x),
+                    interpolate::Function::EaseOutElastic => interpolate::ease_out_elastic(x),
+                    interpolate::Function::EaseInOutElastic => interpolate::ease_in_out_elastic(x),
+                    interpolate::Function::EaseInOutBack => interpolate::ease_in_out_back(x),
+                };
+                let (mut transform, _) = q.get_mut(key).unwrap();
+                transform.translation = interpolate::lerp(
+                    comp_animation.transforms[current_frame_a].translation,
+                    comp_animation.transforms[current_frame_b].translation,
+                    x,
+                );
+                transform.rotation = Quat::lerp(
+                    comp_animation.transforms[current_frame_a].rotation,
+                    comp_animation.transforms[current_frame_b].rotation,
+                    x,
+                );
+                transform.scale = interpolate::lerp(
+                    comp_animation.transforms[current_frame_a].scale,
+                    comp_animation.transforms[current_frame_b].scale,
+                    x,
+                );
+            }
         }
     }
 }
@@ -197,7 +287,7 @@ pub fn create_keyframe(
     if !keys.just_pressed(KeyCode::K) {
         return;
     }
-    let anim_name = &egui_state.animations[egui_state.edit_animation].name;
+    let anim_name = &egui_state.plots[egui_state.edit_animation].name;
     if !anims.map.contains_key(anim_name) {
         anims
             .map
@@ -209,8 +299,7 @@ pub fn create_keyframe(
     anims_mut.keyframes.push(if anims_mut.keyframes.len() == 0 {
         0.0
     } else {
-        anims_mut.keyframes.iter().last().unwrap()
-            + egui_state.keyframe_length as f64 / 1000.
+        anims_mut.keyframes.iter().last().unwrap() + egui_state.keyframe_length as f64 / 1000.
     });
 
     for (transform, transformable, entity) in q.iter() {
