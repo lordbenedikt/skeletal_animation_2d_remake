@@ -41,7 +41,7 @@ The plots serve to adjust the timing of an animation. Keyframes can be moved wit
 
 |             Input             |               Action               |
 | ----------------------------- | ---------------------------------- |
-| Click on plot                 | Select animation                   |
+| Click on plot                 | Select animation / Select closest keyframe |
 | LControl + LMouse + Drag      | Move a keyframe affecting the animations timing  |
 | K                             | Add keyframe for selected bones    |
 | P                             | Play / Pause animation             |

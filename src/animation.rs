@@ -204,38 +204,53 @@ pub fn apply_animation(
         }
 
         let mouse_pos = cursor_pos.0;
-        let max_distance = 7.;
+        let distance = 7.;
+        let max_distance = distance * std::f32::consts::SQRT_2;
         // let height = 20.;
         // let width = 20.;
 
-        let mut up_weight = ((mouse_pos.y + max_distance) / (max_distance * 2.))
-            .min(1.)
-            .max(0.);
-        let mut down_weight = 1. - up_weight;
-        let mut right_weight = ((mouse_pos.x + max_distance) / (max_distance * 2.))
-            .min(1.)
-            .max(0.);
-        let mut left_weight = 1. - right_weight;
+        let mut up_weight = mouse_pos.distance(Vec2::new(0.,distance)) / max_distance;
+        up_weight = 1. - up_weight.min(1.).max(0.);
+        let mut down_weight = mouse_pos.distance(Vec2::new(0.,-distance)) / max_distance;
+        down_weight = 1. - down_weight.min(1.).max(0.);
+        let mut left_weight = mouse_pos.distance(Vec2::new(-distance,0.)) / max_distance;
+        left_weight = 1. - left_weight.min(1.).max(0.);
+        let mut right_weight = mouse_pos.distance(Vec2::new(distance,0.)) / max_distance;
+        right_weight = 1. - right_weight.min(1.).max(0.);
+
+        // let mut up_weight = ((mouse_pos.y + max_distance) / (max_distance * 2.))
+        //     .min(1.)
+        //     .max(0.);
+        // let mut down_weight = 1. - up_weight;
+        // let mut right_weight = ((mouse_pos.x + max_distance) / (max_distance * 2.))
+        //     .min(1.)
+        //     .max(0.);
+        // let mut left_weight = 1. - right_weight;
 
         // let weight_influence = (mouse_pos.length() / full_distance).clamp(0., 1.);
 
-        let mut verticalness = (f32::max(up_weight, down_weight) - 0.5) * 2.;
-        let mut horizontalness = (f32::max(left_weight, right_weight) - 0.5) * 2.;
-        verticalness = interpolate::ease_in_out(verticalness);
-        horizontalness = interpolate::ease_in_out(horizontalness);
-        // println!("v {}", verticalness);
-        // println!("h {}", horizontalness);
-        up_weight = up_weight * verticalness;
-        down_weight = down_weight * verticalness;
-        left_weight = left_weight * horizontalness;
-        right_weight = right_weight * horizontalness;
+        // let mut verticalness = (f32::max(up_weight, down_weight) - 0.5) * 2.;
+        // let mut horizontalness = (f32::max(left_weight, right_weight) - 0.5) * 2.;
+        // verticalness = interpolate::ease_in_out(verticalness);
+        // horizontalness = interpolate::ease_in_out(horizontalness);
+        // // println!("v {}", verticalness);
+        // // println!("h {}", horizontalness);
+        // up_weight = up_weight * verticalness;
+        // down_weight = down_weight * verticalness;
+        // left_weight = left_weight * horizontalness;
+        // right_weight = right_weight * horizontalness;
 
-        let mut totalWeight = up_weight + down_weight + left_weight + right_weight;
-        if totalWeight != 0. {
-            up_weight /= totalWeight;
-            down_weight /= totalWeight;
-            left_weight /= totalWeight;
-            right_weight /= totalWeight;
+        let total_weight = up_weight + down_weight + left_weight + right_weight;
+        if total_weight != 0. {
+            up_weight /= total_weight;
+            down_weight /= total_weight;
+            left_weight /= total_weight;
+            right_weight /= total_weight;
+        } else {
+            up_weight = 0.25;
+            down_weight = 0.25;
+            left_weight = 0.25;
+            right_weight = 0.25;
         }
         // println!(
         //     "up: {}, down: {}, left: {}, right: {}",
