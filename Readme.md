@@ -17,8 +17,8 @@ S : Scale selected entities.
 R : Rotate selected entities.
 |             Input             |               Action               |
 | ----------------------------- | ---------------------------------- |
-|              LeftMouse        |     Select closest entity.         |
-| LeftMouse + Drag              | Select entities using rubber band. |
+|              LeftMouse        |     Select closest entity       |
+| LeftMouse + Drag              | Select entities using rubber band |
 | G                             | Move selected entities             |
 | S                             | Scale selected entities            |
 | R                             | Rotate selected entities           |
