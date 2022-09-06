@@ -366,7 +366,7 @@ pub fn draw_bones(
 }
 
 pub fn enable_debug_lines(keys: Res<Input<KeyCode>>, mut debug_drawer: ResMut<DebugDrawer>) {
-    if keys.just_pressed(KeyCode::D) {
+    if keys.just_pressed(KeyCode::B) {
         debug_drawer.bone_debug_enabled = !debug_drawer.bone_debug_enabled;
     }
     if keys.just_pressed(KeyCode::M) {

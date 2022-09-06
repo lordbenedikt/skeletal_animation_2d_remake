@@ -313,9 +313,9 @@ fn animations_all(
                 ui.label("Length");
             });
             ui.label(if anim_state.running {
-                "    Playing"
+                "Animation is Playing"
             } else {
-                "    Paused"
+                "Animation is Paused"
             });
         });
         ui.vertical(|ui| {
