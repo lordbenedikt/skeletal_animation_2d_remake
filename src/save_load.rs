@@ -37,7 +37,12 @@ impl AnimationsJson {
             map: self
                 .map
                 .iter()
-                .map(|(key, value)| (key.clone(), AnimationJson::as_animation(value, spawned_entities)))
+                .map(|(key, value)| {
+                    (
+                        key.clone(),
+                        AnimationJson::as_animation(value, spawned_entities),
+                    )
+                })
                 .collect(),
         }
     }
@@ -61,7 +66,7 @@ impl AnimationJson {
             },
         }
     }
-    fn as_animation(&self,spawned_entities: &HashMap<Entity, Entity>) -> Animation {
+    fn as_animation(&self, spawned_entities: &HashMap<Entity, Entity>) -> Animation {
         Animation {
             keyframes: self.keyframes.clone(),
             comp_animations: {
@@ -70,7 +75,10 @@ impl AnimationJson {
                     if spawned_entities.get(&key).is_none() {
                         continue;
                     }
-                    res.insert(*spawned_entities.get(&key).unwrap(), ComponentAnimationJson::as_component_animation(value));
+                    res.insert(
+                        *spawned_entities.get(&key).unwrap(),
+                        ComponentAnimationJson::as_component_animation(value),
+                    );
                 }
                 res
             },
@@ -343,6 +351,7 @@ fn load(
     mut animations: ResMut<Animations>,
     mut transform_state: ResMut<transform::State>,
     mut egui_state: ResMut<egui::State>,
+    mut anim_state: ResMut<animation::State>,
 ) {
     if keys.pressed(KeyCode::LAlt) {
         let save_slot = get_just_pressed_number(keys);
@@ -460,7 +469,8 @@ fn load(
                         vertex_mapping.rel_positions.swap_remove(i);
                         continue;
                     }
-                    vertex_mapping.bones[i] = *spawned_entities.get(&vertex_mapping.bones[i]).unwrap();
+                    vertex_mapping.bones[i] =
+                        *spawned_entities.get(&vertex_mapping.bones[i]).unwrap();
                 }
             }
         }
@@ -478,6 +488,10 @@ fn load(
         } else {
             String::new()
         };
+
+        // Remove layers
+        anim_state.layers.clear();
+        anim_state.layers.push(String::from("anim_0"));
     }
 }
 
