@@ -1,7 +1,7 @@
 use crate::*;
 use bevy::{
     prelude::*,
-    render::camera::{DepthCalculation, RenderTarget},
+    render::camera::{DepthCalculation, RenderTarget}, ecs::change_detection::MutUntyped,
 };
 
 #[derive(Component)]
@@ -12,7 +12,7 @@ pub struct SelectBox;
 
 pub fn setup(
     mut commands: Commands,
-    mut asset_server: ResMut<AssetServer>,
+    asset_server: ResMut<AssetServer>,
     clear_color: Res<ClearColor>,
 ) {
     commands.spawn_bundle(new_camera_2d()).insert(MainCamera);

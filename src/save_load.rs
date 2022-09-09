@@ -260,7 +260,7 @@ fn save(
             animations: AnimationsJson::from_animations(&animations),
         })
         .unwrap();
-        let mut file = fs::File::create(format!("anims/animation_{}.json", save_slot)).unwrap();
+        let mut file = fs::File::create(format!("anims/animation_{}.json", save_slot)).expect("Failed to create file!");
         file.write_all(serialized.as_bytes()).unwrap();
     }
 }
@@ -368,7 +368,7 @@ fn load(
         for (entity, target) in q.p2().iter() {
             commands.entity(entity).despawn();
         }
-        let json = fs::read_to_string(format!("anims/animation_{}.json", save_slot)).unwrap();
+        let json = fs::read_to_string(format!("anims/animation_{}.json", save_slot)).expect("Failed to load file!");
         let mut data: CompleteJson = serde_json::from_str(&json).unwrap();
 
         // Json ID to spawned entity ID, necessary because Game Engines assigns IDs automatically
