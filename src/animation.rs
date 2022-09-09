@@ -10,6 +10,7 @@ pub struct ShowKeyframeEvent {
 pub enum BlendingStyle {
     Layering,
     FourWayAdditive,
+    Weights,
 }
 impl BlendingStyle {
     /// Get a vector containing all interpolation functions
@@ -22,6 +23,7 @@ impl ToString for BlendingStyle {
         match self {
             BlendingStyle::Layering => String::from("layering"),
             BlendingStyle::FourWayAdditive => String::from("4 way additive"),
+            BlendingStyle::Weights => String::from("weights"),
         }
     }
 }
@@ -123,7 +125,7 @@ pub fn apply_animation(
 
     if state.blending_style == BlendingStyle::Layering {
         for anim_name in state.layers.iter() {
-            let mut anim = anims.map.get(anim_name).unwrap();
+            let anim;
             if anims.map.get(anim_name).is_some() {
                 anim = anims.map.get(anim_name).unwrap();
             } else {
@@ -206,8 +208,6 @@ pub fn apply_animation(
         let mouse_pos = cursor_pos.0;
         let distance = 7.;
         let max_distance = distance * std::f32::consts::SQRT_2;
-        // let height = 20.;
-        // let width = 20.;
 
         let mut up_weight = mouse_pos.distance(Vec2::new(0.,distance)) / max_distance;
         up_weight = 1. - up_weight.min(1.).max(0.);
@@ -217,28 +217,6 @@ pub fn apply_animation(
         left_weight = 1. - left_weight.min(1.).max(0.);
         let mut right_weight = mouse_pos.distance(Vec2::new(distance,0.)) / max_distance;
         right_weight = 1. - right_weight.min(1.).max(0.);
-
-        // let mut up_weight = ((mouse_pos.y + max_distance) / (max_distance * 2.))
-        //     .min(1.)
-        //     .max(0.);
-        // let mut down_weight = 1. - up_weight;
-        // let mut right_weight = ((mouse_pos.x + max_distance) / (max_distance * 2.))
-        //     .min(1.)
-        //     .max(0.);
-        // let mut left_weight = 1. - right_weight;
-
-        // let weight_influence = (mouse_pos.length() / full_distance).clamp(0., 1.);
-
-        // let mut verticalness = (f32::max(up_weight, down_weight) - 0.5) * 2.;
-        // let mut horizontalness = (f32::max(left_weight, right_weight) - 0.5) * 2.;
-        // verticalness = interpolate::ease_in_out(verticalness);
-        // horizontalness = interpolate::ease_in_out(horizontalness);
-        // // println!("v {}", verticalness);
-        // // println!("h {}", horizontalness);
-        // up_weight = up_weight * verticalness;
-        // down_weight = down_weight * verticalness;
-        // left_weight = left_weight * horizontalness;
-        // right_weight = right_weight * horizontalness;
 
         let total_weight = up_weight + down_weight + left_weight + right_weight;
         if total_weight != 0. {
@@ -252,10 +230,6 @@ pub fn apply_animation(
             left_weight = 0.25;
             right_weight = 0.25;
         }
-        // println!(
-        //     "up: {}, down: {}, left: {}, right: {}",
-        //     up_weight, down_weight, left_weight, right_weight
-        // );
 
         // Blend Four Animations
         let mut first = true;
@@ -450,7 +424,7 @@ pub fn create_keyframe(
     if !keys.just_pressed(KeyCode::K) {
         return;
     }
-    let anim_name = &egui_state.plots[egui_state.edit_animation].name;
+    let anim_name = &egui_state.plots[egui_state.edit_plot].name;
     if !anims.map.contains_key(anim_name) {
         anims
             .map

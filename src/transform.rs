@@ -320,7 +320,6 @@ pub fn select(
     if !mouse.just_released(MouseButton::Left)
         || state.action != Action::None
         || (egui_state.ui_hover && !state.drag_select)
-        || egui_state.ui_drag
     {
         return;
     }

@@ -30,7 +30,6 @@ impl Default for PlotState {
 pub struct State {
     pub interpolation_function: Function,
     pub keyframe_length: i32,
-    pub edit_animation: usize,
     pub skin_filename: String,
     pub skin_cols: u16,
     pub skin_rows: u16,
@@ -38,6 +37,7 @@ pub struct State {
     pub ccd_depth: u8,
     pub skin_is_bound: bool,
     pub skin_bound_status_is_valid: bool,
+    pub edit_plot: usize,
     pub plots: Vec<PlotState>,
     pub ui_hover: bool,
     pub ui_drag: bool,
@@ -48,7 +48,7 @@ impl Default for State {
         Self {
             interpolation_function: Function::EaseInOut,
             keyframe_length: 400,
-            edit_animation: 0,
+            edit_plot: 0,
             skin_filename: String::from("filename"),
             step: 0,
             skin_cols: 10,
@@ -148,13 +148,50 @@ fn skin_settings(ui: &mut Ui, state: &mut State, mut add_skin_evw: EventWriter<A
     ui.end_row();
 }
 
-fn ccd_settings(ui: &mut Ui, state: &mut State) {
-    ui.label("CCD Settings");
-    ui.add(
-        egui::DragValue::new(&mut state.ccd_depth)
-            .speed(1)
-            .clamp_range(1..=10),
-    );
+fn animation_settings_grid(ui: &mut Ui, state: &mut State, anim_state: &mut animation::State) {
+    ui.horizontal(|ui| {
+        ui.vertical(|ui| {
+            egui::Grid::new("ccd_and_keyframe_length").show(ui, |ui| {
+                ui.label("default ccd Depth");
+                ui.add(
+                    egui::DragValue::new(&mut state.ccd_depth)
+                        .speed(1)
+                        .clamp_range(1..=10),
+                );
+                ui.end_row();
+
+                ui.label("default keyframe length");
+                ui.add(
+                    egui::DragValue::new(&mut state.keyframe_length)
+                        .speed(1)
+                        .clamp_range(1..=10000)
+                        .suffix("ms"),
+                );
+                ui.end_row();
+            });
+        });
+        ui.vertical(|ui| {
+            egui::Grid::new("is_playing_and_blending_style").show(ui, |ui| {
+                ui.label("blending style:");
+                if ui.button(anim_state.blending_style.to_string()).clicked() {
+                    if anim_state.blending_style == animation::BlendingStyle::FourWayAdditive {
+                        anim_state.blending_style = animation::BlendingStyle::Layering;
+                    } else if anim_state.blending_style == animation::BlendingStyle::Layering {
+                        anim_state.blending_style = animation::BlendingStyle::FourWayAdditive;
+                    }
+                };
+                ui.end_row();
+
+                ui.label("animation:");
+                ui.label(if anim_state.running {
+                    "is playing"
+                } else {
+                    "is paused"
+                });
+                ui.end_row();
+            });
+        });
+    });
 }
 
 pub fn get_selection_stats(
@@ -184,6 +221,22 @@ pub fn get_selection_stats(
                 }
             }
         }
+    }
+}
+
+fn layer_label(ui: &mut Ui, dir: usize, anim_state: &animation::State) {
+    if anim_state.blending_style == animation::BlendingStyle::Layering {
+        ui.label(format!("{}", dir + 1));
+    } else if anim_state.blending_style == animation::BlendingStyle::FourWayAdditive && dir < 4 {
+        ui.label(if dir == 0 {
+            "up   "
+        } else if dir == 1 {
+            "down"
+        } else if dir == 2 {
+            "left "
+        } else {
+            "right"
+        });
     }
 }
 
@@ -260,14 +313,14 @@ fn animation_single(
         if state.plots.len() > 1 {
             if ui.button("remove plot").clicked() {
                 state.plots.remove(layer_index);
-                if state.edit_animation == state.plots.len() {
-                    state.edit_animation = core::cmp::max(0, state.plots.len() - 1);
+                if state.edit_plot == state.plots.len() {
+                    state.edit_plot = core::cmp::max(0, state.plots.len() - 1);
                 }
                 return;
             };
         }
         // Show edit label, if currently editing this animation
-        if state.edit_animation == layer_index {
+        if state.edit_plot == layer_index {
             ui.label("Edit");
         }
     });
@@ -291,90 +344,78 @@ fn animations_all(
     keys: &Input<KeyCode>,
     show_keyframe_evw: &mut EventWriter<animation::ShowKeyframeEvent>,
     q: &Query<&mut Transform>,
+    q_bones: &Query<(Entity, &Transformable), With<bone::Bone>>,
 ) {
-    ui.horizontal(|ui| {
-        ui.vertical(|ui| {
-            // General Animation Settings
-            ui.label("Animations                        ");
-            if ui.button(anim_state.blending_style.to_string()).clicked() {
-                if anim_state.blending_style == animation::BlendingStyle::FourWayAdditive {
-                    anim_state.blending_style = animation::BlendingStyle::Layering;
-                } else if anim_state.blending_style == animation::BlendingStyle::Layering {
-                    anim_state.blending_style = animation::BlendingStyle::FourWayAdditive;
-                }
-            };
-            ui.horizontal(|ui| {
-                ui.add(
-                    egui::DragValue::new(&mut state.keyframe_length)
-                        .speed(1)
-                        .clamp_range(1..=10000)
-                        .suffix("ms"),
-                );
-                ui.label("Length");
-            });
-            ui.label(if anim_state.running {
-                "Animation is Playing"
-            } else {
-                "Animation is Paused"
-            });
-        });
-        ui.vertical(|ui| {
-            // LAYERS
-            ui.label("Layers");
-            let mut current_layer = 0;
-            for row in 0..((anim_state.layers.len() + 2) / 2) {
-                ui.horizontal(|ui| {
-                    for col in 0..2 {
-                        if current_layer < anim_state.layers.len() {
-                            // Show ComboBox to choose animation for current layer
-                            ui.label(format!("{}", current_layer + 1));
-                            egui::ComboBox::from_id_source(format!("layer_{}", current_layer))
-                                .selected_text(&anim_state.layers[current_layer])
-                                .show_ui(ui, |ui| {
-                                    for animation_name in animations.map.keys() {
-                                        ui.selectable_value(
-                                            &mut anim_state.layers[current_layer],
-                                            String::from(animation_name),
-                                            animation_name,
-                                        );
-                                    }
-                                });
-                            if ui
-                                .add(egui::Button::new("✖").fill(Color32::from_black_alpha(0)))
-                                .clicked()
-                            {
-                                anim_state.layers.remove(current_layer);
+    // LAYERS
+    ui.label("Layers");
+    let mut current_layer = 0;
+    for row in 0..((anim_state.layers.len() + 2) / 2) {
+        ui.horizontal(|ui| {
+            for col in 0..2 {
+                if current_layer < anim_state.layers.len() {
+                    // Show ComboBox to choose animation for current layer
+                    layer_label(ui, current_layer, anim_state);
+                    egui::ComboBox::from_id_source(format!("layer_{}", current_layer))
+                        .selected_text(&anim_state.layers[current_layer])
+                        .show_ui(ui, |ui| {
+                            for animation_name in animations.map.keys() {
+                                ui.selectable_value(
+                                    &mut anim_state.layers[current_layer],
+                                    String::from(animation_name),
+                                    animation_name,
+                                );
                             }
-                        } else if current_layer == anim_state.layers.len() {
-                            // Show ComboBox to choose animation for a new layer
-                            ui.label(format!("{}", current_layer + 1));
-                            egui::ComboBox::from_id_source(format!(
-                                "layer_{}",
-                                anim_state.layers.len()
-                            ))
-                            .selected_text("add layer")
-                            .show_ui(ui, |ui| {
-                                for animation_name in animations.map.keys() {
-                                    let mut new_layer = String::new();
-                                    if ui
-                                        .selectable_value(
-                                            &mut new_layer,
-                                            String::from(animation_name),
-                                            animation_name,
-                                        )
-                                        .clicked()
-                                    {
-                                        anim_state.layers.push(new_layer);
-                                    };
-                                }
-                            });
-                        }
-                        current_layer += 1;
+                        });
+                    if ui
+                        .add(egui::Button::new("✖").fill(Color32::from_black_alpha(0)))
+                        .clicked()
+                    {
+                        anim_state.layers.remove(current_layer);
                     }
-                });
+                } else if current_layer == anim_state.layers.len()
+                    && !(anim_state.blending_style == animation::BlendingStyle::FourWayAdditive
+                        && current_layer >= 4)
+                {
+                    // Show ComboBox to choose animation for a new layer
+                    layer_label(ui, current_layer, anim_state);
+                    egui::ComboBox::from_id_source(format!("layer_{}", anim_state.layers.len()))
+                        .selected_text("add layer")
+                        .show_ui(ui, |ui| {
+                            for animation_name in animations.map.keys() {
+                                let mut new_layer = String::new();
+                                if ui
+                                    .selectable_value(
+                                        &mut new_layer,
+                                        String::from(animation_name),
+                                        animation_name,
+                                    )
+                                    .clicked()
+                                {
+                                    anim_state.layers.push(new_layer);
+                                };
+                            }
+                        });
+                }
+                current_layer += 1;
             }
         });
-    });
+    }
+
+    // General Animation Settings
+    ui.label("Animations                        ");
+    animation_settings_grid(ui, state, anim_state);
+    // Free selected bones removing them from the current animation layer
+    if ui.button("Free Bones").clicked() {
+        let anim = animations
+            .map
+            .get_mut(&state.plots[state.edit_plot].name)
+            .unwrap();
+        for (entity, transformable) in q_bones.iter() {
+            if transformable.is_selected {
+                anim.comp_animations.remove(&entity);
+            }
+        }
+    }
 
     ui.separator();
 
@@ -533,7 +574,7 @@ fn animation_plot(
         })
         .response;
     if response.clicked() {
-        state.edit_animation = layer_index;
+        state.edit_plot = layer_index;
     };
 }
 
@@ -562,6 +603,7 @@ pub fn animation_menu(
     keys: Res<Input<KeyCode>>,
     mut anim_state: ResMut<animation::State>,
     mut q: Query<&mut Transform>,
+    mut q_bones: Query<(Entity,&transform::Transformable), With<bone::Bone>>,
 ) {
     // Hide window when transforming
     if transform_state.action != transform::Action::None
@@ -574,7 +616,6 @@ pub fn animation_menu(
     let response = egui::Window::new("Animations")
         .resizable(false)
         .show(egui_context.ctx_mut(), |ui| {
-            ccd_settings(ui, &mut state);
             animations_all(
                 ui,
                 &mut state,
@@ -584,6 +625,7 @@ pub fn animation_menu(
                 &keys,
                 &mut show_keyframe_evw,
                 &q,
+                &q_bones,
             );
         })
         .unwrap()

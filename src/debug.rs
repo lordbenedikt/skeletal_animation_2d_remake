@@ -333,13 +333,21 @@ pub fn draw_bones(
         return;
     };
 
-    for (gl_transform, _, transformable) in bone_gl_transforms.iter() {
+    for (gl_transform, bone, transformable) in bone_gl_transforms.iter() {
         let (gl_scale, gl_rotation, gl_translation) = gl_transform.to_scale_rotation_translation();
         let z = 0.001;
         let color = if transformable.is_selected {
-            COLOR_SELECTED
+            if bone.is_part_of_layer {
+                COLOR_SELECTED_ACTIVE
+            } else {
+                COLOR_SELECTED
+            }
         } else {
-            COLOR_DEFAULT
+            if bone.is_part_of_layer {
+                COLOR_DEFAULT_ACTIVE
+            } else {
+                COLOR_DEFAULT
+            }
         };
         let mut points = vec![
             Vec3::new(0., 0., z),
@@ -358,7 +366,7 @@ pub fn draw_bones(
                 (gl_translation + Quat::mul_vec3(gl_rotation, points[(i + 1) % points.len()]))
                     .truncate(),
                 color,
-                3.,
+                5.,
             );
         }
         debug_drawer.square(gl_translation.truncate(), 7., color);
