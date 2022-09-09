@@ -1,5 +1,5 @@
 [package]
-name = "bevy-tutorial"
+name = "skeletal-animation-2D-editor"
 version = "0.1.0"
 edition = "2021"
 
@@ -15,3 +15,6 @@ lyon = "1.0.0"
 bevy_prototype_lyon = "0.6.0"
 serde = "1.0.143"
 serde_json = "1.0.83"
+
+[target.wasm32-unknown-unknown]
+runner = "wasm-server-runner"

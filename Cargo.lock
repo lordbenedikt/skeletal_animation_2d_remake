@@ -222,21 +222,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy-tutorial"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "bevy_egui",
- "bevy_prototype_debug_lines",
- "bevy_prototype_lyon",
- "distance-field",
- "image 0.24.2",
- "lyon",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "bevy_animation"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -403,9 +388,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_egui"
-version = "0.15.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4ab46f07c3f360507fae9bc3b9c000c583e0d67661f0dd6dd5a24a709775b1e"
+checksum = "acbf44ff770566dca66b805a6829df783f64700bd01d35aec1034dff31b531a4"
 dependencies = [
  "arboard",
  "bevy",
@@ -3295,6 +3280,21 @@ name = "siphasher"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b8de496cf83d4ed58b6be86c3a275b8602f6ffe98d3024a869e124147a9a3ac"
+
+[[package]]
+name = "skeletal-animation-2D-editor"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_egui",
+ "bevy_prototype_debug_lines",
+ "bevy_prototype_lyon",
+ "distance-field",
+ "image 0.24.2",
+ "lyon",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "slab"
