@@ -58,6 +58,7 @@ fn main() {
     .insert_resource(skeleton::Skeleton::default())
     .insert_resource(egui::State::default())
     .insert_resource(General::default())
+    .insert_resource(cloth::State::default())
     // EVENTS
     .add_event::<animation::ShowKeyframeEvent>()
     // PLUGINS

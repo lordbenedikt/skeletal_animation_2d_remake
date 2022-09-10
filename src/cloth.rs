@@ -1,6 +1,14 @@
 use crate::*;
 use serde::*;
 use skin::Skin;
+use std::{ops::{AddAssign, SubAssign}, time::Duration};
+
+const STEP_DURATION: Duration = Duration::new(0, 20_000_000);
+
+#[derive(Default)]
+pub struct State {
+    rest_duration: Duration,
+}
 
 #[derive(Serialize, Deserialize, Component, Clone)]
 pub struct Cloth {
@@ -241,29 +249,36 @@ pub fn update_cloth(
     meshes: Res<Assets<Mesh>>,
     mut q: Query<(&mut Cloth, &Skin)>,
     animation_state: Res<animation::State>,
+    mut state: ResMut<State>,
+    time: Res<Time>,
 ) {
-    for (mut cloth, skin) in q.iter_mut() {
-        // APPLY PINNED POINT MASSES TO SKELETON (get positions from mesh, updated in skeleton.rs)
-        // If handle is none, continue
-        if skin.mesh_handle.clone().is_none() {
-            continue;
-        }
-        // If mesh is none, continue
-        if meshes.get(&skin.mesh_handle.clone().unwrap().0).is_none() {
-            continue;
-        }
-        let mesh = meshes.get(&skin.mesh_handle.clone().unwrap().0).unwrap();
-        for i in 0..cloth.point_masses.len() {
-            // if point mass isn't pinned continue with next point mass
-            if cloth.point_masses[i].pin.is_none() {
+    state.rest_duration.add_assign(time.delta());
+
+    while state.rest_duration.gt(&STEP_DURATION) {
+        state.rest_duration.sub_assign(STEP_DURATION);
+        for (mut cloth, skin) in q.iter_mut() {
+            // APPLY PINNED POINT MASSES TO SKELETON (get positions from mesh, updated in skeleton.rs)
+            // If handle is none, continue
+            if skin.mesh_handle.clone().is_none() {
                 continue;
             }
+            // If mesh is none, continue
+            if meshes.get(&skin.mesh_handle.clone().unwrap().0).is_none() {
+                continue;
+            }
+            let mesh = meshes.get(&skin.mesh_handle.clone().unwrap().0).unwrap();
+            for i in 0..cloth.point_masses.len() {
+                // if point mass isn't pinned continue with next point mass
+                if cloth.point_masses[i].pin.is_none() {
+                    continue;
+                }
 
-            let pos = mesh::get_vertex(mesh, i);
-            cloth.point_masses[i].position = Vec3::from_slice(&pos);
+                let pos = mesh::get_vertex(mesh, i);
+                cloth.point_masses[i].position = Vec3::from_slice(&pos);
+            }
+
+            cloth.update(animation_state.running);
         }
-
-        cloth.update(animation_state.running);
     }
 }
 
