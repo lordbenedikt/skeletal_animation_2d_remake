@@ -98,7 +98,10 @@ fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
                 // Webassembly
                 #[cfg(target_arch = "wasm32")]
                 {
-                    filenames = AVAILABLE_IMAGES.iter().map(|&str| String::from(str)).collect();
+                    filenames = AVAILABLE_IMAGES
+                        .iter()
+                        .map(|&str| String::from(str))
+                        .collect();
                 }
 
                 // All other platforms
@@ -301,10 +304,8 @@ fn animation_single(
                             // Easing Function was changed
                             for (_, anim) in animations.map.iter_mut() {
                                 for (_, comp_anim) in anim.comp_animations.iter_mut() {
-                                    for i in 0..comp_anim.keyframe_indices.len() {
-                                        if comp_anim.keyframe_indices[i]
-                                            == state.plots[layer_index].selected_keyframe_index
-                                        {
+                                    for i in 0..comp_anim.transforms.len() {
+                                        if i == state.plots[layer_index].selected_keyframe_index {
                                             comp_anim.interpolation_functions[i] =
                                                 state.interpolation_function;
                                         }
@@ -546,8 +547,8 @@ fn animation_plot(
                         // Show interpolation function of current keyframe in ui
                         for (_, comp_anim) in anim.comp_animations.iter() {
                             let mut stop = false;
-                            for i in 0..comp_anim.keyframe_indices.len() {
-                                if comp_anim.keyframe_indices[i]
+                            for i in 0..comp_anim.transforms.len() {
+                                if i
                                     == state.plots[layer_index].selected_keyframe_index
                                 {
                                     state.interpolation_function =

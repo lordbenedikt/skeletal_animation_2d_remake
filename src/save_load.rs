@@ -88,7 +88,6 @@ impl AnimationJson {
 
 #[derive(Serialize, Deserialize, Clone)]
 struct ComponentAnimationJson {
-    keyframe_indices: Vec<usize>,
     translations: Vec<Vec3>,
     scales: Vec<Vec3>,
     rotations: Vec<Quat>,
@@ -105,7 +104,6 @@ impl ComponentAnimationJson {
             rotations.push(transform.rotation);
         }
         Self {
-            keyframe_indices: comp_anim.keyframe_indices.clone(),
             translations,
             scales,
             rotations,
@@ -122,7 +120,6 @@ impl ComponentAnimationJson {
             });
         }
         ComponentAnimation {
-            keyframe_indices: self.keyframe_indices.clone(),
             transforms,
             interpolation_functions: self.interpolation_functions.clone(),
         }

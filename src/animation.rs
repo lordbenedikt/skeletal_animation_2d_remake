@@ -78,20 +78,14 @@ impl Animation {
 
 #[derive(Default)]
 pub struct ComponentAnimation {
-    pub keyframe_indices: Vec<usize>,
     pub transforms: Vec<Transform>,
     pub interpolation_functions: Vec<interpolate::Function>,
 }
 impl ComponentAnimation {
     pub fn remove_keyframe(&mut self, index: usize) {
-        for i in (0..self.keyframe_indices.len()).rev() {
-            if self.keyframe_indices[i] == index {
-                self.keyframe_indices.remove(i);
-                self.transforms.remove(i);
-                self.interpolation_functions.remove(i);
-            } else if self.keyframe_indices[i] > index {
-                self.keyframe_indices[i] -= 1;
-            }
+        for i in (0..self.transforms.len()).rev() {
+            self.transforms.remove(i);
+            self.interpolation_functions.remove(i);
         }
     }
 }
@@ -137,7 +131,7 @@ pub fn apply_animation(
             let anim_length_in_secs = anim.keyframes.iter().last().unwrap() - anim.keyframes[0]; // + 1.;
             let time_diff = (time.seconds_since_startup() - state.start_time) % anim_length_in_secs;
             for (&key, comp_animation) in anim.comp_animations.iter() {
-                if q.get_mut(key).is_err() || comp_animation.keyframe_indices.len() == 0 {
+                if q.get_mut(key).is_err() || comp_animation.transforms.len() == 0 {
                     continue;
                 }
                 if let Some(bone) = q.get_mut(key).unwrap().1 {
@@ -147,31 +141,27 @@ pub fn apply_animation(
                 }
 
                 let mut current_frame_a = 0;
-                for i in 0..comp_animation.keyframe_indices.len() {
-                    if time_diff > anim.keyframes[comp_animation.keyframe_indices[i]] {
+                for i in 0..comp_animation.transforms.len() {
+                    if time_diff > anim.keyframes[i] {
                         current_frame_a = i;
                     }
                 }
-                let mut current_frame_b =
-                    (current_frame_a + 1) % comp_animation.keyframe_indices.len();
+                let mut current_frame_b = (current_frame_a + 1) % comp_animation.transforms.len();
 
                 // Calculate keyframe length
                 let keyframe_length_in_secs = if current_frame_b == 0 {
                     // if loop is ending, set to 1.
                     1.
                 } else {
-                    anim.keyframes[comp_animation.keyframe_indices[current_frame_b]]
-                        - anim.keyframes[comp_animation.keyframe_indices[current_frame_a]]
+                    anim.keyframes[current_frame_b] - anim.keyframes[current_frame_a]
                 };
 
                 let mut x = if anim_length_in_secs == 0.0 {
                     0.0
                 } else {
-                    let comp_time_diff = time_diff
-                        % anim.keyframes[*comp_animation.keyframe_indices.iter().last().unwrap()];
-                    ((comp_time_diff
-                        - anim.keyframes[comp_animation.keyframe_indices[current_frame_a]])
-                        / keyframe_length_in_secs) as f32
+                    let comp_time_diff = time_diff % anim.keyframes.last().unwrap();
+                    ((comp_time_diff - anim.keyframes[current_frame_a]) / keyframe_length_in_secs)
+                        as f32
                 };
                 x = match comp_animation.interpolation_functions[current_frame_b] {
                     interpolate::Function::Linear => x,
@@ -262,7 +252,7 @@ pub fn apply_animation(
             let anim_length_in_secs = anim.keyframes.iter().last().unwrap() - anim.keyframes[0]; // + 1.;
             let time_diff = (time.seconds_since_startup() - state.start_time) % anim_length_in_secs;
             for (&key, comp_animation) in anim.comp_animations.iter() {
-                if q.get_mut(key).is_err() || comp_animation.keyframe_indices.len() == 0 {
+                if q.get_mut(key).is_err() || comp_animation.transforms.len() == 0 {
                     continue;
                 }
                 if let Some(bone) = q.get_mut(key).unwrap().1 {
@@ -272,31 +262,27 @@ pub fn apply_animation(
                 }
 
                 let mut current_frame_a = 0;
-                for i in 0..comp_animation.keyframe_indices.len() {
-                    if time_diff > anim.keyframes[comp_animation.keyframe_indices[i]] {
+                for i in 0..comp_animation.transforms.len() {
+                    if time_diff > anim.keyframes[i] {
                         current_frame_a = i;
                     }
                 }
-                let mut current_frame_b =
-                    (current_frame_a + 1) % comp_animation.keyframe_indices.len();
+                let mut current_frame_b = (current_frame_a + 1) % comp_animation.transforms.len();
 
                 // Calculate keyframe length
                 let keyframe_length_in_secs = if current_frame_b == 0 {
                     // if loop is ending, set to 1.
                     1.
                 } else {
-                    anim.keyframes[comp_animation.keyframe_indices[current_frame_b]]
-                        - anim.keyframes[comp_animation.keyframe_indices[current_frame_a]]
+                    anim.keyframes[current_frame_b] - anim.keyframes[current_frame_a]
                 };
 
                 let mut x = if anim_length_in_secs == 0.0 {
                     0.0
                 } else {
-                    let comp_time_diff = time_diff
-                        % anim.keyframes[*comp_animation.keyframe_indices.iter().last().unwrap()];
-                    ((comp_time_diff
-                        - anim.keyframes[comp_animation.keyframe_indices[current_frame_a]])
-                        / keyframe_length_in_secs) as f32
+                    let comp_time_diff = time_diff % anim.keyframes.last().unwrap();
+                    ((comp_time_diff - anim.keyframes[current_frame_a]) / keyframe_length_in_secs)
+                        as f32
                 };
                 x = match comp_animation.interpolation_functions[current_frame_b] {
                     interpolate::Function::Linear => x,
@@ -373,18 +359,18 @@ pub fn create_keyframe(
                 .comp_animations
                 .insert(entity, ComponentAnimation::default());
         }
-        let bone_animation = anims_mut.comp_animations.get_mut(&entity).unwrap();
-        bone_animation
+        let comp_animation = anims_mut.comp_animations.get_mut(&entity).unwrap();
+
+        while comp_animation.transforms.len() < anims_mut.keyframes.len() {
+            comp_animation.transforms.push(Transform {
+                translation: transform.translation,
+                rotation: transform.rotation,
+                scale: transform.scale,
+            });
+            comp_animation
             .interpolation_functions
             .push(egui_state.interpolation_function);
-        bone_animation
-            .keyframe_indices
-            .push(anims_mut.keyframes.len() - 1);
-        bone_animation.transforms.push(Transform {
-            translation: transform.translation,
-            rotation: transform.rotation,
-            scale: transform.scale,
-        });
+        }
     }
 }
 
@@ -406,8 +392,8 @@ pub fn show_keyframe(
             .comp_animations
             .iter()
         {
-            for i in 0..comp_animation.keyframe_indices.len() {
-                if comp_animation.keyframe_indices[i] == ev.keyframe_index {
+            for i in 0..comp_animation.transforms.len() {
+                if i == ev.keyframe_index {
                     let mut transform = q.get_mut(entity).unwrap();
                     transform.translation = comp_animation.transforms[i].translation;
                     transform.scale = comp_animation.transforms[i].scale;
