@@ -31,7 +31,7 @@ pub struct State {
 
 #[derive(Clone)]
 pub struct AddSkinEvent {
-    pub filename: String,
+    pub path: String,
     pub cols: u16,
     pub rows: u16,
     pub as_cloth: bool,
@@ -344,7 +344,7 @@ impl Polygon {
         }
 
         Skin {
-            filename: self.filename.clone(),
+            path: self.filename.clone(),
             dimensions: self.dimensions.clone(),
             vertices,
             uvs,
@@ -356,7 +356,7 @@ impl Polygon {
 
 #[derive(Default, Component)]
 pub struct Skin {
-    pub filename: String,
+    pub path: String,
     pub dimensions: [u32; 2],
     pub vertices: Vec<[f32; 3]>,
     pub uvs: Vec<[f32; 2]>,
@@ -379,7 +379,7 @@ impl Skin {
             .collect::<Vec<[f32; 3]>>()
     }
     pub fn grid_mesh(
-        filename: &str,
+        path: &str,
         asset_server: &AssetServer,
         image_assets: &Assets<Image>,
         cols: u16,
@@ -387,7 +387,7 @@ impl Skin {
         depth: f32,
         rectangular: bool,
     ) -> Option<Skin> {
-        let img_handle = asset_server.load(filename);
+        let img_handle = asset_server.load(path);
         let opt_img = image_assets.get(&img_handle);
 
         if let Some(img) = opt_img {
@@ -438,7 +438,7 @@ impl Skin {
                 }
             }
             let mut skin = Skin {
-                filename: String::from(filename),
+                path: String::from(path),
                 dimensions: [w, h],
                 vertices,
                 uvs,
@@ -579,11 +579,11 @@ fn is_close_to_visible_pixel(x: u32, y: u32, img: &Image, offset: u32, max_dist:
 }
 
 pub fn generate_mesh(
-    filename: &str,
+    path: &str,
     asset_server: &AssetServer,
     image_assets: &Assets<Image>,
 ) -> Option<Skin> {
-    let contour = Contour::from_image(filename, asset_server, image_assets, 5);
+    let contour = Contour::from_image(path, asset_server, image_assets, 5);
     let mut polygon = Polygon::from_contour(&contour);
     polygon.simplify();
 
@@ -601,7 +601,7 @@ pub fn generate_mesh(
     let mut skin = polygon.triangulate();
 
     // skin
-    Skin::grid_mesh(filename, asset_server, image_assets, 40, 40, 0., false)
+    Skin::grid_mesh(path, asset_server, image_assets, 40, 40, 0., false)
 }
 
 pub fn update_mesh(
@@ -666,7 +666,7 @@ pub fn create_mesh(
 
     commands.spawn_bundle(MaterialMesh2dBundle {
         mesh: handle,
-        material: materials.add(ColorMaterial::from(asset_server.load(&skin.filename))),
+        material: materials.add(ColorMaterial::from(asset_server.load(&skin.path))),
         ..default()
     });
     let skin_id = commands
@@ -696,51 +696,12 @@ pub fn add_startup_skins(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    mut state: ResMut<State>,
     asset_server: Res<AssetServer>,
     image_assets: Res<Assets<Image>>,
 ) {
-    add_skin(
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-        &asset_server,
-        "img/pooh.png",
-        30,
-        30,
-        90.,
-        false,
-        &image_assets,
-    );
-    let opt_entity_mesh = add_skin(
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-        &asset_server,
-        "img/honey.png",
-        10,
-        10,
-        90.,
-        true,
-        &image_assets,
-    );
-    if opt_entity_mesh.is_none() {
-        return;
-    }
-    let (entity, mesh_handle) = opt_entity_mesh.unwrap();
-
-    let bounding_box = meshes.get(&mesh_handle.0).unwrap().compute_aabb().unwrap();
-    let diagonal = (bounding_box.max() - bounding_box.min()) * skin::START_SCALE;
-    let cloth = Cloth::new(
-        Vec3::new(0., 0., 0.),
-        diagonal.x,
-        diagonal.y,
-        10 as usize,
-        10 as usize,
-    )
-    .with_stiffness(10);
-    commands.entity(entity).insert(cloth);
-    // let cloth = Cloth::new(Vec3::new(0., 0., 0.), 5., 4., 10, 10).with_stiffness(10);
-    // commands.entity(entity).insert(cloth);
+    state.queued_skins.push(AddSkinEvent { path: String::from("img/pooh.png"), cols: 30, rows: 30, as_cloth: false });
+    state.queued_skins.push(AddSkinEvent { path: String::from("img/honey.png"), cols: 6, rows: 10, as_cloth: true });
 }
 
 fn add_skin(
@@ -795,7 +756,7 @@ fn add_skin(
 
     commands.spawn_bundle(MaterialMesh2dBundle {
         mesh: handle.clone(),
-        material: materials.add(ColorMaterial::from(asset_server.load(&skin.filename))),
+        material: materials.add(ColorMaterial::from(asset_server.load(&skin.path))),
         ..default()
     });
     let skin_id = commands
@@ -827,7 +788,7 @@ pub fn add_skins(
             &mut meshes,
             &mut materials,
             &asset_server,
-            &event.filename,
+            &event.path,
             event.cols,
             event.rows,
             90.,

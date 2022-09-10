@@ -59,6 +59,11 @@ impl Animations {
 #[derive(Component)]
 pub struct Animatable;
 
+/** An animation has keyframes and  a component animation
+ *  For each component a transform for each keyframe is being saved
+ *  There is also an easing function for each component, but this should be changed to one easing function for each keyframe
+ *  Each ComponentAnimation mus have exactly the same amount of transforms as there are keyframes in the animation
+ */
 #[derive(Default)]
 pub struct Animation {
     pub keyframes: Vec<f64>,
@@ -83,10 +88,8 @@ pub struct ComponentAnimation {
 }
 impl ComponentAnimation {
     pub fn remove_keyframe(&mut self, index: usize) {
-        for i in (0..self.transforms.len()).rev() {
-            self.transforms.remove(i);
-            self.interpolation_functions.remove(i);
-        }
+        self.transforms.remove(index);
+        self.interpolation_functions.remove(index);
     }
 }
 
@@ -94,7 +97,7 @@ pub fn system_set() -> SystemSet {
     SystemSet::new()
         .with_system(start_stop)
         .with_system(apply_animation)
-        .with_system(create_keyframe)
+        .with_system(create_or_change_keyframe)
         .with_system(show_keyframe)
 }
 
@@ -324,52 +327,60 @@ pub fn apply_animation(
     }
 }
 
-pub fn create_keyframe(
+pub fn create_or_change_keyframe(
     q: Query<(&Transform, &Transformable, Entity), With<Animatable>>,
     keys: Res<Input<KeyCode>>,
     egui_state: Res<egui::State>,
     mut anims: ResMut<Animations>,
 ) {
-    // Create KeyFrame only if K was pressed
-    if !keys.just_pressed(KeyCode::K) {
+    // Create KeyFrame only if K was pressed, edit selected keyframe if J was pressed
+    let is_create = keys.just_pressed(KeyCode::K);
+    let is_change = keys.just_pressed(KeyCode::J);
+    if !is_create && !is_change {
         return;
     }
+
     let anim_name = &egui_state.plots[egui_state.edit_plot].name;
     if !anims.map.contains_key(anim_name) {
         anims
             .map
             .insert(anim_name.to_string(), Animation::default());
     }
-    let anims_mut = anims.map.get_mut(anim_name).unwrap();
+    let anim_mut = anims.map.get_mut(anim_name).unwrap();
 
-    // Add keyframe
-    anims_mut.keyframes.push(if anims_mut.keyframes.len() == 0 {
-        0.0
-    } else {
-        anims_mut.keyframes.iter().last().unwrap() + egui_state.keyframe_length as f64 / 1000.
-    });
+    if is_create {
+        // Add keyframe
+        anim_mut.keyframes.push(if anim_mut.keyframes.len() == 0 {
+            0.0
+        } else {
+            anim_mut.keyframes.iter().last().unwrap() + egui_state.keyframe_length as f64 / 1000.
+        });
+    }
 
     for (transform, transformable, entity) in q.iter() {
         // Only add keyframe for selected objects, or ones that are already part of animation
         if !transformable.is_selected && !transformable.is_part_of_layer {
             continue;
         }
-        if !anims_mut.comp_animations.contains_key(&entity) {
-            anims_mut
+        if !anim_mut.comp_animations.contains_key(&entity) {
+            anim_mut
                 .comp_animations
                 .insert(entity, ComponentAnimation::default());
         }
-        let comp_animation = anims_mut.comp_animations.get_mut(&entity).unwrap();
+        let comp_animation = anim_mut.comp_animations.get_mut(&entity).unwrap();
 
-        while comp_animation.transforms.len() < anims_mut.keyframes.len() {
-            comp_animation.transforms.push(Transform {
-                translation: transform.translation,
-                rotation: transform.rotation,
-                scale: transform.scale,
-            });
-            comp_animation
-            .interpolation_functions
-            .push(egui_state.interpolation_function);
+        if is_create {
+            while comp_animation.transforms.len() < anim_mut.keyframes.len() {
+                comp_animation.transforms.push(transform.clone());
+                comp_animation
+                    .interpolation_functions
+                    .push(egui_state.interpolation_function);
+            }
+        } else if is_change {
+            let index = egui_state.plots[egui_state.edit_plot].selected_keyframe_index;
+            if anim_mut.keyframes.len() > index {
+                *comp_animation.transforms.get_mut(index).unwrap() = transform.clone();
+            }
         }
     }
 }

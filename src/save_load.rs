@@ -165,7 +165,7 @@ pub struct SkinJson {
 impl SkinJson {
     fn as_skin(&self) -> Skin {
         Skin {
-            filename: self.filename.clone(),
+            path: self.filename.clone(),
             dimensions: self.dimensions.clone(),
             vertices: self.vertices.clone(),
             uvs: self.uvs.clone(),
@@ -224,7 +224,7 @@ fn save(
             .iter()
             .map(|(entity, skin, opt_cloth)| SkinJson {
                 entity,
-                filename: skin.filename.clone(),
+                filename: skin.path.clone(),
                 dimensions: skin.dimensions,
                 uvs: skin.uvs.clone(),
                 vertices: skin.vertices.clone(),
@@ -400,7 +400,7 @@ fn load(
 
             commands.spawn_bundle(MaterialMesh2dBundle {
                 mesh: handle.clone(),
-                material: materials.add(ColorMaterial::from(asset_server.load(&skin.filename))),
+                material: materials.add(ColorMaterial::from(asset_server.load(&skin.path))),
                 ..default()
             });
             let skin_entity = commands

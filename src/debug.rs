@@ -327,7 +327,7 @@ pub fn draw_skin_mesh(
 
 pub fn draw_bones(
     mut debug_drawer: ResMut<DebugDrawer>,
-    bone_gl_transforms: Query<(&GlobalTransform, &Transformable)>,
+    bone_gl_transforms: Query<(&GlobalTransform, &Transformable), With<bone::Bone>>,
 ) {
     if !debug_drawer.bone_debug_enabled {
         return;

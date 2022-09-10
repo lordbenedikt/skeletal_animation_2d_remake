@@ -68,9 +68,8 @@ fn main() {
     // .add_plugin(FrameTimeDiagnosticsPlugin::default())
     // STARTUP SYSTEMS
     .add_startup_system(misc::setup)
-    // .add_startup_system(skin::add_startup_skins)
+    .add_startup_system(skin::add_startup_skins)
     // SYSTEMS
-    // .add_system(add_vertex)
     .add_system(misc::get_mouse_position.label("input_handling"))
     .add_system(misc::update_text)
     .add_system_set(egui::system_set().label("ui_action"))
@@ -81,7 +80,7 @@ fn main() {
             .before("skin_systems"),
     )
     .add_system_set(skeleton::system_set().after("skin_systems"))
-    .add_system_set(bone::system_set().label("bone_systems"))
+    .add_system_set(bone::system_set().label("bone_systems").after("ui_action"))
     .add_system_set(ccd::system_set().label("ccd_systems"))
     .add_system_set(
         debug::system_set()
@@ -101,30 +100,7 @@ fn main() {
     // Don't execute on Web
     #[cfg(not(target_arch = "wasm32"))]
     app.add_system_set(save_load::system_set());
-        // .add_system(test_asset_loader);
 
     // RUN
     app.run();
 }
-
-// #[cfg(not(target_arch = "wasm32"))]
-// fn test_asset_loader(
-//     asset_server: Res<AssetServer>,
-//     assets: Res<Assets<Image>>,
-//     mut general: ResMut<General>,
-// ) {
-//     if general.done {
-//         return;
-//     }
-
-//     let handle: Handle<Image> = asset_server.load("img/pooh.png");
-//     let opt_it = assets.get(&handle);
-
-//     if let Some(img) = opt_it {
-//         dbg!(img.size());
-//         // for i in (3..img.data.len()).step_by(4) {
-//         //     print!("{}:{}, ", i, img.data[i]);
-//         // }
-//         general.done = true;
-//     }
-// }

@@ -147,7 +147,7 @@ fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
         if ui.button("add skin").clicked() {
             if state.skin_filename != "filename" {
                 skin_state.queued_skins.push(skin::AddSkinEvent {
-                    filename: format!("img/{}", state.skin_filename),
+                    path: format!("img/{}", state.skin_filename),
                     cols: state.skin_cols,
                     rows: state.skin_rows,
                     as_cloth: false,
@@ -157,7 +157,7 @@ fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
         if ui.button("add as cloth").clicked() {
             if state.skin_filename != "filename" {
                 skin_state.queued_skins.push(skin::AddSkinEvent {
-                    filename: format!("img/{}", state.skin_filename),
+                    path: format!("img/{}", state.skin_filename),
                     cols: state.skin_cols,
                     rows: state.skin_rows,
                     as_cloth: true,
@@ -548,9 +548,7 @@ fn animation_plot(
                         for (_, comp_anim) in anim.comp_animations.iter() {
                             let mut stop = false;
                             for i in 0..comp_anim.transforms.len() {
-                                if i
-                                    == state.plots[layer_index].selected_keyframe_index
-                                {
+                                if i == state.plots[layer_index].selected_keyframe_index {
                                     state.interpolation_function =
                                         comp_anim.interpolation_functions[i];
                                     stop = true;
