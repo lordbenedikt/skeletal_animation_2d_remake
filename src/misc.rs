@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{*, skin::AVAILABLE_IMAGES};
 use bevy::{
     prelude::*,
     render::camera::{DepthCalculation, RenderTarget}, ecs::change_detection::MutUntyped,
@@ -15,6 +15,13 @@ pub fn setup(
     asset_server: ResMut<AssetServer>,
     clear_color: Res<ClearColor>,
 ) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        for image_name in AVAILABLE_IMAGES.iter() {
+            let _ = asset_server.load::<Image, &str>(&format!("img/{}",image_name));
+        }
+    }
+
     commands.spawn_bundle(new_camera_2d()).insert(MainCamera);
     commands.spawn_bundle(TextBundle {
         text: Text::from_section(

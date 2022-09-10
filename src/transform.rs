@@ -38,6 +38,7 @@ pub enum Action {
 #[derive(Component)]
 pub struct Transformable {
     pub is_selected: bool,
+    pub is_part_of_layer: bool,
     pub translatable: bool,
     pub rotatable: bool,
     pub scalable: bool,
@@ -47,6 +48,7 @@ impl Default for Transformable {
     fn default() -> Self {
         Self {
             is_selected: true,
+            is_part_of_layer: false,
             translatable: true,
             rotatable: true,
             scalable: true,

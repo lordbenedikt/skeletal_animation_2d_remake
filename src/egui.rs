@@ -1,6 +1,6 @@
 use crate::{
     animation::{Animations, ShowKeyframeEvent},
-    skin::AddSkinEvent,
+    skin::{AddSkinEvent, AVAILABLE_IMAGES},
     *,
 };
 use bevy_egui::{
@@ -77,7 +77,7 @@ pub fn system_set() -> SystemSet {
         .with_system(get_selection_stats)
 }
 
-fn skin_settings(ui: &mut Ui, state: &mut State, mut add_skin_evw: EventWriter<AddSkinEvent>) {
+fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
     ui.horizontal(|ui| {
         ui.label(if state.skin_bound_status_is_valid {
             if state.skin_is_bound {
@@ -93,18 +93,35 @@ fn skin_settings(ui: &mut Ui, state: &mut State, mut add_skin_evw: EventWriter<A
         let widget = egui::ComboBox::from_id_source("skin")
             .selected_text(&state.skin_filename)
             .show_ui(ui, |ui| {
-                let paths = fs::read_dir("./assets/img/").unwrap();
-                for path in paths {
-                    let filename = path
+                let filenames: Vec<String>;
+
+                // Webassembly
+                #[cfg(target_arch = "wasm32")]
+                {
+                    filenames = AVAILABLE_IMAGES.iter().map(|&str| String::from(str)).collect();
+                }
+
+                // All other platforms
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    filenames = fs::read_dir("./assets/img/")
                         .unwrap()
-                        .path()
-                        .file_name()
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                        .to_string();
+                        .map(|read_dir| {
+                            read_dir
+                                .unwrap()
+                                .path()
+                                .file_name()
+                                .unwrap()
+                                .to_str()
+                                .unwrap()
+                                .to_string()
+                        })
+                        .collect();
+                }
+
+                for filename in filenames {
                     let option =
-                        ui.selectable_value(&mut state.skin_filename, filename.clone(), filename);
+                        ui.selectable_value(&mut state.skin_filename, filename.clone(), &filename);
                     // if option.clicked() {
                     //     update_skin_evw.send(UpdateSkinEvent);
                     // }
@@ -126,7 +143,7 @@ fn skin_settings(ui: &mut Ui, state: &mut State, mut add_skin_evw: EventWriter<A
     ui.horizontal(|ui| {
         if ui.button("add skin").clicked() {
             if state.skin_filename != "filename" {
-                add_skin_evw.send(skin::AddSkinEvent {
+                skin_state.queued_skins.push(skin::AddSkinEvent {
                     filename: format!("img/{}", state.skin_filename),
                     cols: state.skin_cols,
                     rows: state.skin_rows,
@@ -136,7 +153,7 @@ fn skin_settings(ui: &mut Ui, state: &mut State, mut add_skin_evw: EventWriter<A
         };
         if ui.button("add as cloth").clicked() {
             if state.skin_filename != "filename" {
-                add_skin_evw.send(skin::AddSkinEvent {
+                skin_state.queued_skins.push(skin::AddSkinEvent {
                     filename: format!("img/{}", state.skin_filename),
                     cols: state.skin_cols,
                     rows: state.skin_rows,
@@ -596,14 +613,14 @@ pub fn animation_menu(
     mut egui_context: ResMut<EguiContext>,
     mut state: ResMut<State>,
     mut transform_state: ResMut<transform::State>,
-    mut add_skin_evw: EventWriter<AddSkinEvent>,
+    mut skin_state: ResMut<skin::State>,
     mut show_keyframe_evw: EventWriter<animation::ShowKeyframeEvent>,
     mut animations: ResMut<animation::Animations>,
     mouse: Res<Input<MouseButton>>,
     keys: Res<Input<KeyCode>>,
     mut anim_state: ResMut<animation::State>,
     mut q: Query<&mut Transform>,
-    mut q_bones: Query<(Entity,&transform::Transformable), With<bone::Bone>>,
+    mut q_bones: Query<(Entity, &transform::Transformable), With<bone::Bone>>,
 ) {
     // Hide window when transforming
     if transform_state.action != transform::Action::None
@@ -638,7 +655,7 @@ pub fn skin_menu(
     mut egui_context: ResMut<EguiContext>,
     mut state: ResMut<State>,
     transform_state: ResMut<transform::State>,
-    add_skin_evw: EventWriter<AddSkinEvent>,
+    mut skin_state: ResMut<skin::State>,
     mouse: Res<Input<MouseButton>>,
 ) {
     // Hide window when transforming
@@ -652,7 +669,7 @@ pub fn skin_menu(
     let response = egui::Window::new("Skins")
         .resizable(false)
         .show(egui_context.ctx_mut(), |ui| {
-            skin_settings(ui, &mut state, add_skin_evw);
+            skin_settings(ui, &mut state, &mut skin_state);
         })
         .unwrap()
         .response;

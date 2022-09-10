@@ -327,23 +327,32 @@ pub fn draw_skin_mesh(
 
 pub fn draw_bones(
     mut debug_drawer: ResMut<DebugDrawer>,
-    bone_gl_transforms: Query<(&GlobalTransform, &bone::Bone, &Transformable)>,
+    bone_gl_transforms: Query<(&GlobalTransform, &Transformable)>,
 ) {
     if !debug_drawer.bone_debug_enabled {
         return;
     };
 
-    for (gl_transform, bone, transformable) in bone_gl_transforms.iter() {
+    for (gl_transform, transformable) in bone_gl_transforms.iter() {
+        if gl_transform.to_scale_rotation_translation().0.is_nan()
+            || gl_transform.to_scale_rotation_translation().1.is_nan()
+            || gl_transform.to_scale_rotation_translation().2.is_nan()
+        {
+            dbg!(gl_transform);
+            println!("transform is nan!");
+            continue;
+        }
+
         let (gl_scale, gl_rotation, gl_translation) = gl_transform.to_scale_rotation_translation();
         let z = 0.001;
         let color = if transformable.is_selected {
-            if bone.is_part_of_layer {
+            if transformable.is_part_of_layer {
                 COLOR_SELECTED_ACTIVE
             } else {
                 COLOR_SELECTED
             }
         } else {
-            if bone.is_part_of_layer {
+            if transformable.is_part_of_layer {
                 COLOR_DEFAULT_ACTIVE
             } else {
                 COLOR_DEFAULT

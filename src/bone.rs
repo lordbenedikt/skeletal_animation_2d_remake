@@ -3,7 +3,6 @@ use crate::{animation::Animatable, skeleton::Skeleton, *};
 #[derive(Component, Default)]
 pub struct Bone {
     pub is_ccd_maneuvered: bool,
-    pub is_part_of_layer: bool,
 }
 impl Bone {
     pub fn get_tip(gl_transform: &GlobalTransform) -> Vec2 {
@@ -28,7 +27,7 @@ pub fn system_set() -> SystemSet {
 }
 
 pub fn check_which_bones_are_part_of_current_layer(
-    mut q: Query<(Entity, &mut Bone)>,
+    mut q: Query<(Entity, &mut Transformable), With<Bone>>,
     egui_state: Res<egui::State>,
     animations: Res<animation::Animations>,
     mouse: Res<Input<MouseButton>>,
@@ -41,11 +40,11 @@ pub fn check_which_bones_are_part_of_current_layer(
     let current_animation_name = &egui_state.plots[egui_state.edit_plot].name;
     let current_animation = animations.map.get(current_animation_name);
     if current_animation.is_none() {
-        for (_, mut bone) in q.iter_mut() {
-            bone.is_part_of_layer = false;
+        for (_, mut transformable) in q.iter_mut() {
+            transformable.is_part_of_layer = false;
         }
     } else {
-        for (entity, mut bone) in q.iter_mut() {
+        for (entity, mut transformable) in q.iter_mut() {
             let anim = current_animation.unwrap();
             let mut found = false;
             for (&e, _) in anim.comp_animations.iter() {
@@ -54,7 +53,7 @@ pub fn check_which_bones_are_part_of_current_layer(
                     break;
                 }
             }
-            bone.is_part_of_layer = found;
+            transformable.is_part_of_layer = found;
         }
     }
 }

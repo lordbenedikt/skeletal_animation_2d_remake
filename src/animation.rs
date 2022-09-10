@@ -183,21 +183,24 @@ pub fn apply_animation(
                     interpolate::Function::EaseInOutBack => interpolate::ease_in_out_back(x),
                 };
                 let (mut transform, _) = q.get_mut(key).unwrap();
-                transform.translation = interpolate::lerp(
-                    comp_animation.transforms[current_frame_a].translation,
-                    comp_animation.transforms[current_frame_b].translation,
-                    x,
-                );
-                transform.rotation = Quat::lerp(
-                    comp_animation.transforms[current_frame_a].rotation,
-                    comp_animation.transforms[current_frame_b].rotation,
-                    x,
-                );
-                transform.scale = interpolate::lerp(
-                    comp_animation.transforms[current_frame_a].scale,
-                    comp_animation.transforms[current_frame_b].scale,
-                    x,
-                );
+
+                if transform_is_valid(&transform) {
+                    transform.translation = interpolate::lerp(
+                        comp_animation.transforms[current_frame_a].translation,
+                        comp_animation.transforms[current_frame_b].translation,
+                        x,
+                    );
+                    transform.rotation = Quat::lerp(
+                        comp_animation.transforms[current_frame_a].rotation,
+                        comp_animation.transforms[current_frame_b].rotation,
+                        x,
+                    );
+                    transform.scale = interpolate::lerp(
+                        comp_animation.transforms[current_frame_a].scale,
+                        comp_animation.transforms[current_frame_b].scale,
+                        x,
+                    );
+                }
             }
         }
     } else if state.blending_style == BlendingStyle::FourWayAdditive {
@@ -209,13 +212,13 @@ pub fn apply_animation(
         let distance = 7.;
         let max_distance = distance * std::f32::consts::SQRT_2;
 
-        let mut up_weight = mouse_pos.distance(Vec2::new(0.,distance)) / max_distance;
+        let mut up_weight = mouse_pos.distance(Vec2::new(0., distance)) / max_distance;
         up_weight = 1. - up_weight.min(1.).max(0.);
-        let mut down_weight = mouse_pos.distance(Vec2::new(0.,-distance)) / max_distance;
+        let mut down_weight = mouse_pos.distance(Vec2::new(0., -distance)) / max_distance;
         down_weight = 1. - down_weight.min(1.).max(0.);
-        let mut left_weight = mouse_pos.distance(Vec2::new(-distance,0.)) / max_distance;
+        let mut left_weight = mouse_pos.distance(Vec2::new(-distance, 0.)) / max_distance;
         left_weight = 1. - left_weight.min(1.).max(0.);
-        let mut right_weight = mouse_pos.distance(Vec2::new(distance,0.)) / max_distance;
+        let mut right_weight = mouse_pos.distance(Vec2::new(distance, 0.)) / max_distance;
         right_weight = 1. - right_weight.min(1.).max(0.);
 
         let total_weight = up_weight + down_weight + left_weight + right_weight;
@@ -312,8 +315,6 @@ pub fn apply_animation(
                     transform.scale = Vec3::new(0., 0., 0.);
                 }
 
-                // println!("weight {}: {}", i, weight);
-
                 transform.translation += interpolate::lerp(
                     comp_animation.transforms[current_frame_a].translation,
                     comp_animation.transforms[current_frame_b].translation,
@@ -333,83 +334,6 @@ pub fn apply_animation(
             }
 
             first = false;
-        }
-
-        for anim_name in state.layers.iter() {
-            // let mut anim = anims.map.get(anim_name).unwrap();
-            // if anims.map.get(anim_name).is_some() {
-            //     anim = anims.map.get(anim_name).unwrap();
-            // } else {
-            //     continue;
-            // }
-            // if anim.keyframes.is_empty() {
-            //     return;
-            // }
-            // let anim_length_in_secs = anim.keyframes.iter().last().unwrap() - anim.keyframes[0]; // + 1.;
-            // let time_diff = (time.seconds_since_startup() - state.start_time) % anim_length_in_secs;
-            // for (&key, comp_animation) in anim.comp_animations.iter() {
-            //     if q.get_mut(key).is_err() || comp_animation.keyframe_indices.len() == 0 {
-            //         continue;
-            //     }
-            //     if let Some(bone) = q.get_mut(key).unwrap().1 {
-            //         if bone.is_ccd_maneuvered {
-            //             continue;
-            //         }
-            //     }
-
-            //     let mut current_frame_a = 0;
-            //     for i in 0..comp_animation.keyframe_indices.len() {
-            //         if time_diff > anim.keyframes[comp_animation.keyframe_indices[i]] {
-            //             current_frame_a = i;
-            //         }
-            //     }
-            //     let mut current_frame_b =
-            //         (current_frame_a + 1) % comp_animation.keyframe_indices.len();
-
-            //     // Calculate keyframe length
-            //     let keyframe_length_in_secs = if current_frame_b == 0 {
-            //         // if loop is ending, set to 1.
-            //         1.
-            //     } else {
-            //         anim.keyframes[comp_animation.keyframe_indices[current_frame_b]]
-            //             - anim.keyframes[comp_animation.keyframe_indices[current_frame_a]]
-            //     };
-
-            //     let mut x = if anim_length_in_secs == 0.0 {
-            //         0.0
-            //     } else {
-            //         let comp_time_diff = time_diff
-            //             % anim.keyframes[*comp_animation.keyframe_indices.iter().last().unwrap()];
-            //         ((comp_time_diff
-            //             - anim.keyframes[comp_animation.keyframe_indices[current_frame_a]])
-            //             / keyframe_length_in_secs) as f32
-            //     };
-            //     x = match comp_animation.interpolation_functions[current_frame_b] {
-            //         interpolate::Function::Linear => x,
-            //         interpolate::Function::EaseInOut => interpolate::ease_in_out(x),
-            //         interpolate::Function::EaseIn => interpolate::ease_in(x),
-            //         interpolate::Function::EaseOut => interpolate::ease_out(x),
-            //         interpolate::Function::EaseOutElastic => interpolate::ease_out_elastic(x),
-            //         interpolate::Function::EaseInOutElastic => interpolate::ease_in_out_elastic(x),
-            //         interpolate::Function::EaseInOutBack => interpolate::ease_in_out_back(x),
-            //     };
-            //     let (mut transform, _) = q.get_mut(key).unwrap();
-            //     transform.translation = interpolate::lerp(
-            //         comp_animation.transforms[current_frame_a].translation,
-            //         comp_animation.transforms[current_frame_b].translation,
-            //         x,
-            //     );
-            //     transform.rotation = Quat::lerp(
-            //         comp_animation.transforms[current_frame_a].rotation,
-            //         comp_animation.transforms[current_frame_b].rotation,
-            //         x,
-            //     );
-            //     transform.scale = interpolate::lerp(
-            //         comp_animation.transforms[current_frame_a].scale,
-            //         comp_animation.transforms[current_frame_b].scale,
-            //         x,
-            //     );
-            // }
         }
     }
 }
@@ -440,8 +364,8 @@ pub fn create_keyframe(
     });
 
     for (transform, transformable, entity) in q.iter() {
-        // Only add keyframe for selected objects
-        if !transformable.is_selected {
+        // Only add keyframe for selected objects, or ones that are already part of animation
+        if !transformable.is_selected && !transformable.is_part_of_layer {
             continue;
         }
         if !anims_mut.comp_animations.contains_key(&entity) {
@@ -492,4 +416,11 @@ pub fn show_keyframe(
             }
         }
     }
+}
+
+fn transform_is_valid(transform: &Transform) -> bool {
+    let mut invalid =
+        transform.translation.is_nan() || transform.scale.is_nan() || transform.rotation.is_nan();
+    invalid |= transform.scale.x == 0.0 || transform.scale.y == 0.0 || transform.scale.z == 0.0;
+    !invalid
 }

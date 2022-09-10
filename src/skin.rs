@@ -14,7 +14,22 @@ use std::{cmp::*, f32::consts::SQRT_2};
 
 const PIXEL_TO_UNIT_RATIO: f32 = 0.005;
 pub const START_SCALE: f32 = 3.5;
+pub const AVAILABLE_IMAGES: [&str;7] = [
+    "pooh.png",
+    "honey.png",
+    "head.png",
+    "torso.png",
+    "left_arm.png",
+    "right_arm.png",
+    "left_leg.png",
+];
 
+#[derive(Default)]
+pub struct State {
+    pub queued_skins: Vec<AddSkinEvent>,
+}
+
+#[derive(Clone)]
 pub struct AddSkinEvent {
     pub filename: String,
     pub cols: u16,
@@ -29,7 +44,7 @@ pub struct LineStrip {
 }
 impl LineStrip {
     fn simplify(&mut self, filename: &str) {
-        let img = image::open(format!("assets/{}", filename)).expect("File not found!");
+        let img = image::open(format!("assets/img{}", filename)).expect("File not found!");
         let (w, h) = img.dimensions();
 
         let mut keep_vertices = vec![self.vertices[self.edges[0][0]]];
@@ -96,9 +111,17 @@ struct Contour {
     pub edges: Vec<[usize; 2]>,
 }
 impl Contour {
-    fn from_image(filename: &str, offset: u32) -> Self {
-        let img = image::open(format!("assets/{}", filename)).expect("File not found!");
-        let (w, h) = img.dimensions();
+    fn from_image(
+        filename: &str,
+        asset_server: &AssetServer,
+        image_assets: &Assets<Image>,
+        offset: u32,
+    ) -> Self {
+        let img_handle = asset_server.load(filename);
+        let img = image_assets.get(&img_handle).unwrap();
+        let size = img.size();
+        let (w, h) = (size.x as u32, size.y as u32);
+
         let max_distance = offset - 1;
         let (output_w, output_h) = (w + offset as u32 * 2, h + offset as u32 * 2);
 
@@ -108,7 +131,7 @@ impl Contour {
         for x in 0..output_w {
             for y in 0..output_h {
                 out[x as usize][output_h as usize - y as usize - 1] =
-                    if is_close_to_visible_pixel(x, y, &img, offset, max_distance as f32) {
+                    if is_close_to_visible_pixel(x, y, img, offset, max_distance as f32) {
                         1
                     } else {
                         0
@@ -355,85 +378,101 @@ impl Skin {
             })
             .collect::<Vec<[f32; 3]>>()
     }
-    pub fn grid_mesh(filename: &str, cols: u16, rows: u16, depth: f32, rectangular: bool) -> Skin {
-        let img = image::open(format!("assets/{}", filename)).expect("File not found!");
-        let (w, h) = img.dimensions();
-        let cell_w = w as f32 / cols as f32;
-        let cell_h = h as f32 / rows as f32;
-        let mut vertices: Vec<[f32; 3]> = vec![];
-        let mut uvs: Vec<[f32; 2]> = vec![];
-        for j in (0..=rows).rev() {
-            for i in 0..=cols {
-                let uv_pixel = [cell_w * i as f32, cell_h * j as f32];
-                vertices.push([
-                    (uv_pixel[0] - w as f32 / 2.) * PIXEL_TO_UNIT_RATIO,
-                    (uv_pixel[1] - h as f32 / 2.) * PIXEL_TO_UNIT_RATIO,
-                    0.,
-                ]);
-                uvs.push([uv_pixel[0] / w as f32, 1. - uv_pixel[1] / h as f32]);
-            }
-        }
-        let mut indices: Vec<u16> = vec![];
-        for j in 0..rows {
-            for i in 0..cols {
-                let i0 = j * (cols + 1) + i;
-                let i1 = i0 + 1;
-                let i3 = i0 + (cols + 1);
-                let i2 = i3 + 1;
+    pub fn grid_mesh(
+        filename: &str,
+        asset_server: &AssetServer,
+        image_assets: &Assets<Image>,
+        cols: u16,
+        rows: u16,
+        depth: f32,
+        rectangular: bool,
+    ) -> Option<Skin> {
+        let img_handle = asset_server.load(filename);
+        let opt_img = image_assets.get(&img_handle);
 
-                // top left triangle
-                indices.push(i3);
-                indices.push(i0);
-                indices.push(i1);
-                //bottom right triangle
-                indices.push(i1);
-                indices.push(i2);
-                indices.push(i3);
+        if let Some(img) = opt_img {
+            let size = img.size();
+            let (w, h) = (size.x as u32, size.y as u32);
 
-                // also visible from behind
-                // top left triangle
-                indices.push(i1);
-                indices.push(i0);
-                indices.push(i3);
-                //bottom right triangle
-                indices.push(i3);
-                indices.push(i2);
-                indices.push(i1);
-            }
-        }
-        let mut skin = Skin {
-            filename: String::from(filename),
-            dimensions: [w, h],
-            vertices,
-            uvs,
-            indices,
-            mesh_handle: None,
-            depth,
-        };
-        // // Remove reduntant vertices and corresponding uvs and indices
-        if !rectangular {
-            for i in (0..skin.uvs.len()).rev() {
-                let v = skin.uvs[i];
-                let coords = [
-                    min((v[0] * w as f32) as u32, w - 1),
-                    min((v[1] * h as f32) as u32, h - 1),
-                ];
-                // if uv is out of image or pixel at uv is transparent remove
-                if !is_close_to_visible_pixel(
-                    coords[0],
-                    coords[1],
-                    &img,
-                    0u32,
-                    f32::max(
-                        w as f32 / cols as f32 * SQRT_2,
-                        h as f32 / rows as f32 * SQRT_2,
-                    ),
-                ) {
-                    skin.remove_vertex(i as u16);
+            let cell_w = w as f32 / cols as f32;
+            let cell_h = h as f32 / rows as f32;
+            let mut vertices: Vec<[f32; 3]> = vec![];
+            let mut uvs: Vec<[f32; 2]> = vec![];
+            for j in (0..=rows).rev() {
+                for i in 0..=cols {
+                    let uv_pixel = [cell_w * i as f32, cell_h * j as f32];
+                    vertices.push([
+                        (uv_pixel[0] - w as f32 / 2.) * PIXEL_TO_UNIT_RATIO,
+                        (uv_pixel[1] - h as f32 / 2.) * PIXEL_TO_UNIT_RATIO,
+                        0.,
+                    ]);
+                    uvs.push([uv_pixel[0] / w as f32, 1. - uv_pixel[1] / h as f32]);
                 }
             }
+            let mut indices: Vec<u16> = vec![];
+            for j in 0..rows {
+                for i in 0..cols {
+                    let i0 = j * (cols + 1) + i;
+                    let i1 = i0 + 1;
+                    let i3 = i0 + (cols + 1);
+                    let i2 = i3 + 1;
+
+                    // top left triangle
+                    indices.push(i3);
+                    indices.push(i0);
+                    indices.push(i1);
+                    //bottom right triangle
+                    indices.push(i1);
+                    indices.push(i2);
+                    indices.push(i3);
+
+                    // also visible from behind
+                    // top left triangle
+                    indices.push(i1);
+                    indices.push(i0);
+                    indices.push(i3);
+                    //bottom right triangle
+                    indices.push(i3);
+                    indices.push(i2);
+                    indices.push(i1);
+                }
+            }
+            let mut skin = Skin {
+                filename: String::from(filename),
+                dimensions: [w, h],
+                vertices,
+                uvs,
+                indices,
+                mesh_handle: None,
+                depth,
+            };
+            // // Remove reduntant vertices and corresponding uvs and indices
+            if !rectangular {
+                for i in (0..skin.uvs.len()).rev() {
+                    let v = skin.uvs[i];
+                    let coords = [
+                        min((v[0] * w as f32) as u32, w - 1),
+                        min((v[1] * h as f32) as u32, h - 1),
+                    ];
+                    // if uv is out of image or pixel at uv is transparent remove
+                    if !is_close_to_visible_pixel(
+                        coords[0],
+                        coords[1],
+                        img,
+                        0u32,
+                        f32::max(
+                            w as f32 / cols as f32 * SQRT_2,
+                            h as f32 / rows as f32 * SQRT_2,
+                        ),
+                    ) {
+                        skin.remove_vertex(i as u16);
+                    }
+                }
+            }
+            Some(skin)
+        } else {
+            None
         }
-        skin
     }
     pub fn remove_vertex(&mut self, index: u16) {
         self.vertices.swap_remove(index as usize);
@@ -514,17 +553,11 @@ const MARCHING_SQUARE_LOOKUP_TABLE: [Edges; 16] = [
     Edges::zero(),
 ];
 
-fn is_close_to_visible_pixel(
-    x: u32,
-    y: u32,
-    img: &image::DynamicImage,
-    offset: u32,
-    max_dist: f32,
-) -> bool {
+fn is_close_to_visible_pixel(x: u32, y: u32, img: &Image, offset: u32, max_dist: f32) -> bool {
     let max_dist_ceil = f32::ceil(max_dist) as i32;
     let x: i32 = x as i32 - offset as i32;
     let y: i32 = y as i32 - offset as i32;
-    let (w, h) = img.dimensions();
+    let (w, h) = (img.size().x as u32, img.size().y as u32);
     let x_min = max(0, x - max_dist_ceil);
     let x_max = min(w as i32, x + max_dist_ceil);
     for _x in x_min..x_max {
@@ -536,7 +569,7 @@ fn is_close_to_visible_pixel(
             // if distance is smaller same max_dist
             if distance <= max_dist {
                 // if pixel is not transparent
-                if img.get_pixel(_x as u32, _y as u32).0[3] > 10 {
+                if img.get_pixel(_x as u32, _y as u32)[3] > 10 {
                     return true;
                 }
             }
@@ -545,8 +578,12 @@ fn is_close_to_visible_pixel(
     false
 }
 
-pub fn generate_mesh(filename: &str) -> Skin {
-    let contour = Contour::from_image(filename, 5);
+pub fn generate_mesh(
+    filename: &str,
+    asset_server: &AssetServer,
+    image_assets: &Assets<Image>,
+) -> Option<Skin> {
+    let contour = Contour::from_image(filename, asset_server, image_assets, 5);
     let mut polygon = Polygon::from_contour(&contour);
     polygon.simplify();
 
@@ -564,7 +601,7 @@ pub fn generate_mesh(filename: &str) -> Skin {
     let mut skin = polygon.triangulate();
 
     // skin
-    Skin::grid_mesh(filename, 40, 40, 0., false)
+    Skin::grid_mesh(filename, asset_server, image_assets, 40, 40, 0., false)
 }
 
 pub fn update_mesh(
@@ -600,8 +637,13 @@ pub fn create_mesh(
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut skeleton: ResMut<Skeleton>,
     asset_server: Res<AssetServer>,
+    image_assets: &Assets<Image>,
 ) {
-    let mut skin = skin::generate_mesh("person.png");
+    let opt_skin = skin::generate_mesh("person.png", &asset_server, image_assets);
+    if opt_skin.is_none() {
+        return;
+    }
+    let mut skin = opt_skin.unwrap();
 
     let vertices = skin.vertices.clone();
     let mut normals = vec![];
@@ -655,8 +697,9 @@ pub fn add_startup_skins(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
+    image_assets: Res<Assets<Image>>,
 ) {
-    let (entity, mesh_handle) = add_skin(
+    add_skin(
         &mut commands,
         &mut meshes,
         &mut materials,
@@ -666,8 +709,9 @@ pub fn add_startup_skins(
         30,
         90.,
         false,
+        &image_assets,
     );
-    let (entity, mesh_handle) = add_skin(
+    let opt_entity_mesh = add_skin(
         &mut commands,
         &mut meshes,
         &mut materials,
@@ -677,7 +721,13 @@ pub fn add_startup_skins(
         10,
         90.,
         true,
+        &image_assets,
     );
+    if opt_entity_mesh.is_none() {
+        return;
+    }
+    let (entity, mesh_handle) = opt_entity_mesh.unwrap();
+
     let bounding_box = meshes.get(&mesh_handle.0).unwrap().compute_aabb().unwrap();
     let diagonal = (bounding_box.max() - bounding_box.min()) * skin::START_SCALE;
     let cloth = Cloth::new(
@@ -703,8 +753,21 @@ fn add_skin(
     rows: u16,
     depth: f32,
     rectangular: bool,
-) -> (Entity, Mesh2dHandle) {
-    let mut skin = Skin::grid_mesh(filename, cols, rows, depth, rectangular);
+    image_assets: &Assets<Image>,
+) -> Option<(Entity, Mesh2dHandle)> {
+    let opt_skin = Skin::grid_mesh(
+        filename,
+        asset_server,
+        image_assets,
+        cols,
+        rows,
+        depth,
+        rectangular,
+    );
+    if opt_skin.is_none() {
+        return None;
+    }
+    let mut skin = opt_skin.unwrap();
 
     let vertices = skin
         .vertices
@@ -746,44 +809,68 @@ fn add_skin(
         })
         .insert(skin)
         .id();
-    (skin_id, handle.clone())
+    Some((skin_id, handle.clone()))
 }
 
 pub fn add_skins(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    mut add_skin_evr: EventReader<AddSkinEvent>,
+    mut state: ResMut<State>,
     asset_server: Res<AssetServer>,
+    image_assets: Res<Assets<Image>>,
 ) {
-    if add_skin_evr.is_empty() {
-        return;
-    } else {
-        for event in add_skin_evr.iter() {
-            let (entity, mesh_handle) = add_skin(
-                &mut commands,
-                &mut meshes,
-                &mut materials,
-                &asset_server,
-                &event.filename,
-                event.cols,
-                event.rows,
-                90.,
-                event.as_cloth,
-            );
-            if event.as_cloth {
-                let bounding_box = meshes.get(&mesh_handle.0).unwrap().compute_aabb().unwrap();
-                let diagonal = (bounding_box.max() - bounding_box.min()) * skin::START_SCALE;
-                let cloth = Cloth::new(
-                    Vec3::new(0., 0., 0.),
-                    diagonal.x,
-                    diagonal.y,
-                    event.cols as usize,
-                    event.rows as usize,
-                )
-                .with_stiffness(10);
-                commands.entity(entity).insert(cloth);
-            }
+    for i in (0..state.queued_skins.len()).rev() {
+        let event = &state.queued_skins[i];
+        let opt_entity_mesh = add_skin(
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+            &asset_server,
+            &event.filename,
+            event.cols,
+            event.rows,
+            90.,
+            event.as_cloth,
+            &image_assets,
+        );
+        if opt_entity_mesh.is_none() {
+            break;
         }
+        let (entity, mesh_handle) = opt_entity_mesh.unwrap();
+
+        if event.as_cloth {
+            let bounding_box = meshes.get(&mesh_handle.0).unwrap().compute_aabb().unwrap();
+            let diagonal = (bounding_box.max() - bounding_box.min()) * skin::START_SCALE;
+            let cloth = Cloth::new(
+                Vec3::new(0., 0., 0.),
+                diagonal.x,
+                diagonal.y,
+                event.cols as usize,
+                event.rows as usize,
+            )
+            .with_stiffness(10);
+            commands.entity(entity).insert(cloth);
+        }
+        state.queued_skins.swap_remove(i);
+    }
+}
+
+trait Pixels {
+    fn get_pixel(&self, x: u32, y: u32) -> &[u8];
+    fn get_pixel_alpha(&self, x: u32, y: u32) -> u8;
+}
+impl Pixels for Image {
+    fn get_pixel(&self, x: u32, y: u32) -> &[u8] {
+        let (w, _) = (self.size().x as u32, self.size().y as u32);
+        let from = (x + y * w) as usize * 4;
+        let to = (from + 4) as usize;
+        &self.data[from..to]
+    }
+    fn get_pixel_alpha(&self, x: u32, y: u32) -> u8 {
+        let (w, _) = (self.size().x as u32, self.size().y as u32);
+        let from = (x + y * w) as usize * 4;
+        let alpha = (from + 3) as usize;
+        self.data[alpha]
     }
 }
