@@ -1,12 +1,13 @@
 use crate::{bone::Bone, *};
 use bevy::{math, prelude::*, utils::HashMap};
+use serde::*;
 
 pub struct ShowKeyframeEvent {
     pub animation_name: String,
     pub keyframe_index: usize,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 pub enum BlendingStyle {
     Layering,
     FourWayAdditive,
@@ -28,6 +29,7 @@ impl ToString for BlendingStyle {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct State {
     pub running: bool,
     pub layers: Vec<String>,

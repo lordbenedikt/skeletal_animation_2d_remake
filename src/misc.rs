@@ -14,6 +14,7 @@ pub fn setup(
     mut commands: Commands,
     asset_server: ResMut<AssetServer>,
     clear_color: Res<ClearColor>,
+    anims: Res<Assets<save_load::CompleteJson>>,
 ) {
     #[cfg(target_arch = "wasm32")]
     {

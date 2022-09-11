@@ -15,4 +15,5 @@ lyon = "1.0.0"
 bevy_prototype_lyon = "0.6.0"
 serde = "1.0.143"
 serde_json = "1.0.83"
-
+bevy_pkv = "0.5.0"
+bevy_common_assets = {version="0.3.0", features=["json"]}

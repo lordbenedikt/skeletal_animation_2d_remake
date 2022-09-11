@@ -700,8 +700,8 @@ pub fn add_startup_skins(
     asset_server: Res<AssetServer>,
     image_assets: Res<Assets<Image>>,
 ) {
-    state.queued_skins.push(AddSkinEvent { path: String::from("img/pooh.png"), cols: 30, rows: 30, as_cloth: false });
     state.queued_skins.push(AddSkinEvent { path: String::from("img/honey.png"), cols: 6, rows: 10, as_cloth: true });
+    state.queued_skins.push(AddSkinEvent { path: String::from("img/pooh.png"), cols: 30, rows: 30, as_cloth: false });
 }
 
 fn add_skin(

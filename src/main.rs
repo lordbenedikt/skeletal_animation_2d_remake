@@ -16,6 +16,7 @@ use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::{prelude::*, render::mesh::*, sprite::Mesh2dHandle};
 use bevy_egui::EguiPlugin;
 use bevy_prototype_lyon::prelude::*;
+use bevy_common_assets::json::JsonAssetPlugin;
 use debug::DebugDrawer;
 use transform::*;
 
@@ -40,6 +41,7 @@ fn main() {
     let mut app = App::new();
 
     // RESOURCES
+    // general resources
     app.insert_resource(WindowDescriptor {
         title: "Skeletal Animation".to_string(),
         // width: 800.,
@@ -51,20 +53,23 @@ fn main() {
     .insert_resource(CursorPos(Vec2::new(0., 0.)))
     .insert_resource(transform::State::new())
     .insert_resource(animation::Animations::new())
-    .insert_resource(animation::State::new())
     .insert_resource(DebugDrawer::default())
     .insert_resource(skin::Skins::default())
-    .insert_resource(skin::State::default())
     .insert_resource(skeleton::Skeleton::default())
-    .insert_resource(egui::State::default())
     .insert_resource(General::default())
+    // state resources
+    .insert_resource(animation::State::new())
+    .insert_resource(skin::State::default())
+    .insert_resource(egui::State::default())
     .insert_resource(cloth::State::default())
+    .insert_resource(save_load::State::default())
     // EVENTS
     .add_event::<animation::ShowKeyframeEvent>()
     // PLUGINS
     .add_plugins(DefaultPlugins)
     .add_plugin(ShapePlugin)
     .add_plugin(EguiPlugin)
+    .add_plugin(JsonAssetPlugin::<save_load::CompleteJson>::new(&["anim"]))
     // .add_plugin(LogDiagnosticsPlugin::default())
     // .add_plugin(FrameTimeDiagnosticsPlugin::default())
     // STARTUP SYSTEMS
@@ -99,7 +104,7 @@ fn main() {
     .add_system_set(animation::system_set());
 
     // Don't execute on Web
-    #[cfg(not(target_arch = "wasm32"))]
+    // #[cfg(not(target_arch = "wasm32"))]
     app.add_system_set(save_load::system_set());
 
     // RUN
