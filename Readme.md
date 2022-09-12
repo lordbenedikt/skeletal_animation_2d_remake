@@ -27,7 +27,7 @@ Use **LCtrl + LMouse** to create a new bone. The currently selected bone will au
 
 ### Skins
 
-Inside the window labeled 'Skins' a graphics file can be selected. The listed files are stored in the folder './assets/img'. The values 'cols' and 'rows' can be adjusted to define the grid that will be used to generate the skins mesh. 'add skin' will create a regular skin. 'add as cloth' will create a physics-simulated cloth. Currently it isn't possible to pin/unpin a cloth's vertices or change the cloths shape. All cloths are rectangular and the top row of vertices is pinned.
+Inside the window labeled 'Skins' a graphics file can be selected. The listed files are stored in the folder './assets/img'. Any custom PNG-file can be added by placing it inside of that folder. The values 'cols' and 'rows' can be adjusted to define the grid that will be used to generate the skins mesh. 'add skin' will create a regular skin. 'add as cloth' will create a physics-simulated cloth. Currently it isn't possible to pin/unpin a cloth's vertices or change the cloths shape. All cloths are rectangular and the top row of vertices is pinned.
 
 ### Bind / Unbind Skin
 
@@ -48,8 +48,10 @@ The plots serve to adjust the timing of an animation. Keyframes can be moved wit
 
 ### Save and Load
 
-LControl + Number: save animation (skeleton, skin, animation layers and settings) to one of 10 save slots
-LAlt + Number: load previously saved animation
+|             Input             |               Action               |
+| ----------------------------- | ---------------------------------- |
+| LControl + Number             | save animation (skeleton, skin, animation layers and settings) to one of 10 save slots        |
+| LAlt + Number                 | load previously saved animation |
 
 Currently WebAssembly doesn't support saving animations. Default animations can still be loaded.
 
