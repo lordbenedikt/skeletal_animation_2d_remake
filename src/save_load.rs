@@ -194,7 +194,15 @@ struct TargetJson {
 }
 
 pub fn system_set() -> SystemSet {
-    SystemSet::new().with_system(save).with_system(load)
+    let mut set = SystemSet::new().with_system(load);
+
+    // Saving currently not supported on WASM
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        set = set.with_system(save);
+    }
+
+    set
 }
 
 fn save(
