@@ -11,10 +11,7 @@ function getObject(idx) { return heap[idx]; }
 let heap_next = heap.length;
 
 window.onclick = function(event) {
-    console.log("Did it!");
-}
-document.body.onclick = function() {
-    console.log("Did it!");
+    console.log(window.width + " : " + window.height);
 }
 
 function dropObject(idx) {
