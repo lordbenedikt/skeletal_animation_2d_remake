@@ -162,7 +162,3 @@ impl ColorUtils for Color {
         Color::rgba(1. - col.r(), 1. - col.g(), 1. - col.b(), 0.2)
     }
 }
-
-pub fn console_log(message: &str) {
-    web_sys::console::log_1(&message.into());
-}
