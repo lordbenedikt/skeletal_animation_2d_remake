@@ -13,6 +13,9 @@ let heap_next = heap.length;
 window.onclick = function(event) {
     console.log("Did it!");
 }
+document.body.onclick = function() {
+    console.log("Did it!");
+}
 
 function dropObject(idx) {
     if (idx < 36) return;
