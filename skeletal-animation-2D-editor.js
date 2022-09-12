@@ -10,6 +10,10 @@ function getObject(idx) { return heap[idx]; }
 
 let heap_next = heap.length;
 
+window.onclick = function(event) {
+    console.log("Did it!");
+}
+
 function dropObject(idx) {
     if (idx < 36) return;
     heap[idx] = heap_next;
