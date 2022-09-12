@@ -23,6 +23,8 @@ pub struct State {
 pub struct CompleteJson {
     skeleton: SkeletonJson,
     animations: AnimationsJson,
+    animation_layers: Vec<String>,
+    blending_style: animation::BlendingStyle,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -202,6 +204,7 @@ fn save(
         Query<(Entity, &Target, &Transform)>,
     )>,
     animations: Res<Animations>,
+    anim_state: Res<animation::State>,
     skeleton: Res<Skeleton>,
     keys: Res<Input<KeyCode>>,
 ) {
@@ -262,6 +265,8 @@ fn save(
                 skin_mappings: skeleton.skin_mappings.clone(),
             },
             animations: AnimationsJson::from_animations(&animations),
+            animation_layers: anim_state.layers.clone(),
+            blending_style: anim_state.blending_style,
         })
         .unwrap();
         let mut file = fs::File::create(format!("anims/animation_{}.anim", save_slot))
@@ -494,16 +499,18 @@ fn load(
             // Load Animations
             animations.map = data.animations.as_animations(&spawned_entities).map;
 
+            // Load Layers
+            anim_state.layers = data.animation_layers;
+
+            // Load Blending Style
+            anim_state.blending_style = data.blending_style;
+
             // Select first Animation
             egui_state.plots[0].name = if let Some(name) = animations.map.keys().next() {
                 name.clone()
             } else {
                 String::new()
             };
-
-            // Remove layers
-            anim_state.layers.clear();
-            anim_state.layers.push(String::from("anim_0"));
 
             state.opt_load_filename = None
         }
