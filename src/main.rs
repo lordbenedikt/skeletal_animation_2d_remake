@@ -11,6 +11,7 @@ mod save_load;
 mod skeleton;
 mod skin;
 mod transform;
+mod bevy_ui;
 
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::{prelude::*, render::mesh::*, sprite::Mesh2dHandle};
@@ -24,6 +25,8 @@ use web_sys::*;
 
 const COLOR_WHITE: Color = Color::rgb(1., 1., 1.);
 const COLOR_GRAY: Color = Color::rgb(0.3, 0.3, 0.3);
+const COLOR_LIGHT_GRAY: Color = Color::rgb(0.55, 0.55, 0.55);
+const COLOR_LIGHTER_GRAY: Color = Color::rgb(0.7, 0.7, 0.7);
 const COLOR_BLACK: Color = Color::rgb(0., 0., 0.);
 const COLOR_SELECTED: Color = Color::rgb(1., 0.9, 0.);
 const COLOR_DEFAULT: Color = Color::rgb(1., 0.6, 0.);
@@ -59,6 +62,7 @@ fn main() {
     .insert_resource(skin::Skins::default())
     .insert_resource(skeleton::Skeleton::default())
     .insert_resource(General::default())
+    .insert_resource(bevy_ui::UiElements::default())
     // state resources
     .insert_resource(animation::State::new())
     .insert_resource(skin::State::default())
@@ -72,13 +76,15 @@ fn main() {
     .add_plugin(ShapePlugin)
     .add_plugin(EguiPlugin)
     .add_plugin(JsonAssetPlugin::<save_load::CompleteJson>::new(&["anim"]))
+    // LOG DIAGNOSTICS
     // .add_plugin(LogDiagnosticsPlugin::default())
     // .add_plugin(FrameTimeDiagnosticsPlugin::default())
     // STARTUP SYSTEMS
     .add_startup_system(misc::setup)
+    .add_startup_system(bevy_ui::spawn_ui_elements)
     // SYSTEMS
     .add_system(misc::get_mouse_position.label("input_handling"))
-    .add_system(misc::update_text)
+    .add_system_set(bevy_ui::system_set())
     .add_system_set(egui::system_set().label("ui_action"))
     .add_system_set(skin::system_set().label("skin_systems"))
     .add_system_set(

@@ -3,6 +3,7 @@ use bevy::{
     ecs::change_detection::MutUntyped,
     prelude::*,
     render::camera::{DepthCalculation, RenderTarget},
+    utils::HashMap,
 };
 
 #[derive(Component)]
@@ -11,25 +12,16 @@ pub struct MainCamera;
 #[derive(Component)]
 pub struct SelectBox;
 
+
+
 pub fn setup(
     mut commands: Commands,
     asset_server: ResMut<AssetServer>,
     clear_color: Res<ClearColor>,
     mut save_load_state: ResMut<save_load::State>,
 ) {
-    dbg!("started");
     commands.spawn_bundle(new_camera_2d()).insert(MainCamera);
-    commands.spawn_bundle(TextBundle {
-        text: Text::from_section(
-            String::from("Position"),
-            TextStyle {
-                font: asset_server.load("fonts/SpaceMono-Regular.ttf"),
-                font_size: 30.0,
-                color: Color::BLACK,
-            },
-        ),
-        ..Default::default()
-    });
+
     commands
         .spawn_bundle(SpriteBundle {
             sprite: Sprite {
@@ -48,7 +40,7 @@ pub fn setup(
             let _ = asset_server.load::<Image, &str>(&format!("img/{}", image_name));
         }
     }
-    
+
     // Load arachnoid animation
     save_load_state.opt_load_path = Some(save_load::get_anim_path("arachnoid"));
 }
@@ -60,16 +52,6 @@ pub fn wasm_resize_window(mut windows: ResMut<Windows>) {
     let h = window.inner_height().unwrap().as_f64().unwrap();
     let window = windows.get_primary_mut().unwrap();
     window.set_resolution(w as f32, h as f32);
-}
-
-pub fn update_text(
-    mut q: Query<&mut Text>,
-    egui_state: Res<egui::State>,
-    cursor_pos: Res<CursorPos>,
-) {
-    for mut text in q.iter_mut() {
-        text.sections[0].value = format!("position: {}", cursor_pos.0);
-    }
 }
 
 fn new_camera_2d() -> Camera2dBundle {
