@@ -3367,6 +3367,8 @@ dependencies = [
  "lyon",
  "serde",
  "serde_json",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

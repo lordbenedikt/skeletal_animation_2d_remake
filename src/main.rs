@@ -19,6 +19,8 @@ use bevy_prototype_lyon::prelude::*;
 use bevy_common_assets::json::JsonAssetPlugin;
 use debug::DebugDrawer;
 use transform::*;
+use wasm_bindgen::prelude;
+use web_sys::*;
 
 const COLOR_WHITE: Color = Color::rgb(1., 1., 1.);
 const COLOR_GRAY: Color = Color::rgb(0.3, 0.3, 0.3);
@@ -100,11 +102,12 @@ fn main() {
             .after("ccd_systems")
             .before("debug_systems"),
     )
-    .add_system_set(animation::system_set());
+    .add_system_set(animation::system_set())
+    .add_system_set(save_load::system_set());
 
     // Don't execute on Web
-    // #[cfg(not(target_arch = "wasm32"))]
-    app.add_system_set(save_load::system_set());
+    #[cfg(target_arch = "wasm32")]
+    app.add_system(misc::wasm_resize_window);
 
     // RUN
     app.run();

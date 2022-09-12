@@ -17,6 +17,7 @@ pub fn setup(
     clear_color: Res<ClearColor>,
     mut save_load_state: ResMut<save_load::State>,
 ) {
+    dbg!("started");
     commands.spawn_bundle(new_camera_2d()).insert(MainCamera);
     commands.spawn_bundle(TextBundle {
         text: Text::from_section(
@@ -50,6 +51,15 @@ pub fn setup(
     
     // Load arachnoid animation
     save_load_state.opt_load_path = Some(save_load::get_anim_path("arachnoid"));
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn wasm_resize_window(mut windows: ResMut<Windows>) {
+    let window = web_sys::window().unwrap();
+    let w = window.inner_width().unwrap().as_f64().unwrap();
+    let h = window.inner_height().unwrap().as_f64().unwrap();
+    let window = windows.get_primary_mut().unwrap();
+    window.set_resolution(w as f32, h as f32);
 }
 
 pub fn update_text(
@@ -151,4 +161,8 @@ impl ColorUtils for Color {
         let col = self.as_rgba();
         Color::rgba(1. - col.r(), 1. - col.g(), 1. - col.b(), 0.2)
     }
+}
+
+pub fn console_log(message: &str) {
+    web_sys::console::log_1(&message.into());
 }

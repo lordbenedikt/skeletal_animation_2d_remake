@@ -116,6 +116,7 @@ pub fn apply_animation(
     state: ResMut<State>,
     anims: Res<Animations>,
     time: Res<Time>,
+    windows: Res<Windows>,
 ) {
     // Only apply if any animation is available and running == true
     if anims.map.is_empty() || state.running == false {
@@ -204,7 +205,8 @@ pub fn apply_animation(
         }
 
         let mouse_pos = cursor_pos.0;
-        let distance = 7.;
+        let window_height = windows.get_primary().unwrap().height();
+        let distance = window_height / PIXELS_PER_UNIT as f32;
         let max_distance = distance * std::f32::consts::SQRT_2;
 
         let mut up_weight = mouse_pos.distance(Vec2::new(0., distance)) / max_distance;
