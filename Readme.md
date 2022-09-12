@@ -57,3 +57,14 @@ Displaying bones and meshes can be toggled.
 
 ![ease in out](img/pooh.gif)
 ![ease out elastic](img/pooh_elastic.gif)
+
+## Installation
+
+### WebAssembly
+
+Generate WASM files with:
+
+```
+cargo build --release --target wasm32-unknown-unknown
+wasm-bindgen --out-dir ./out/ --target web ./target/
+```

@@ -15,7 +15,7 @@ use std::{fs, io::Error};
 
 #[derive(Default)]
 pub struct State {
-    opt_load_filename: Option<String>,
+    pub opt_load_path: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, bevy::reflect::TypeUuid)]
@@ -367,10 +367,10 @@ fn load(
 ) {
     let save_slot = get_just_pressed_number(&keys);
     if keys.pressed(KeyCode::LAlt) && save_slot != -1 {
-        state.opt_load_filename = Some(String::from(format!("anims/animation_{}.anim", save_slot)));
+        state.opt_load_path = Some(get_anim_path(&format!("animation_{}", save_slot)));
     }
 
-    if let Some(path) = &state.opt_load_filename {
+    if let Some(path) = &state.opt_load_path {
         let anim_handle = asset_server.load(path);
         let opt_data = savefile_assets.get(&anim_handle);
 
@@ -512,7 +512,7 @@ fn load(
                 String::new()
             };
 
-            state.opt_load_filename = None
+            state.opt_load_path = None
         }
     }
 }
@@ -541,4 +541,8 @@ fn get_just_pressed_number(keys: &Input<KeyCode>) -> i32 {
     } else {
         return -1;
     }
+}
+
+pub fn get_anim_path(filename: &str) -> String {
+    String::from(format!("anims/{}.anim", filename))
 }

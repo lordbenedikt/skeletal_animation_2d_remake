@@ -74,7 +74,6 @@ fn main() {
     // .add_plugin(FrameTimeDiagnosticsPlugin::default())
     // STARTUP SYSTEMS
     .add_startup_system(misc::setup)
-    .add_startup_system(skin::add_startup_skins)
     // SYSTEMS
     .add_system(misc::get_mouse_position.label("input_handling"))
     .add_system(misc::update_text)

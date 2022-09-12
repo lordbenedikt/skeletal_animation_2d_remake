@@ -692,7 +692,7 @@ pub fn system_set() -> SystemSet {
         .with_system(update_mesh)
 }
 
-pub fn add_startup_skins(
+pub fn add_pooh_on_startup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,

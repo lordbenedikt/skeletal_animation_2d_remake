@@ -1,7 +1,8 @@
-use crate::{*, skin::AVAILABLE_IMAGES};
+use crate::{skin::AVAILABLE_IMAGES, *};
 use bevy::{
+    ecs::change_detection::MutUntyped,
     prelude::*,
-    render::camera::{DepthCalculation, RenderTarget}, ecs::change_detection::MutUntyped,
+    render::camera::{DepthCalculation, RenderTarget},
 };
 
 #[derive(Component)]
@@ -14,15 +15,8 @@ pub fn setup(
     mut commands: Commands,
     asset_server: ResMut<AssetServer>,
     clear_color: Res<ClearColor>,
-    anims: Res<Assets<save_load::CompleteJson>>,
+    mut save_load_state: ResMut<save_load::State>,
 ) {
-    #[cfg(target_arch = "wasm32")]
-    {
-        for image_name in AVAILABLE_IMAGES.iter() {
-            let _ = asset_server.load::<Image, &str>(&format!("img/{}",image_name));
-        }
-    }
-
     commands.spawn_bundle(new_camera_2d()).insert(MainCamera);
     commands.spawn_bundle(TextBundle {
         text: Text::from_section(
@@ -45,12 +39,26 @@ pub fn setup(
             ..Default::default()
         })
         .insert(SelectBox);
+
+    // On WASM load all images on startup
+    #[cfg(target_arch = "wasm32")]
+    {
+        for image_name in AVAILABLE_IMAGES.iter() {
+            let _ = asset_server.load::<Image, &str>(&format!("img/{}", image_name));
+        }
+    }
+    
+    // Load arachnoid animation
+    save_load_state.opt_load_path = Some(save_load::get_anim_path("arachnoid"));
 }
 
-pub fn update_text(mut q: Query<&mut Text>, egui_state: Res<egui::State>, cursor_pos: Res<CursorPos>) {
+pub fn update_text(
+    mut q: Query<&mut Text>,
+    egui_state: Res<egui::State>,
+    cursor_pos: Res<CursorPos>,
+) {
     for mut text in q.iter_mut() {
-        text.sections[0].value =
-            format!("position: {}", cursor_pos.0);
+        text.sections[0].value = format!("position: {}", cursor_pos.0);
     }
 }
 

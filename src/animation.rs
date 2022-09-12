@@ -39,7 +39,7 @@ pub struct State {
 impl State {
     pub fn new() -> State {
         State {
-            running: false,
+            running: true,
             start_time: 0.,
             layers: vec![String::from("anim_0")],
             blending_style: BlendingStyle::Layering,
