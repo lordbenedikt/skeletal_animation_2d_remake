@@ -269,7 +269,7 @@ fn save(
             blending_style: anim_state.blending_style,
         })
         .unwrap();
-        let mut file = fs::File::create(format!("anims/animation_{}.anim", save_slot))
+        let mut file = fs::File::create(format!("assets/anims/animation_{}.anim", save_slot))
             .expect("Failed to create file!");
         file.write_all(serialized.as_bytes()).unwrap();
     }

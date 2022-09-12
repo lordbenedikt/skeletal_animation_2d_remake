@@ -46,6 +46,13 @@ The plots serve to adjust the timing of an animation. Keyframes can be moved wit
 | K                             | Add keyframe for selected bones    |
 | P                             | Play / Pause animation             |
 
+### Save and Load
+
+LControl + Number: save animation (skeleton, skin, animation layers and settings) to one of 10 save slots
+LAlt + Number: load previously saved animation
+
+Currently WebAssembly doesn't support saving animations. Default animations can still be loaded.
+
 ### Show/Hide Debug Shapes
 
 Displaying bones and meshes can be toggled.
