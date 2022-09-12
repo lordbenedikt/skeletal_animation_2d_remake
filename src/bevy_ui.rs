@@ -1,7 +1,6 @@
 use bevy::utils::HashMap;
 
 use crate::*;
-use open::*;
 
 #[derive(Default)]
 pub struct UiElements(HashMap<String, Entity>);
@@ -82,7 +81,8 @@ pub fn manual_button(
 
         match *interaction {
             Interaction::Clicked => {
-                open::that("https://github.com/lordbenedikt/skeletal_animation_2d_remake");
+                // open::that("https://github.com/lordbenedikt/skeletal_animation_2d_remake");
+                web_sys::window().unwrap().open_with_url("https://github.com/lordbenedikt/skeletal_animation_2d_remake");
                 *color = (*COLOR_LIGHTER_GRAY.clone().set_a(0.3)).into();
             }
             Interaction::Hovered => {
