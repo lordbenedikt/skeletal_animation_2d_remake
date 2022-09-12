@@ -46,6 +46,14 @@ The plots serve to adjust the timing of an animation. Keyframes can be moved wit
 | K                             | Add keyframe for selected bones    |
 | P                             | Play / Pause animation             |
 
+### Inverse Kinematics
+
+It is possible to place a target for a bone. This bone and its parents, until the depth specified in the animation window, will now reach for this target using an inverse kinematics algorithm (cyclic coordinate descent). Reaching for a target has priority over the keyframe animation, so applicable bones will ignore it. Multiple targets for the same bones are not supported and will result in undefined beheaviour.
+
+|             Input             |               Action               |
+| ----------------------------- | ---------------------------------- |
+| LAlt + LeftMouse              | Create a target, the selected bone will be the end effector that reaches for this target |
+
 ### Save and Load
 
 |             Input             |               Action               |

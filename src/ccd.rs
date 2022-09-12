@@ -72,6 +72,11 @@ pub fn reach_for_target(
     mut q_bones: Query<(&GlobalTransform, Option<&Parent>, &mut Transform, &mut Bone)>,
     q_targets: Query<(Entity, &Transform, &Target), Without<Bone>>,
 ) {
+    // Reset bone.is_ccd_maneuvered
+    for (_,_,_,mut bone) in q_bones.iter_mut() {
+        bone.is_ccd_maneuvered = false;
+    }
+    
     for (entity, target_transform, target) in q_targets.iter() {
         let depth = target.depth;
         let iterations = 20;
@@ -100,10 +105,6 @@ pub fn reach_for_target(
         // Get tip of last bone of chain
         let last_bone_gl_transform = q_bones.get(target.bone).unwrap().0.clone();
         let mut end_of_chain: Vec2 = Bone::get_true_tip(&get_true_gl_transform(target.bone));
-        // let mut end_of_chain: Vec2 = Bone::get_tip(&last_bone_gl_transform);
-
-        // // Get tip of last bone of chain
-        // let last_bone_gl_transform = q_bones.get(target.bone).unwrap().0.clone();
         // let mut end_of_chain: Vec2 = Bone::get_tip(&last_bone_gl_transform);
 
         // Perform CCD
