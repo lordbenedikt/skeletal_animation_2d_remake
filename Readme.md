@@ -198,11 +198,35 @@ Displaying bones and meshes can be toggled.
 
 ## Installation
 
+### Rust
+
+To compile the code you will need a working Rust installation. If you are new to Rust you can follow these instructions: https://www.rust-lang.org/tools/install
+
+Once Rust is installed, simply run following command inside of the project folder:
+
+```
+cargo run
+```
+
 ### WebAssembly
 
-Generate WASM files with:
+To compile and run the code in your browser, you first need to add WASM support and install the wasm-server-runner tool:
+
+```
+rustup target install wasm32-unknown-unknown
+cargo install wasm-server-runner
+```
+
+Run the application with:
+```
+cargo run --target wasm32-unknown-unknown
+```
+
+If you want to compile and deploy the application to a website generate the WASM files with:
 
 ```
 cargo build --release --target wasm32-unknown-unknown
 wasm-bindgen --out-dir ./out/ --target web ./target/wasm32-unknown-unknown/release/skeletal-animation-2D-editor.wasm
 ```
+
+Then upload these files together with the assets folder and the index.html.
