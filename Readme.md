@@ -109,6 +109,35 @@ Displaying bones and meshes can be toggled.
 | LMouse + Drag                 | Select entities using rubber band  |
 | Click on plot                 | Select animation / Select closest keyframe |
 | LControl + LMouse + Drag      | Move a keyframe affecting the animations timing  |
+<table>
+  <tr>
+    <td colspan="2"><center><b>Transforming</b></center></td>
+  </tr>
+  <tr>
+    <td>G</td>
+    <td>Move selected entities</td>
+  </tr>
+  <tr>
+    <td>S</td>
+    <td>Scale selected entities</td>
+  </tr>
+  <tr>
+    <td>R</td>
+    <td>Rotate selected entities</td>
+  </tr>
+  <tr>
+    <td>Delete</td>
+    <td>Delete selected entities</td>
+  </tr>
+  <tr>
+    <td>K</td>
+    <td>Add keyframe for applicable components</td>
+  </tr>
+  <tr>
+    <td>J</td>
+    <td>Replace keyframe for applicable component</td>
+  </tr>
+</table>
 #### Transforming
 |         Input            |           Action          |
 | ----------------------------- | ---------------------------------- |
@@ -118,7 +147,36 @@ Displaying bones and meshes can be toggled.
 | Delete                        | Delete selected entities       |
 | K                             | Add keyframe for applicable components |
 | J                             | Replace keyframe for applicable components |
-#### Other
+
+<table>
+  <tr>
+    <td colspan="2"><center><b>Other</b></center></td>
+  </tr>
+  <tr>
+    <td>P</td>
+    <td>Play / Pause animation</td>
+  </tr>
+  <tr>
+    <td>B</td>
+    <td>Show / Hide bones</td>
+  </tr>
+  <tr>
+    <td>M</td>
+    <td>Show / Hide mesh vertices and edges</td>
+  </tr>
+  <tr>
+    <td>LMouse</td>
+    <td>Confirm Transformation</td>
+  </tr>
+  <tr>
+    <td>LControl + Number</td>
+    <td>save animation (skeleton, skin, animation layers and settings) to one of 10 save slots</td>
+  </tr>
+  <tr>
+    <td>LALT + Number</td>
+    <td>load previously saved animation</td>
+  </tr>
+</table>
 |         Input            |           Action          |
 | ----------------------------- | ---------------------------------- |
 | P                             | Play / Pause animation             |
