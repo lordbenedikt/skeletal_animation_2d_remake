@@ -88,19 +88,11 @@ Displaying bones and meshes can be toggled.
 | B                             | Show / Hide bones                  |
 | M                             | Show / Hide mesh vertices and edges|
 
-![ease in out](img/pooh.gif)
-![ease out elastic](img/pooh_elastic.gif)
+|             ease in out             |               ease out elastic               |
+| ----------------------------- | ---------------------------------- |
+| ![ease in out](img/pooh.gif)  | ![ease out elastic](img/pooh_elastic.gif)   |
 
-## Installation
 
-### WebAssembly
-
-Generate WASM files with:
-
-```
-cargo build --release --target wasm32-unknown-unknown
-wasm-bindgen --out-dir ./out/ --target web ./target/wasm32-unknown-unknown/release/skeletal-animation-2D-editor.wasm
-```
 
 ### Controls Summary
 
@@ -128,3 +120,14 @@ wasm-bindgen --out-dir ./out/ --target web ./target/wasm32-unknown-unknown/relea
 | M                             | Show / Hide mesh vertices and edges|
 | LControl + Number             | save animation (skeleton, skin, animation layers and settings) to one of 10 save slots        |
 | LAlt + Number                 | load previously saved animation |
+
+## Installation
+
+### WebAssembly
+
+Generate WASM files with:
+
+```
+cargo build --release --target wasm32-unknown-unknown
+wasm-bindgen --out-dir ./out/ --target web ./target/wasm32-unknown-unknown/release/skeletal-animation-2D-editor.wasm
+```
