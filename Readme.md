@@ -104,7 +104,7 @@ Displaying bones and meshes can be toggled.
 #### Select/Unselect
 |         Input            |           Action          |
 | ----------------------------- | ---------------------------------- |
-| LMouse                        | Select closest entity / Confirm transformation |
+| LMouse                        | Select closest entity |
 | LShift + LMouse               | Add / Substract from selection     |
 | LMouse + Drag                 | Select entities using rubber band  |
 | Click on plot                 | Select animation / Select closest keyframe |
@@ -124,6 +124,7 @@ Displaying bones and meshes can be toggled.
 | P                             | Play / Pause animation             |
 | B                             | Show / Hide bones                  |
 | M                             | Show / Hide mesh vertices and edges|
+| LMouse                        | Confirm Transformation  |
 | LControl + Number             | save animation (skeleton, skin, animation layers and settings) to one of 10 save slots        |
 | LAlt + Number                 | load previously saved animation |
 
