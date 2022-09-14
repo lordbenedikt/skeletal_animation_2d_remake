@@ -104,6 +104,7 @@ Displaying bones and meshes can be toggled.
 #### Select/Unselect
 |         Input            |           Action          |
 | ----------------------------- | ---------------------------------- |
+| LMouse                        | Select closest entity / Confirm transformation |
 | LShift + LMouse               | Add / Substract from selection     |
 | LMouse + Drag                 | Select entities using rubber band  |
 | Click on plot                 | Select animation / Select closest keyframe |
@@ -111,7 +112,6 @@ Displaying bones and meshes can be toggled.
 #### Transforming
 |         Input            |           Action          |
 | ----------------------------- | ---------------------------------- |
-| LMouse                        | Select closest entity / Confirm transformation |
 | G                             |      Move selected entities        |
 | S                             |     Scale selected entities        |
 | R                             |     Rotate selected entities       |
