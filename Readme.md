@@ -111,7 +111,31 @@ Displaying bones and meshes can be toggled.
 </table>
 
 <table>
-<td>
+  <tr>
+    <td colspan="2"><b>Select / Unselect</b></td>
+  </tr>
+  <tr>
+    <td>LMouse</td>
+    <td>Select closest entity</td>
+  </tr>
+  <tr>
+    <td>LShift + LMouse</td>
+    <td>Add / Substract from selection</td>
+  </tr>
+  <tr>
+    <td>LMouse + Drag</td>
+    <td>Select entities using rubber band</td>
+  </tr>
+  <tr>
+    <td>Click on plot</td>
+    <td>Select animation / Select closest keyframe</td>
+  </tr>
+  <tr>
+    <td>LControl + LMouse + Drag</td>
+    <td>Move a keyframe affecting the animations timing</td>
+  </tr>
+</table>
+
 <table>
   <tr>
     <td colspan="2"><b>Transforming</b></td>
@@ -140,36 +164,6 @@ Displaying bones and meshes can be toggled.
     <td>J</td>
     <td>Replace keyframe for applicable component</td>
   </tr>
-</table>
-</td>
-
-<td>
-<table>
-  <tr>
-    <td colspan="2"><b>Select / Unselect</b></td>
-  </tr>
-  <tr>
-    <td>LMouse</td>
-    <td>Select closest entity</td>
-  </tr>
-  <tr>
-    <td>LShift + LMouse</td>
-    <td>Add / Substract from selection</td>
-  </tr>
-  <tr>
-    <td>LMouse + Drag</td>
-    <td>Select entities using rubber band</td>
-  </tr>
-  <tr>
-    <td>Click on plot</td>
-    <td>Select animation / Select closest keyframe</td>
-  </tr>
-  <tr>
-    <td>LControl + LMouse + Drag</td>
-    <td>Move a keyframe affecting the animations timing</td>
-  </tr>
-</table>
-</td>
 </table>
 
 <table>
