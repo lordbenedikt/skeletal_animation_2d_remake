@@ -94,7 +94,6 @@ fn main() {
     )
     .add_system_set(skeleton::system_set().after("skin_systems"))
     .add_system_set(bone::system_set().label("bone_systems").after("ui_action"))
-    .add_system_set(ccd::system_set().label("ccd_systems"))
     .add_system_set(
         debug::system_set()
             .after("bone_systems")
@@ -108,7 +107,8 @@ fn main() {
             .after("ccd_systems")
             .before("debug_systems"),
     )
-    .add_system_set(animation::system_set())
+    .add_system_set(animation::system_set().label("animation_systems"))
+    .add_system_set(ccd::system_set().label("ccd_systems").after("animation_systems"))
     .add_system_set(save_load::system_set());
 
     // Don't execute on Web

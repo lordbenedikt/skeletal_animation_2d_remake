@@ -105,7 +105,6 @@ pub fn reach_for_target(
         // Get tip of last bone of chain
         let last_bone_gl_transform = q_bones.get(target.bone).unwrap().0.clone();
         let mut end_of_chain: Vec2 = Bone::get_true_tip(&get_true_gl_transform(target.bone));
-        // let mut end_of_chain: Vec2 = Bone::get_tip(&last_bone_gl_transform);
 
         // Perform CCD
         for _ in 0..iterations {

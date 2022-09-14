@@ -37,20 +37,29 @@ Create a skeleton along the shape of the unbound skin. Select both skin and bone
 
 Inside the window labeled 'Animations' various animation settings can be adjusted, animations can be created and edited. Under **Animations** the method of blending animations can be changed. Currently there are two settings: layering and 4-way additive blending. 'layering' simply replaces parts of the animation on lower levels, if the current layer provides values for a given bone. 4-way additive blending merges 4 animations into one using the mouse position to determine the weight of each of the 4 animations. Layers with higher numbers are above layers with lower numbers.
 
-The following 3 gifs show first the lower layer of an animation, then the layer above, and finally the resulting combined animation. The top layer animation only includes the right arm of the character.
+The following 3 GIFs show first the lower layer of an animation, then the layer above, and finally the resulting combined animation. The top layer animation only includes the right arm of the character.
 
 |             lower layer             | top layer            | resulting combined animation |
 | ----------------------------- | ---------------------------------- | ---- |
 |![lower layer animation](img/layering_1.gif)|![top layer animation](img/layering_0.gif) | ![combined animation](img/layering_2.gif) |
 |![lower layer animation](img/layering_bones_1.gif)|![top layer animation](img/layering_bones_0.gif) | ![combined animation](img/layering_bones_2.gif) |
 
-The plots serve to adjust the timing of an animation. Keyframes can be moved with LControl + LMouse. Multiple plots can be displayed simultaneously. This is solely for ease editing and doesn't affect the animation.
+The following GIFs show an example for additive animation blending. Here four animations have been blended into one. The percentage, to which each animation influences the result, is determined by the mouse position.
+
+|         combined animation        |       skeleton         |
+| ----------------------------- | ---------------------------------- |
+|![lower layer animation](img/additive_blending.gif)|![top layer animation](img/additive_blending_bones.gif) |
+
+### Keyframe Plot
+
+The plots serve to adjust the timing of an animation. Keyframes can be moved with LControl + LMouse. Multiple plots can be displayed simultaneously. This is solely for ease of editing and doesn't affect the animation.
 
 |             Input             |               Action               |
 | ----------------------------- | ---------------------------------- |
 | Click on plot                 | Select animation / Select closest keyframe |
 | LControl + LMouse + Drag      | Move a keyframe affecting the animations timing  |
-| K                             | Add keyframe for selected bones    |
+| K                             | Add keyframe for applicable components |
+| J                             | Replace keyframe for applicable components |
 | P                             | Play / Pause animation             |
 
 ### Inverse Kinematics
@@ -92,3 +101,30 @@ Generate WASM files with:
 cargo build --release --target wasm32-unknown-unknown
 wasm-bindgen --out-dir ./out/ --target web ./target/wasm32-unknown-unknown/release/skeletal-animation-2D-editor.wasm
 ```
+
+### Controls Summary
+
+|             Input             |               Action               |
+| ----------------------------- | ---------------------------------- |
+| **- - - - - - - - - - Create Components - - - - - - - - - -** |   |
+| LCtrl + LMouse                | Create a bone, selected bone will automatically be assigned as parent bone    |
+| LAlt + LeftMouse              | Create a target, selected bone will be the end effector that reaches for this target |
+| **- - - - - - - - - - -  Select / Unselect  - - - - - - - - - - -** |   |
+| LShift + LMouse               | Add / Substract from selection     |
+| LMouse + Drag                 | Select entities using rubber band  |
+| Click on plot                 | Select animation / Select closest keyframe |
+| LControl + LMouse + Drag      | Move a keyframe affecting the animations timing  |
+| **- - - - - - - - - - - - Transforming - - - - - - - - - - - -** |   |
+| LMouse                        | Select closest entity / Confirm transformation |
+| G                             |      Move selected entities        |
+| S                             |     Scale selected entities        |
+| R                             |     Rotate selected entities       |
+| Delete                        | Delete selected entities       |
+| K                             | Add keyframe for applicable components |
+| J                             | Replace keyframe for applicable components |
+| **- - - - - - - - - - - - - - - Other - - - - - - - - - - - - - - -** |   |
+| P                             | Play / Pause animation             |
+| B                             | Show / Hide bones                  |
+| M                             | Show / Hide mesh vertices and edges|
+| LControl + Number             | save animation (skeleton, skin, animation layers and settings) to one of 10 save slots        |
+| LAlt + Number                 | load previously saved animation |

@@ -383,6 +383,9 @@ pub fn create_or_change_keyframe(
         } else if is_change {
             let index = egui_state.plots[egui_state.edit_plot].selected_keyframe_index;
             if anim_mut.keyframes.len() > index {
+                if comp_animation.transforms.get_mut(index).is_none() {
+                    continue;
+                }
                 *comp_animation.transforms.get_mut(index).unwrap() = transform.clone();
             }
         }
