@@ -111,7 +111,7 @@ Displaying bones and meshes can be toggled.
 | LControl + LMouse + Drag      | Move a keyframe affecting the animations timing  |
 <table>
   <tr>
-    <td colspan="2"><center><b>Transforming</b></center></td>
+    <td colspan="2" style="text-align:center"><center><b>Transforming</b></center></td>
   </tr>
   <tr>
     <td>G</td>
