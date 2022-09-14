@@ -96,22 +96,49 @@ Displaying bones and meshes can be toggled.
 
 ### Controls Summary
 
-#### Create Components
-|         Input            |           Action          |
-| ----------------------------- | ---------------------------------- |
-| LCtrl + LMouse                | Create a bone, selected bone will automatically be assigned as parent bone    |
-| LAlt + LeftMouse              | Create a target, selected bone will be the end effector that reaches for this target |
-#### Select/Unselect
-|         Input            |           Action          |
-| ----------------------------- | ---------------------------------- |
-| LMouse                        | Select closest entity |
-| LShift + LMouse               | Add / Substract from selection     |
-| LMouse + Drag                 | Select entities using rubber band  |
-| Click on plot                 | Select animation / Select closest keyframe |
-| LControl + LMouse + Drag      | Move a keyframe affecting the animations timing  |
 <table>
   <tr>
-    <td colspan="2" style="text-align:center"><center><b>Transforming</b></center></td>
+    <td><b>Create Components</b></td>
+  </tr>
+  <tr>
+    <td>LCtrl + LMouse</td>
+    <td>Create a bone, selected bone will automatically be assigned as parent bone</td>
+  </tr>
+  <tr>
+    <td>LAlt + LeftMouse</td>
+    <td>Create a target, selected bone will be the end effector that reaches for this target</td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td colspan="2"><b>Transforming</b></td>
+  </tr>
+  <tr>
+    <td>LMouse</td>
+    <td>Select closest entity</td>
+  </tr>
+  <tr>
+    <td>LShift + LMouse</td>
+    <td>Add / Substract from selection</td>
+  </tr>
+  <tr>
+    <td>LMouse + Drag</td>
+    <td>Select entities using rubber band</td>
+  </tr>
+  <tr>
+    <td>Click on plot</td>
+    <td>Select animation / Select closest keyframe</td>
+  </tr>
+  <tr>
+    <td>LControl + LMouse + Drag</td>
+    <td>Move a keyframe affecting the animations timing</td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td colspan="2"><b>Transforming</b></td>
   </tr>
   <tr>
     <td>G</td>
@@ -138,19 +165,10 @@ Displaying bones and meshes can be toggled.
     <td>Replace keyframe for applicable component</td>
   </tr>
 </table>
-#### Transforming
-|         Input            |           Action          |
-| ----------------------------- | ---------------------------------- |
-| G                             |      Move selected entities        |
-| S                             |     Scale selected entities        |
-| R                             |     Rotate selected entities       |
-| Delete                        | Delete selected entities       |
-| K                             | Add keyframe for applicable components |
-| J                             | Replace keyframe for applicable components |
 
 <table>
   <tr>
-    <td colspan="2"><center><b>Other</b></center></td>
+    <td colspan="2"><b>Other</b></td>
   </tr>
   <tr>
     <td>P</td>
@@ -177,14 +195,6 @@ Displaying bones and meshes can be toggled.
     <td>load previously saved animation</td>
   </tr>
 </table>
-|         Input            |           Action          |
-| ----------------------------- | ---------------------------------- |
-| P                             | Play / Pause animation             |
-| B                             | Show / Hide bones                  |
-| M                             | Show / Hide mesh vertices and edges|
-| LMouse                        | Confirm Transformation  |
-| LControl + Number             | save animation (skeleton, skin, animation layers and settings) to one of 10 save slots        |
-| LAlt + Number                 | load previously saved animation |
 
 ## Installation
 
