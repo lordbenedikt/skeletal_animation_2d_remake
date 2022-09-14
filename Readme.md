@@ -98,7 +98,7 @@ Displaying bones and meshes can be toggled.
 
 <table>
   <tr>
-    <td><b>Create Components</b></td>
+    <td colspan="2"><b>Create Components</b></td>
   </tr>
   <tr>
     <td>LCtrl + LMouse</td>
