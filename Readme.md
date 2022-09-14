@@ -98,15 +98,15 @@ Displaying bones and meshes can be toggled.
 
 |             Input             |               Action               |
 | ----------------------------- | ---------------------------------- |
-| **- - - - - - - - - - Create Components - - - - - - - - - -** |   |
+| **Create Components** |   |
 | LCtrl + LMouse                | Create a bone, selected bone will automatically be assigned as parent bone    |
 | LAlt + LeftMouse              | Create a target, selected bone will be the end effector that reaches for this target |
-| **- - - - - - - - - - -  Select / Unselect  - - - - - - - - - - -** |   |
+| **Select / Unselect** |   |
 | LShift + LMouse               | Add / Substract from selection     |
 | LMouse + Drag                 | Select entities using rubber band  |
 | Click on plot                 | Select animation / Select closest keyframe |
 | LControl + LMouse + Drag      | Move a keyframe affecting the animations timing  |
-| **- - - - - - - - - - - - Transforming - - - - - - - - - - - -** |   |
+| **Transforming** |   |
 | LMouse                        | Select closest entity / Confirm transformation |
 | G                             |      Move selected entities        |
 | S                             |     Scale selected entities        |
@@ -114,7 +114,7 @@ Displaying bones and meshes can be toggled.
 | Delete                        | Delete selected entities       |
 | K                             | Add keyframe for applicable components |
 | J                             | Replace keyframe for applicable components |
-| **- - - - - - - - - - - - - - - Other - - - - - - - - - - - - - - -** |   |
+| **Other** |   |
 | P                             | Play / Pause animation             |
 | B                             | Show / Hide bones                  |
 | M                             | Show / Hide mesh vertices and edges|
