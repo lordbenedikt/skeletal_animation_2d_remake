@@ -402,11 +402,19 @@ pub fn draw_ccd_target(
             visibility.is_visible = false;
             continue;
         }
-        if transformable.is_selected {
-            sprite.color = COLOR_SELECTED;
+        sprite.color = if transformable.is_selected {
+            if transformable.is_part_of_layer {
+                COLOR_SELECTED_ACTIVE
+            } else {
+                COLOR_SELECTED
+            }
         } else {
-            sprite.color = COLOR_DEFAULT;
-        }
+            if transformable.is_part_of_layer {
+                COLOR_DEFAULT_ACTIVE
+            } else {
+                COLOR_DEFAULT
+            }
+        };
     }
 }
 

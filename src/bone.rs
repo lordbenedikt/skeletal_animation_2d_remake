@@ -23,39 +23,6 @@ impl Bone {
 pub fn system_set() -> SystemSet {
     SystemSet::new()
         .with_system(add_bone_on_mouse_click)
-        .with_system(check_which_bones_are_part_of_current_layer)
-}
-
-pub fn check_which_bones_are_part_of_current_layer(
-    mut q: Query<(Entity, &mut Transformable), With<Bone>>,
-    egui_state: Res<egui::State>,
-    animations: Res<animation::Animations>,
-    mouse: Res<Input<MouseButton>>,
-    keys: Res<Input<KeyCode>>,
-) {
-    if !mouse.just_released(MouseButton::Left) && keys.just_released(KeyCode::K) {
-        return;
-    }
-
-    let current_animation_name = &egui_state.plots[egui_state.edit_plot].name;
-    let current_animation = animations.map.get(current_animation_name);
-    if current_animation.is_none() {
-        for (_, mut transformable) in q.iter_mut() {
-            transformable.is_part_of_layer = false;
-        }
-    } else {
-        for (entity, mut transformable) in q.iter_mut() {
-            let anim = current_animation.unwrap();
-            let mut found = false;
-            for (&e, _) in anim.comp_animations.iter() {
-                if e == entity {
-                    found = true;
-                    break;
-                }
-            }
-            transformable.is_part_of_layer = found;
-        }
-    }
 }
 
 pub fn add_bone_on_mouse_click(
