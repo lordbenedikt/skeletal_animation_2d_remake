@@ -373,14 +373,14 @@ pub fn create_or_change_keyframe(
         }
         let comp_animation = anim_mut.comp_animations.get_mut(&entity).unwrap();
 
-        if is_create {
-            while comp_animation.transforms.len() < anim_mut.keyframes.len() {
-                comp_animation.transforms.push(transform.clone());
-                comp_animation
-                    .interpolation_functions
-                    .push(egui_state.interpolation_function);
-            }
-        } else if is_change {
+        // Fill any missing keyframes with current pos
+        while comp_animation.transforms.len() < anim_mut.keyframes.len() {
+            comp_animation.transforms.push(transform.clone());
+            comp_animation
+                .interpolation_functions
+                .push(egui_state.interpolation_function);
+        }
+        if is_change {
             let index = egui_state.plots[egui_state.edit_plot].selected_keyframe_index;
             if anim_mut.keyframes.len() > index {
                 if comp_animation.transforms.get_mut(index).is_none() {

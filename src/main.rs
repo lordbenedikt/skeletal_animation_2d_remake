@@ -94,21 +94,22 @@ fn main() {
     )
     .add_system_set(skeleton::system_set().after("skin_systems"))
     .add_system_set(bone::system_set().label("bone_systems").after("ui_action"))
+    .add_system_set(animation::system_set().label("animation_systems"))
+    .add_system_set(
+        transform::system_set()
+            .label("transform_systems")
+            .after("ui_action")
+            .after("bone_systems")
+            .after("animation_systems"),
+    )
+    .add_system_set(ccd::system_set().label("ccd_systems").after("transform_systems"))
     .add_system_set(
         debug::system_set()
             .after("bone_systems")
             .after("update_cloth")
+            .after("ccd_systems")
             .label("debug_systems"),
     )
-    .add_system_set(
-        transform::system_set()
-            .after("ui_action")
-            .after("bone_systems")
-            .after("ccd_systems")
-            .before("debug_systems"),
-    )
-    .add_system_set(animation::system_set().label("animation_systems"))
-    .add_system_set(ccd::system_set().label("ccd_systems").after("animation_systems"))
     .add_system_set(save_load::system_set());
 
     // Don't execute on Web
