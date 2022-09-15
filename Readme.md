@@ -88,9 +88,13 @@ Displaying bones and meshes can be toggled.
 | B                             | Show / Hide bones                  |
 | M                             | Show / Hide mesh vertices and edges|
 
-|             ease in out             |               ease out elastic               |
+|             ease in out       |               ease out elastic     |
 | ----------------------------- | ---------------------------------- |
-| ![ease in out](img/pooh.gif)  | ![ease out elastic](img/pooh_elastic.gif)   |
+| ![ease in out](img/interpolate_linear.gif)  | ![ease out elastic](img/interpolate_ease_in_out.gif)   |
+
+|            ease out elastic       |               ease in out back     |
+| ----------------------------- | ---------------------------------- |
+| ![ease in out](img/interpolate_ease_out_elastic.gif)  | ![ease out elastic](img/interpolate_ease_in_out_back.gif)   |
 
 
 
@@ -200,7 +204,7 @@ Displaying bones and meshes can be toggled.
 
 ### Rust
 
-To compile the code you will need a working Rust installation. If you are new to Rust you can follow these instructions: https://www.rust-lang.org/tools/install
+To compile and run the code you will need a working Rust installation. If you are new to Rust you can follow these instructions: https://www.rust-lang.org/tools/install
 
 Once Rust is installed, simply run following command inside of the project folder:
 
