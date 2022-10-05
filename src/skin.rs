@@ -35,6 +35,7 @@ pub struct AddSkinEvent {
     pub cols: u16,
     pub rows: u16,
     pub as_cloth: bool,
+    pub cut_out: bool,
 }
 
 #[derive(Default)]
@@ -385,7 +386,7 @@ impl Skin {
         cols: u16,
         rows: u16,
         depth: f32,
-        rectangular: bool,
+        cut_out: bool,
     ) -> Option<Skin> {
         let img_handle = asset_server.load(path);
         let opt_img = image_assets.get(&img_handle);
@@ -447,7 +448,7 @@ impl Skin {
                 depth,
             };
             // // Remove reduntant vertices and corresponding uvs and indices
-            if !rectangular {
+            if cut_out {
                 for i in (0..skin.uvs.len()).rev() {
                     let v = skin.uvs[i];
                     let coords = [
@@ -582,6 +583,7 @@ pub fn generate_mesh(
     path: &str,
     asset_server: &AssetServer,
     image_assets: &Assets<Image>,
+    cut_out: bool,
 ) -> Option<Skin> {
     let contour = Contour::from_image(path, asset_server, image_assets, 5);
     let mut polygon = Polygon::from_contour(&contour);
@@ -604,33 +606,6 @@ pub fn generate_mesh(
     Skin::grid_mesh(path, asset_server, image_assets, 40, 40, 0., false)
 }
 
-pub fn update_mesh(
-    skeleton: Res<Skeleton>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    q: Query<(&GlobalTransform, &Skin, Entity)>,
-) {
-    for (gl_transform, skin, entity) in q.iter() {
-        let mut is_part_of_skeleton = false;
-        for mapping in skeleton.skin_mappings.iter() {
-            if mapping.skin.is_none() {
-                continue;
-            }
-            if mapping.skin.unwrap() == entity {
-                is_part_of_skeleton = true;
-                break;
-            }
-        }
-        if is_part_of_skeleton {
-            continue;
-        }
-        let vertices = skin.gl_vertices(gl_transform);
-        let opt_mesh = meshes.get_mut(&skin.mesh_handle.clone().unwrap().0);
-        if let Some(mesh) = opt_mesh {
-            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
-        }
-    }
-}
-
 pub fn create_mesh(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -638,8 +613,9 @@ pub fn create_mesh(
     mut skeleton: ResMut<Skeleton>,
     asset_server: Res<AssetServer>,
     image_assets: &Assets<Image>,
+    cut_out: bool,
 ) {
-    let opt_skin = skin::generate_mesh("person.png", &asset_server, image_assets);
+    let opt_skin = skin::generate_mesh("person.png", &asset_server, image_assets, cut_out);
     if opt_skin.is_none() {
         return;
     }
@@ -689,7 +665,6 @@ pub fn create_mesh(
 pub fn system_set() -> SystemSet {
     SystemSet::new()
         .with_system(add_skins)
-        .with_system(update_mesh)
 }
 
 pub fn add_pooh_on_startup(
@@ -700,8 +675,8 @@ pub fn add_pooh_on_startup(
     asset_server: Res<AssetServer>,
     image_assets: Res<Assets<Image>>,
 ) {
-    state.queued_skins.push(AddSkinEvent { path: String::from("img/honey.png"), cols: 6, rows: 10, as_cloth: true });
-    state.queued_skins.push(AddSkinEvent { path: String::from("img/pooh.png"), cols: 30, rows: 30, as_cloth: false });
+    state.queued_skins.push(AddSkinEvent { path: String::from("img/honey.png"), cols: 6, rows: 10, as_cloth: true, cut_out: false });
+    state.queued_skins.push(AddSkinEvent { path: String::from("img/pooh.png"), cols: 30, rows: 30, as_cloth: false, cut_out: true });
 }
 
 fn add_skin(
@@ -713,7 +688,7 @@ fn add_skin(
     cols: u16,
     rows: u16,
     depth: f32,
-    rectangular: bool,
+    cut_out: bool,
     image_assets: &Assets<Image>,
 ) -> Option<(Entity, Mesh2dHandle)> {
     let opt_skin = Skin::grid_mesh(
@@ -723,7 +698,7 @@ fn add_skin(
         cols,
         rows,
         depth,
-        rectangular,
+        cut_out,
     );
     if opt_skin.is_none() {
         return None;
@@ -792,7 +767,7 @@ pub fn add_skins(
             event.cols,
             event.rows,
             90.,
-            event.as_cloth,
+            event.cut_out,
             &image_assets,
         );
         if opt_entity_mesh.is_none() {

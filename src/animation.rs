@@ -90,8 +90,12 @@ pub struct ComponentAnimation {
 }
 impl ComponentAnimation {
     pub fn remove_keyframe(&mut self, index: usize) {
-        self.transforms.remove(index);
-        self.interpolation_functions.remove(index);
+        if self.transforms.len() > index {
+            self.transforms.remove(index);
+        }
+        if self.interpolation_functions.len() > index {
+            self.interpolation_functions.remove(index);
+        }
     }
 }
 

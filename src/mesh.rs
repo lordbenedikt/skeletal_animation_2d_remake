@@ -1,4 +1,16 @@
-use crate::*;
+use bevy::{sprite::Material2d, utils::HashMap};
+
+use crate::{skin::Skin, *};
+
+#[derive(Default)]
+pub struct FrameMaterialHandles(HashMap<String, Handle<ColorMaterial>>);
+
+pub fn system_set() -> SystemSet {
+    SystemSet::new()
+        .with_system(update_mesh)
+        .with_system(update_mesh)
+        .with_system(exchange_images)
+}
 
 pub fn get_vertex(mesh: &Mesh, ind: usize) -> [f32; 3] {
     unsafe {
@@ -22,7 +34,7 @@ pub fn set_vertex(mesh: &mut Mesh, ind: usize, v: [f32; 3]) {
 
 pub fn set_vertices(mesh: &mut Mesh, vertices: Vec<Vec3>) {
     for i in 0..vertices.len() {
-        set_vertex(mesh, i, [vertices[i][0],vertices[i][1],vertices[i][2]]);
+        set_vertex(mesh, i, [vertices[i][0], vertices[i][1], vertices[i][2]]);
     }
 }
 
@@ -37,4 +49,102 @@ pub fn get_vertices(mesh: &Mesh) -> Vec<Vec3> {
         }
     }
     vertices
+}
+
+pub fn update_mesh(
+    skeleton: Res<skeleton::Skeleton>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    q: Query<(&GlobalTransform, &skin::Skin, Entity)>,
+) {
+    for (gl_transform, skin, entity) in q.iter() {
+        let mut is_part_of_skeleton = false;
+        for mapping in skeleton.skin_mappings.iter() {
+            if mapping.skin.is_none() {
+                continue;
+            }
+            if mapping.skin.unwrap() == entity {
+                is_part_of_skeleton = true;
+                break;
+            }
+        }
+        if is_part_of_skeleton {
+            continue;
+        }
+        let vertices = skin.gl_vertices(gl_transform);
+        let opt_mesh = meshes.get_mut(&skin.mesh_handle.clone().unwrap().0);
+        if let Some(mesh) = opt_mesh {
+            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
+        }
+    }
+}
+
+pub fn exchange_images(
+    asset_server: Res<AssetServer>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    skeleton: Res<skeleton::Skeleton>,
+    keys: Res<Input<KeyCode>>,
+    mut q: Query<(&mut Skin, &Transformable)>,
+    mut q_meshes: Query<(&Mesh2dHandle, &mut Handle<ColorMaterial>)>,
+    mut material_handles: ResMut<FrameMaterialHandles>,
+) {
+    for (mut skin, transformable) in q.iter_mut() {
+        if let Ok(subimage) = skin
+            .path
+            .split("_")
+            .last()
+            .unwrap()
+            .split(".png")
+            .next()
+            .unwrap()
+            .parse::<usize>()
+        {
+            let path_without_number = skin.path.split(&format!("_{}.png", subimage)).next().unwrap(); 
+            let alt_path = format!("{}_{}.png", path_without_number, (subimage + 1) % 16);
+
+            for (mesh_handle, mut material_handle) in q_meshes.iter_mut() {
+                if skin.mesh_handle.clone().unwrap().0 == mesh_handle.0 {
+                    *material_handle = if let Some(mat_handle) = material_handles.0.get(&alt_path) {
+                        mat_handle.clone()
+                    } else {
+                        let new_handle =
+                            materials.add(ColorMaterial::from(asset_server.load(&alt_path)));
+                        material_handles
+                            .0
+                            .insert(alt_path.clone(), new_handle.clone());
+                        new_handle
+                    };
+                }
+            }
+
+            skin.path = alt_path;
+        } else {
+            continue;
+        }
+
+        // dbg!(&alt_path);
+        // let image: Handle<Image> = asset_server.load(&alt_path);
+
+        // let opt_mesh = meshes.get_mut(&skin.mesh_handle.clone().unwrap().0);
+        // if let Some(mesh) = opt_mesh {
+        //     let mut normals = vec![];
+        //     for _ in skin.vertices.iter() {
+        //         normals.push([0., 1., 1.]);
+        //     }
+
+        //     let mut new_mesh = Mesh::new(PrimitiveTopology::TriangleList);
+        //     new_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, skin.vertices.clone());
+        //     new_mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+        //     new_mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, skin.uvs.clone());
+
+        //     let mut indices = skin.indices.clone();
+        //     indices.reverse();
+        //     new_mesh.set_indices(Some(Indices::U16(indices)));
+
+        //     let handle: Mesh2dHandle = meshes.add(new_mesh).into();
+
+        //     meshes.remove(skin.mesh_handle.clone().unwrap().0);
+        //     skin.mesh_handle = Some(handle);
+        // }
+    }
 }

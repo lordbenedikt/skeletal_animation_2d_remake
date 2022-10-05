@@ -63,6 +63,7 @@ fn main() {
     .insert_resource(skeleton::Skeleton::default())
     .insert_resource(General::default())
     .insert_resource(bevy_ui::UiElements::default())
+    .insert_resource(mesh::FrameMaterialHandles::default())
     // state resources
     .insert_resource(animation::State::new())
     .insert_resource(skin::State::default())
@@ -86,13 +87,14 @@ fn main() {
     .add_system(misc::get_mouse_position.label("input_handling"))
     .add_system_set(bevy_ui::system_set())
     .add_system_set(egui::system_set().label("ui_action"))
-    .add_system_set(skin::system_set().label("skin_systems"))
     .add_system_set(
         cloth::system_set()
             .label("update_cloth")
-            .before("skin_systems"),
+            .before("mesh_systems"),
     )
-    .add_system_set(skeleton::system_set().after("skin_systems"))
+    .add_system_set(skin::system_set().label("skin_systems"))
+    .add_system_set(mesh::system_set().label("mesh_systems"))
+    .add_system_set(skeleton::system_set().after("mesh_systems"))
     .add_system_set(bone::system_set().label("bone_systems").after("ui_action"))
     .add_system_set(animation::system_set().label("animation_systems"))
     .add_system_set(

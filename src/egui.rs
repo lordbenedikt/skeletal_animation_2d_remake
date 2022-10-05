@@ -151,6 +151,18 @@ fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
                     cols: state.skin_cols,
                     rows: state.skin_rows,
                     as_cloth: false,
+                    cut_out: false,
+                });
+            }
+        };
+        if ui.button("add skin cut out").clicked() {
+            if state.skin_filename != "filename" {
+                skin_state.queued_skins.push(skin::AddSkinEvent {
+                    path: format!("img/{}", state.skin_filename),
+                    cols: state.skin_cols,
+                    rows: state.skin_rows,
+                    as_cloth: false,
+                    cut_out: true,
                 });
             }
         };
@@ -161,6 +173,7 @@ fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
                     cols: state.skin_cols,
                     rows: state.skin_rows,
                     as_cloth: true,
+                    cut_out: false,
                 });
             }
         };

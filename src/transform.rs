@@ -93,23 +93,23 @@ pub fn start_action(
     q: Query<&Transform, With<Transform>>,
 ) {
     // // // WIP
-    // // // Currently doesn't work with parent-child-hierarchies
-    // // // To fix it might be necessary to implement own parent-child-system system
-    // // Switch between scale modi
-    // if keys.just_released(KeyCode::S) {
-    //     if state.action == Action::Scale {
-    //         state.action = Action::ScaleX;
-    //         return;
-    //     }
-    //     if state.action == Action::ScaleX {
-    //         state.action = Action::ScaleY;
-    //         return;
-    //     }
-    //     if state.action == Action::ScaleY {
-    //         state.action = Action::Scale;
-    //         return;
-    //     }
-    // }
+    // // Currently doesn't work with parent-child-hierarchies
+    // // To fix it might be necessary to implement own parent-child-system system
+    // Switch between scale modi
+    if keys.just_released(KeyCode::S) {
+        if state.action == Action::Scale {
+            state.action = Action::ScaleX;
+            return;
+        }
+        if state.action == Action::ScaleX {
+            state.action = Action::ScaleY;
+            return;
+        }
+        if state.action == Action::ScaleY {
+            state.action = Action::Scale;
+            return;
+        }
+    }
     // Start action only if action isn't already taken
     if state.action != Action::None {
         return;
