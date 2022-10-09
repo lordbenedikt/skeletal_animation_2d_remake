@@ -164,7 +164,6 @@ impl PartialEq for BoneJson {
 pub struct SkinJson {
     entity: Entity,
     filename: String,
-    dimensions: [u32; 2],
     vertices: Vec<[f32; 3]>,
     uvs: Vec<[f32; 2]>,
     indices: Vec<u16>,
@@ -175,7 +174,6 @@ impl SkinJson {
     fn as_skin(&self) -> Skin {
         Skin {
             path: self.filename.clone(),
-            dimensions: self.dimensions.clone(),
             vertices: self.vertices.clone(),
             uvs: self.uvs.clone(),
             indices: self.indices.clone(),
@@ -243,7 +241,6 @@ fn save(
             .map(|(entity, skin, opt_cloth)| SkinJson {
                 entity,
                 filename: skin.path.clone(),
-                dimensions: skin.dimensions,
                 uvs: skin.uvs.clone(),
                 vertices: skin.vertices.clone(),
                 indices: skin.indices.clone(),

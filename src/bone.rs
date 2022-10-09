@@ -2,7 +2,7 @@ use crate::{animation::Animatable, skeleton::Skeleton, *};
 
 #[derive(Component, Default)]
 pub struct Bone {
-    pub is_ccd_maneuvered: bool,
+    pub is_ccd_maneuvered: bool
 }
 impl Bone {
     pub fn get_tip(gl_transform: &GlobalTransform) -> Vec2 {

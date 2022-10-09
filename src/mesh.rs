@@ -9,7 +9,7 @@ pub fn system_set() -> SystemSet {
     SystemSet::new()
         .with_system(update_mesh)
         .with_system(update_mesh)
-        .with_system(exchange_images)
+        // .with_system(exchange_images)
 }
 
 pub fn get_vertex(mesh: &Mesh, ind: usize) -> [f32; 3] {
@@ -84,11 +84,11 @@ pub fn exchange_images(
     mut materials: ResMut<Assets<ColorMaterial>>,
     skeleton: Res<skeleton::Skeleton>,
     keys: Res<Input<KeyCode>>,
-    mut q: Query<(&mut Skin, &Transformable)>,
+    mut q: Query<&mut Skin>,
     mut q_meshes: Query<(&Mesh2dHandle, &mut Handle<ColorMaterial>)>,
     mut material_handles: ResMut<FrameMaterialHandles>,
 ) {
-    for (mut skin, transformable) in q.iter_mut() {
+    for (mut skin) in q.iter_mut() {
         if let Ok(subimage) = skin
             .path
             .split("_")

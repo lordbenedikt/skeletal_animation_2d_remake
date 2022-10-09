@@ -1,6 +1,7 @@
 use crate::*;
-use bevy::sprite::MaterialMesh2dBundle;
+use bevy::{sprite::MaterialMesh2dBundle, utils::HashSet};
 use cloth::Cloth;
+use geo::*;
 use image::GenericImageView;
 use lyon::lyon_tessellation::{
     geometry_builder::simple_builder,
@@ -9,12 +10,13 @@ use lyon::lyon_tessellation::{
     FillGeometryBuilder, FillOptions, FillTessellator, FillVertex, VertexBuffers,
 };
 use skeleton::Skeleton;
+use spade::{ConstrainedDelaunayTriangulation, InsertionError, Point2, Triangulation};
 use std::collections::HashMap;
 use std::{cmp::*, f32::consts::SQRT_2};
 
 const PIXEL_TO_UNIT_RATIO: f32 = 0.005;
 pub const START_SCALE: f32 = 3.5;
-pub const AVAILABLE_IMAGES: [&str;7] = [
+pub const AVAILABLE_IMAGES: [&str; 7] = [
     "pooh.png",
     "honey.png",
     "head.png",
@@ -44,8 +46,9 @@ pub struct LineStrip {
     pub edges: Vec<[usize; 2]>,
 }
 impl LineStrip {
-    fn simplify(&mut self, filename: &str) {
-        let img = image::open(format!("assets/img{}", filename)).expect("File not found!");
+    fn simplify(&mut self, path: &str) {
+        let img =
+            image::open(format!("assets/{}", path)).expect(&format!("File not found!: {}", path));
         let (w, h) = img.dimensions();
 
         let mut keep_vertices = vec![self.vertices[self.edges[0][0]]];
@@ -106,8 +109,7 @@ impl LineStrip {
 
 #[derive(Default)]
 struct Contour {
-    pub filename: String,
-    pub dimensions: [u32; 2],
+    pub path: String,
     pub vertices: Vec<Vec2>,
     pub edges: Vec<[usize; 2]>,
 }
@@ -117,9 +119,15 @@ impl Contour {
         asset_server: &AssetServer,
         image_assets: &Assets<Image>,
         offset: u32,
-    ) -> Self {
+    ) -> Option<Self> {
         let img_handle = asset_server.load(filename);
-        let img = image_assets.get(&img_handle).unwrap();
+        let opt_img = image_assets.get(&img_handle);
+        let img = if opt_img.is_some() {
+            opt_img.unwrap()
+        } else {
+            println!("couldn't open image");
+            return None;
+        };
         let size = img.size();
         let (w, h) = (size.x as u32, size.y as u32);
 
@@ -187,8 +195,7 @@ impl Contour {
         }
 
         let mut graph = Contour::default();
-        graph.filename = String::from(filename);
-        graph.dimensions = [w, h];
+        graph.path = String::from(filename);
 
         // store all unique vertices in mesh resource
         let mut i = 0;
@@ -208,13 +215,12 @@ impl Contour {
             ]);
         }
 
-        graph
+        Some(graph)
     }
 }
 
 pub struct Polygon {
-    pub filename: String,
-    pub dimensions: [u32; 2],
+    pub path: String,
     pub line_strips: Vec<LineStrip>,
 }
 impl Polygon {
@@ -280,17 +286,245 @@ impl Polygon {
         }
 
         Polygon {
-            filename: contour.filename.clone(),
-            dimensions: contour.dimensions.clone(),
+            path: contour.path.clone(),
             line_strips: polygons,
         }
     }
-    fn simplify(&mut self) {
+    fn simplify(mut self) -> Self {
         for line_strip in self.line_strips.iter_mut() {
-            line_strip.simplify(&self.filename);
+            line_strip.simplify(&self.path);
         }
+        self
     }
-    fn triangulate(&self) -> Skin {
+
+    fn triangulate(
+        &self,
+        rows: u16,
+        cols: u16,
+        asset_server: &AssetServer,
+        image_assets: &Assets<Image>,
+    ) -> Option<Skin> {
+        let res_cdt = self.triangulate_delaunay(rows, cols);
+        let cdt = if res_cdt.is_ok() {
+            res_cdt.unwrap()
+        } else {
+            return None;
+        };
+        // = cdt
+        // .vertices()
+        // .map(|v| [v.position().x, v.position().y, 0.])
+        // .collect();
+        let mut vertices = vec![];
+        let mut indices = vec![];
+
+        let mut verts: HashMap<u64, u16> = HashMap::new();
+
+        for face in cdt.inner_faces() {
+            for v in face.vertices() {
+                let key = vec2_to_u64(Vec2::new(v.position().x, v.position().y));
+                let index: u16;
+                if verts.contains_key(&key) {
+                    index = verts[&key];
+                } else {
+                    index = verts.len() as u16;
+                    verts.insert(key, index);
+                    vertices.push([v.position().x, v.position().y, 0.]);
+                }
+                indices.push(index);
+            }
+        }
+
+        indices.reverse();
+
+        // let indices_len = indices.len();
+        // for i in (0..indices_len).rev() {
+        //     indices.push(indices[i]);
+        // }
+
+        // let uv_pixel = [cell_w * i as f32, cell_h * j as f32];
+        // vertices.push([
+        //     (uv_pixel[0] - w as f32 / 2.) * PIXEL_TO_UNIT_RATIO,
+        //     (uv_pixel[1] - h as f32 / 2.) * PIXEL_TO_UNIT_RATIO,
+        //     0.,
+        // ]);
+        let img_handle = asset_server.load(&self.path);
+        let opt_img = image_assets.get(&img_handle);
+        let dimensions = if opt_img.is_none() {
+            println!("triangulate(): couldn't open image!");
+            return None;
+        } else {
+            opt_img.unwrap().size()
+        };
+
+        // let img_handle = asset_server.load(&self.path);
+        // let opt_img = image_assets.get(&img_handle);
+
+        // if let Some(img) = opt_img {
+        //     let size = img.size();
+        //     let (w, h) = (size.x as u32, size.y as u32);
+        //     for v in vertices {
+        //         uvs.push([v[0], v[1]]);
+        //     }
+        // }
+
+        let geo_poly = geo::Polygon::new(
+            geo::LineString::new(
+                self.line_strips[0]
+                    .vertices
+                    .iter()
+                    .map(|v| Coordinate { x: v.x, y: v.y })
+                    .collect(),
+            ),
+            vec![],
+        );
+
+        for i in ((0..indices.len()).step_by(3)).rev() {
+            let mut center = Vec2::new(0.,0.);
+            for j in 0..3 {
+                let v = vertices[indices[i+j] as usize];
+                center.x += v[0];
+                center.y += v[1];
+                let v1 = vertices[indices[i+(j+1)%3] as usize];
+                // if !geo_poly.intersects(&Line::new(Coordinate{x: v0[0], y: v0[1]},Coordinate{x: v1[0], y: v1[1]})) {
+                //     remove = true;
+                //     break;
+                // }
+            }
+            center /= 3.;
+            if !geo_poly.intersects(&Coordinate{x: center.x, y: center.y}) {
+                for j in (0..3).rev() {
+                    indices.swap_remove(i+j);
+                }
+            }
+        }
+
+        // Remove loose vertices
+        let mut keep_vertex_indices: HashSet<usize> = HashSet::new();
+        let mut removed_vertex_indices: Vec<usize> = vec![];
+        for &ind in indices.iter() {
+            keep_vertex_indices.insert(ind as usize);
+        }
+        for i in (0..vertices.len()).rev() {
+            if !keep_vertex_indices.contains(&i) {
+                vertices.remove(i);
+                removed_vertex_indices.push(i);
+            }
+        }
+        for ind in removed_vertex_indices {
+            for index in indices.iter_mut() {
+                if (ind as u16) < (*index) {
+                    *index -= 1;
+                }
+            }
+        }
+
+        let mut uvs: Vec<[f32; 2]> = vec![];
+        for v in vertices.iter() {
+            let x = v[0] / dimensions.x;
+            let y = 1. - v[1] / dimensions.y;
+            uvs.push([x, y]);
+        }
+
+        for i in 0..vertices.len() {
+            for j in 0..3 {
+                vertices[i][j] *= PIXEL_TO_UNIT_RATIO;
+            }
+        }
+
+        let skin = Skin {
+            path: String::from(&self.path),
+            vertices,
+            uvs,
+            indices,
+            mesh_handle: None,
+            depth: 10.,
+        };
+
+        Some(skin)
+
+        // for face in cdt.all_faces() {
+        //     if let Some(f) = face.as_inner() {
+        //         let mut v_first: Option<Vec2> = None;
+        //         for vertex in f.vertices() {
+        //             let v = Vec2::new(vertex.position().x as f32, vertex.position().y as f32);
+        //             if v_first.is_none() {
+        //                 path_builder.move_to(v);
+        //                 v_first = Some(v);
+        //             } else {
+        //                 path_builder.line_to(v);
+        //             }
+        //         }
+        //         path_builder.line_to(v_first.unwrap());
+        //     }
+        // }
+
+        // let mut geometry = GeometryBuilder::build_as(
+        //     &PathBuilder::new().build(),
+        //     DrawMode::Stroke(StrokeMode::new(
+        //         Color::Rgba {
+        //             red: 1.,
+        //             green: 1.,
+        //             blue: 0.,
+        //             alpha: 1.,
+        //         },
+        //         0.01,
+        //     )),
+        //     Transform::from_translation(Vec3::new(0., 0., 700.)),
+        // );
+    }
+
+    fn triangulate_delaunay(
+        &self,
+        rows: u16,
+        cols: u16,
+    ) -> Result<ConstrainedDelaunayTriangulation<Point2<f32>>, InsertionError> {
+        let mut cdt = ConstrainedDelaunayTriangulation::<Point2<_>>::new();
+
+        let mut first = true;
+        let mut min = Vec2::new(0., 0.);
+        let mut max = Vec2::new(0., 0.);
+
+        for strip in self.line_strips.iter() {
+            for edge in strip.edges.iter() {
+                let p0 = strip.vertices[edge[0]];
+                let p1 = strip.vertices[edge[1]];
+                cdt.add_constraint_edge(Point2::new(p0.x, p0.y), Point2::new(p1.x, p1.y))?;
+            }
+            // Find min/max x and y
+            for &v in strip.vertices.iter() {
+                if first {
+                    first = false;
+                    min = v;
+                    max = v;
+                } else {
+                    min.x = min.x.min(v.x);
+                    min.y = min.y.min(v.y);
+                    max.x = max.x.max(v.x);
+                    max.y = max.y.max(v.y);
+                }
+            }
+        }
+
+        let dimensions = max - min;
+
+        if dimensions.x == 0. || dimensions.y == 0. {
+            dbg!("dimensions are invalid!");
+            return Err(InsertionError::NAN);
+        }
+
+        for i in 0..cols {
+            for j in 0..rows {
+                cdt.insert(Point2::new(
+                    min.x + i as f32 * dimensions.x / (cols as f32 - 1.),
+                    min.y + j as f32 * dimensions.y / (rows as f32 - 1.),
+                ))?;
+            }
+        }
+
+        Ok(cdt)
+    }
+
+    fn triangulate_obsolete(&self) -> Skin {
         // Create a simple path.
         let mut path_builder = Path::builder();
         let mut is_beginning = true;
@@ -327,7 +561,7 @@ impl Polygon {
             assert!(result.is_ok());
         }
 
-        let img = image::open(format!("assets/{}", self.filename)).expect("File not found!");
+        let img = image::open(format!("assets/{}", self.path)).expect("File not found!");
         let (w, h) = img.dimensions();
         let mut vertices: Vec<[f32; 3]> = vec![];
         let mut uvs: Vec<[f32; 2]> = vec![];
@@ -345,8 +579,7 @@ impl Polygon {
         }
 
         Skin {
-            path: self.filename.clone(),
-            dimensions: self.dimensions.clone(),
+            path: self.path.clone(),
             vertices,
             uvs,
             indices,
@@ -358,7 +591,6 @@ impl Polygon {
 #[derive(Default, Component)]
 pub struct Skin {
     pub path: String,
-    pub dimensions: [u32; 2],
     pub vertices: Vec<[f32; 3]>,
     pub uvs: Vec<[f32; 2]>,
     pub indices: Vec<u16>,
@@ -440,7 +672,6 @@ impl Skin {
             }
             let mut skin = Skin {
                 path: String::from(path),
-                dimensions: [w, h],
                 vertices,
                 uvs,
                 indices,
@@ -579,92 +810,8 @@ fn is_close_to_visible_pixel(x: u32, y: u32, img: &Image, offset: u32, max_dist:
     false
 }
 
-pub fn generate_mesh(
-    path: &str,
-    asset_server: &AssetServer,
-    image_assets: &Assets<Image>,
-    cut_out: bool,
-) -> Option<Skin> {
-    let contour = Contour::from_image(path, asset_server, image_assets, 5);
-    let mut polygon = Polygon::from_contour(&contour);
-    polygon.simplify();
-
-    let vertices = polygon.line_strips[0]
-        .edges
-        .iter()
-        .map(|edge| polygon.line_strips[0].vertices[edge[0] as usize].clone())
-        .collect::<Vec<Vec2>>();
-    let mut vertices_split = vec![];
-    vertices.iter().for_each(|vertex| {
-        vertices_split.push(vertex.x as f64);
-        vertices_split.push(vertex.y as f64)
-    });
-
-    let mut skin = polygon.triangulate();
-
-    // skin
-    Skin::grid_mesh(path, asset_server, image_assets, 40, 40, 0., false)
-}
-
-pub fn create_mesh(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    mut skeleton: ResMut<Skeleton>,
-    asset_server: Res<AssetServer>,
-    image_assets: &Assets<Image>,
-    cut_out: bool,
-) {
-    let opt_skin = skin::generate_mesh("person.png", &asset_server, image_assets, cut_out);
-    if opt_skin.is_none() {
-        return;
-    }
-    let mut skin = opt_skin.unwrap();
-
-    let vertices = skin.vertices.clone();
-    let mut normals = vec![];
-    let uvs = skin.uvs.clone();
-    for _ in skin.vertices.iter() {
-        normals.push([0., 1., 1.]);
-    }
-    let mut inds = skin.indices.clone();
-    inds.reverse();
-    let indices = Some(Indices::U16(inds));
-
-    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices.clone());
-    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals.clone());
-    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs.clone());
-    mesh.set_indices(indices.clone());
-
-    let handle: Mesh2dHandle = meshes.add(mesh).into();
-    skin.mesh_handle = Some(handle.clone());
-
-    commands.spawn_bundle(MaterialMesh2dBundle {
-        mesh: handle,
-        material: materials.add(ColorMaterial::from(asset_server.load(&skin.path))),
-        ..default()
-    });
-    let skin_id = commands
-        .spawn_bundle(TransformBundle::from_transform(Transform {
-            scale: Vec3::new(3.5, 3.5, 1.),
-            ..Default::default()
-        }))
-        .insert(Transformable {
-            is_selected: false,
-            ..default()
-        })
-        .insert(skin)
-        .id();
-    skeleton.skin_mappings.push(skeleton::SkinMapping {
-        skin: Some(skin_id),
-        vertex_mappings: vec![],
-    });
-}
-
 pub fn system_set() -> SystemSet {
-    SystemSet::new()
-        .with_system(add_skins)
+    SystemSet::new().with_system(add_skins)
 }
 
 pub fn add_pooh_on_startup(
@@ -675,8 +822,20 @@ pub fn add_pooh_on_startup(
     asset_server: Res<AssetServer>,
     image_assets: Res<Assets<Image>>,
 ) {
-    state.queued_skins.push(AddSkinEvent { path: String::from("img/honey.png"), cols: 6, rows: 10, as_cloth: true, cut_out: false });
-    state.queued_skins.push(AddSkinEvent { path: String::from("img/pooh.png"), cols: 30, rows: 30, as_cloth: false, cut_out: true });
+    state.queued_skins.push(AddSkinEvent {
+        path: String::from("img/honey.png"),
+        cols: 6,
+        rows: 10,
+        as_cloth: true,
+        cut_out: false,
+    });
+    state.queued_skins.push(AddSkinEvent {
+        path: String::from("img/pooh.png"),
+        cols: 30,
+        rows: 30,
+        as_cloth: false,
+        cut_out: true,
+    });
 }
 
 fn add_skin(
@@ -691,18 +850,27 @@ fn add_skin(
     cut_out: bool,
     image_assets: &Assets<Image>,
 ) -> Option<(Entity, Mesh2dHandle)> {
-    let opt_skin = Skin::grid_mesh(
-        filename,
+    // let opt_skin = Skin::grid_mesh(
+    //     filename,
+    //     asset_server,
+    //     image_assets,
+    //     cols,
+    //     rows,
+    //     depth,
+    //     cut_out,
+    // );
+    let contour = Contour::from_image(filename, asset_server, image_assets, 5);
+    let opt_skin = Polygon::from_contour(&contour?).simplify().triangulate(
+        rows,
+        cols,
         asset_server,
         image_assets,
-        cols,
-        rows,
-        depth,
-        cut_out,
     );
     if opt_skin.is_none() {
+        dbg!("couldn't generate skin");
         return None;
     }
+
     let mut skin = opt_skin.unwrap();
 
     let vertices = skin
@@ -809,4 +977,16 @@ impl Pixels for Image {
         let alpha = (from + 3) as usize;
         self.data[alpha]
     }
+}
+
+fn vec2_to_u64(v: Vec2) -> u64 {
+    let x = (f32::to_bits(v.x) as u64) << 32;
+    let y = f32::to_bits(v.y) as u64;
+    x + y
+}
+
+fn u64_to_vec2(u_64: u64) -> Vec2 {
+    let x = f32::from_bits(u_64 as u32);
+    let y = f32::from_bits((u_64 >> 32) as u32);
+    Vec2::new(x, y)
 }

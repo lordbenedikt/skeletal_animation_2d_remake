@@ -1,3 +1,5 @@
+use std::ops::MulAssign;
+
 use crate::{bone::Bone, *};
 use bevy::{math, prelude::*, utils::HashMap};
 use serde::*;
@@ -223,7 +225,7 @@ pub fn apply_animation(
                         comp_animation.transforms[current_frame_b].translation,
                         x,
                     );
-                    transform.rotation = Quat::lerp(
+                    transform.rotation = quat_nlerp(
                         comp_animation.transforms[current_frame_a].rotation,
                         comp_animation.transforms[current_frame_b].rotation,
                         x,
@@ -464,4 +466,37 @@ fn transform_is_valid(transform: &Transform) -> bool {
         transform.translation.is_nan() || transform.scale.is_nan() || transform.rotation.is_nan();
     invalid |= transform.scale.x == 0.0 || transform.scale.y == 0.0 || transform.scale.z == 0.0;
     !invalid
+}
+
+//// Normalised Lerp function for quaternions
+//// Taken from: https://stackoverflow.com/questions/46156903/how-to-lerp-between-two-quaternions
+fn quat_dot(a: Quat, b: Quat) -> f32 {
+    a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w
+}
+
+fn quat_negate(a: Quat) -> Quat {
+    Quat::from_xyzw(-a.x,-a.y,-a.z,-a.w)
+}
+
+fn quat_normalise(a: Quat) -> Quat {
+    let scalar = 1.0 / f32::sqrt(quat_dot(a,a));
+    Quat::from_xyzw(a.x*scalar,a.y*scalar,a.z*scalar,a.w*scalar)
+}
+
+fn quat_lerp(a: Quat, b: Quat, x: f32) -> Quat {
+    let mut _b = b.clone();
+
+    if quat_dot(a,b) < 0.0 {
+        _b = quat_negate(b);
+    }
+
+    let cx = a.x - x * (a.x - _b.x);
+    let cy = a.y - x * (a.y - _b.y);
+    let cz = a.z - x * (a.z - _b.z);
+    let cw = a.w - x * (a.w - _b.w);
+    Quat::from_xyzw(cx, cy, cz, cw)
+}
+
+fn quat_nlerp(a:Quat,b:Quat,x:f32) -> Quat {
+    quat_normalise(quat_lerp(a,b,x))
 }

@@ -6,7 +6,7 @@ use crate::{
 use bevy_egui::{
     egui::{
         self,
-        plot::{MarkerShape, Points, Value, Values},
+        plot::{MarkerShape, PlotPoint, PlotPoints, Points},
         Color32, Pos2, TextBuffer, Ui,
     },
     EguiContext,
@@ -505,13 +505,13 @@ fn animation_plot(
         .show(ui, |plot_ui| {
             if let Some(anim) = animations.map.get_mut(&state.plots[layer_index].name) {
                 // Create values for keyframe markers
-                let values_all: Vec<Value> = anim
+                let values_all: Vec<PlotPoint> = anim
                     .keyframes
                     .iter()
-                    .map(|&kf| Value { x: kf, y: 0.0 })
+                    .map(|&kf| PlotPoint { x: kf, y: 0.0 })
                     .collect();
-                let mut values_not_selected: Vec<Value> = vec![];
-                let mut values_selected: Vec<Value> = vec![];
+                let mut values_not_selected: Vec<PlotPoint> = vec![];
+                let mut values_selected: Vec<PlotPoint> = vec![];
                 for i in 0..values_all.len() {
                     let new_value = values_all[i];
                     if i == state.plots[layer_index].selected_keyframe_index {
@@ -521,16 +521,17 @@ fn animation_plot(
                     }
                 }
 
-                let points = Points::new(Values::from_values(values_not_selected))
+                let points = Points::new(values_not_selected.iter().map(|v| [v.x, v.y]).collect::<Vec<[f64;2]>>())
                     .filled(true)
                     .radius(5.0)
                     .shape(MarkerShape::Diamond)
                     .color(Color32::LIGHT_RED);
-                let points_selected = Points::new(Values::from_values(values_selected))
-                    .filled(true)
-                    .radius(5.0)
-                    .shape(MarkerShape::Diamond)
-                    .color(Color32::LIGHT_YELLOW);
+                let points_selected =
+                    Points::new(values_selected.iter().map(|v| [v.x, v.y]).collect::<Vec<[f64;2]>>())
+                        .filled(true)
+                        .radius(5.0)
+                        .shape(MarkerShape::Diamond)
+                        .color(Color32::LIGHT_YELLOW);
                 plot_ui.points(points);
                 plot_ui.points(points_selected);
 
@@ -607,7 +608,7 @@ fn animation_plot(
     };
 }
 
-fn get_closest_keyframe(pos: Value, values: Vec<Value>, max_dist: f64) -> Option<usize> {
+fn get_closest_keyframe(pos: PlotPoint, values: Vec<PlotPoint>, max_dist: f64) -> Option<usize> {
     let mut res = None;
     let mut shortest_dist = max_dist + 1.;
     for i in (0..values.len()).rev() {

@@ -5,6 +5,16 @@ use bevy::{
 
 use crate::{bone::Bone, *};
 
+#[derive(Default, Component)]
+pub struct TransformParent {
+    pub opt_entity: Option<Entity>,
+}
+
+#[derive(Default)]
+pub struct TransformChildren {
+    pub entities: HashSet<Entity>,
+}
+
 pub struct State {
     pub action: transform::Action,
     pub cursor_anchor: Vec2,
