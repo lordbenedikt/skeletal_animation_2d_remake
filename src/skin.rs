@@ -127,7 +127,7 @@ impl Contour {
         path: &str,
         asset_server: &AssetServer,
         image_assets: &Assets<Image>,
-        offset: u32,
+        borderline_width: u32,
     ) -> Option<Self> {
         let img_handle = asset_server.load(path);
         let opt_img = image_assets.get(&img_handle);
@@ -140,16 +140,17 @@ impl Contour {
         let size = img.size();
         let (w, h) = (size.x as u32, size.y as u32);
 
-        let max_distance = offset; // TODO: -1 not working though it should ???
-        let (distance_field_w, distance_field_h) = (w + offset as u32 * 2, h + offset as u32 * 2);
+        let offset = borderline_width + 1;
+        let max_distance = borderline_width; // TODO: not working though it should ???
+        let (distance_field_w, distance_field_h) = (w + offset * 2, h + offset as u32 * 2);
 
         let mut out = vec![vec![0; distance_field_h as usize]; distance_field_w as usize];
 
         // generate threshold distance field
-        for x in 0..distance_field_w {
-            for y in 0..distance_field_h {
-                out[x as usize][distance_field_h as usize - y as usize - 1] =
-                    if is_close_to_visible_pixel(x, y, img, offset, max_distance as f32) {
+        for output_x in 0..distance_field_w {
+            for output_y in 0..distance_field_h {
+                out[output_x as usize][distance_field_h as usize - output_y as usize - 1] =
+                    if is_close_to_visible_pixel(output_x, output_y, img, offset, max_distance as f32) {
                         1
                     } else {
                         0
@@ -274,10 +275,6 @@ impl Contour {
             if !edges.is_empty() {
                 next_index = edges[0][0];
             } else {
-                println!("line_strings.len(): {}", line_strings.len());
-                for ls in line_strings.iter() {
-                    println!("ls.len(): {}", (*ls).0.len());
-                }
                 break 'outer;
             }
         }
@@ -1126,14 +1123,14 @@ impl Skin {
             if cut_out {
                 for i in (0..skin.uvs.len()).rev() {
                     let v = skin.uvs[i];
-                    let coords = [
+                    let coord = [
                         min((v[0] * w as f32) as u32, w - 1),
                         min((v[1] * h as f32) as u32, h - 1),
                     ];
                     // if uv is out of image or pixel at uv is transparent remove
                     if !is_close_to_visible_pixel(
-                        coords[0],
-                        coords[1],
+                        coord[0],
+                        coord[1],
                         img,
                         0u32,
                         f32::max(
@@ -1230,10 +1227,10 @@ const MARCHING_SQUARE_LOOKUP_TABLE: [Edges; 16] = [
 ];
 
 // For some reason doesn't work with max_dist 1.0
-fn is_close_to_visible_pixel(x: u32, y: u32, img: &Image, offset: u32, max_dist: f32) -> bool {
+fn is_close_to_visible_pixel(output_x: u32, output_y: u32, img: &Image, offset: u32, max_dist: f32) -> bool {
     let max_dist_ceil = f32::ceil(max_dist) as i32;
-    let x: i32 = x as i32 - offset as i32;
-    let y: i32 = y as i32 - offset as i32;
+    let x: i32 = output_x as i32 - offset as i32;
+    let y: i32 = output_y as i32 - offset as i32;
     let (w, h) = (img.size().x as u32, img.size().y as u32);
     let x_min = max(0, x - max_dist_ceil);
     let x_max = min(w as i32, x + max_dist_ceil);
@@ -1291,7 +1288,7 @@ fn add_skin(
     order: &AddSkinOrder,
     image_assets: &Assets<Image>,
 ) -> Option<(Entity, Mesh2dHandle)> {
-    let mut opt_skin: Option<Skin> = match order {
+    let opt_skin: Option<Skin> = match order {
         AddSkinOrder::Grid {
             path,
             cols,
