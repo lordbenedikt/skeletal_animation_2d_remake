@@ -178,7 +178,6 @@ impl SkinJson {
             uvs: self.uvs.clone(),
             indices: self.indices.clone(),
             mesh_handle: None,
-            depth: self.depth,
         }
     }
 }
@@ -244,7 +243,7 @@ fn save(
                 uvs: skin.uvs.clone(),
                 vertices: skin.vertices.clone(),
                 indices: skin.indices.clone(),
-                depth: skin.depth,
+                depth: 0.,
                 cloth: if let Some(cloth) = opt_cloth {
                     Some(cloth.clone())
                 } else {

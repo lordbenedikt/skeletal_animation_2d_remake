@@ -3,7 +3,7 @@ use serde::*;
 use skin::Skin;
 use std::{ops::{AddAssign, SubAssign}, time::Duration};
 
-const STEP_DURATION: Duration = Duration::new(0, 20_000_000);
+const STEP_DURATION: Duration = Duration::new(0, 15_000_000);
 
 #[derive(Default)]
 pub struct State {
@@ -295,8 +295,8 @@ pub fn apply_mesh_to_cloth(mut meshes: ResMut<Assets<Mesh>>, q: Query<(&Cloth, &
         for i in 0..cloth.point_masses.len() {
             let pm = &cloth.point_masses[i];
             if pm.pin.is_some() {
-                let v = mesh::get_vertex(&mesh, i);
-                vertices.push([v[0], v[1], skin.depth]);
+                let v = mesh::get_vertex(&mesh, i); 
+                vertices.push([v[0], v[1], 100.]);
             } else {
                 vertices.push([pm.position[0], pm.position[1], pm.position[2]]);
             }

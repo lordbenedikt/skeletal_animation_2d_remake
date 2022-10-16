@@ -1,6 +1,6 @@
 use crate::{
     animation::{Animations, ShowKeyframeEvent},
-    skin::{AddSkinEvent, AVAILABLE_IMAGES},
+    skin::{AddSkinOrder, AVAILABLE_IMAGES},
     *,
 };
 use bevy_egui::{
@@ -42,6 +42,8 @@ pub struct State {
     pub ui_hover: bool,
     pub ui_drag: bool,
     pub new_animation_name: String,
+    pub delaunay_triangle_size: f32,
+    pub delaunay_borderline_width: f32,
 }
 impl Default for State {
     fn default() -> Self {
@@ -60,6 +62,8 @@ impl Default for State {
             ui_hover: false,
             ui_drag: false,
             new_animation_name: String::from(""),
+            delaunay_triangle_size: 0.,
+            delaunay_borderline_width: 0.,
         }
     }
 }
@@ -146,7 +150,7 @@ fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
     ui.horizontal(|ui| {
         if ui.button("add skin").clicked() {
             if state.skin_filename != "filename" {
-                skin_state.queued_skins.push(skin::AddSkinEvent {
+                skin_state.queued_skins.push(skin::AddSkinOrder::Grid {
                     path: format!("img/{}", state.skin_filename),
                     cols: state.skin_cols,
                     rows: state.skin_rows,
@@ -157,7 +161,7 @@ fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
         };
         if ui.button("add skin cut out").clicked() {
             if state.skin_filename != "filename" {
-                skin_state.queued_skins.push(skin::AddSkinEvent {
+                skin_state.queued_skins.push(skin::AddSkinOrder::Grid {
                     path: format!("img/{}", state.skin_filename),
                     cols: state.skin_cols,
                     rows: state.skin_rows,
@@ -168,7 +172,7 @@ fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
         };
         if ui.button("add as cloth").clicked() {
             if state.skin_filename != "filename" {
-                skin_state.queued_skins.push(skin::AddSkinEvent {
+                skin_state.queued_skins.push(skin::AddSkinOrder::Grid {
                     path: format!("img/{}", state.skin_filename),
                     cols: state.skin_cols,
                     rows: state.skin_rows,
@@ -177,6 +181,33 @@ fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
                 });
             }
         };
+    });
+
+    ui.separator();
+
+    ui.label("Delaunay Triangulation (WIP)");
+    ui.horizontal(|ui| {
+        if ui.button("add skin").clicked() {
+            if state.skin_filename != "filename" {
+                skin_state.queued_skins.push(skin::AddSkinOrder::Delaunay {
+                    path: format!("img/{}", state.skin_filename),
+                    triangle_size: state.delaunay_triangle_size,
+                    borderline_width: state.delaunay_borderline_width,
+                });
+            }
+        };
+        ui.label("triangle size");
+        ui.add(
+            egui::DragValue::new(&mut state.delaunay_triangle_size)
+                .speed(1)
+                .clamp_range(1..=100),
+        );
+        ui.label("borderline width ");
+        ui.add(
+            egui::DragValue::new(&mut state.delaunay_borderline_width)
+                .speed(0.5)
+                .clamp_range(1..=30),
+        );
     });
     ui.end_row();
 }
@@ -521,17 +552,26 @@ fn animation_plot(
                     }
                 }
 
-                let points = Points::new(values_not_selected.iter().map(|v| [v.x, v.y]).collect::<Vec<[f64;2]>>())
-                    .filled(true)
-                    .radius(5.0)
-                    .shape(MarkerShape::Diamond)
-                    .color(Color32::LIGHT_RED);
-                let points_selected =
-                    Points::new(values_selected.iter().map(|v| [v.x, v.y]).collect::<Vec<[f64;2]>>())
-                        .filled(true)
-                        .radius(5.0)
-                        .shape(MarkerShape::Diamond)
-                        .color(Color32::LIGHT_YELLOW);
+                let points = Points::new(
+                    values_not_selected
+                        .iter()
+                        .map(|v| [v.x, v.y])
+                        .collect::<Vec<[f64; 2]>>(),
+                )
+                .filled(true)
+                .radius(5.0)
+                .shape(MarkerShape::Diamond)
+                .color(Color32::LIGHT_RED);
+                let points_selected = Points::new(
+                    values_selected
+                        .iter()
+                        .map(|v| [v.x, v.y])
+                        .collect::<Vec<[f64; 2]>>(),
+                )
+                .filled(true)
+                .radius(5.0)
+                .shape(MarkerShape::Diamond)
+                .color(Color32::LIGHT_YELLOW);
                 plot_ui.points(points);
                 plot_ui.points(points_selected);
 

@@ -323,7 +323,7 @@ pub fn apply_mesh_to_skeleton(
                         .vertices[v_i],
                 );
             }
-            vertices.push([v_gl_position.x, v_gl_position.y, skin.depth]);
+            vertices.push([v_gl_position.x, v_gl_position.y, 0.]);
         }
 
         // update mesh vertices

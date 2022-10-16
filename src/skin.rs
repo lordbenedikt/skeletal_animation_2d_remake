@@ -11,8 +11,9 @@ use lyon::lyon_tessellation::{
 };
 use skeleton::Skeleton;
 use spade::{ConstrainedDelaunayTriangulation, InsertionError, Point2, Triangulation};
-use std::collections::HashMap;
+use std::cmp;
 use std::{cmp::*, f32::consts::SQRT_2};
+use std::{collections::HashMap, f32::consts::E};
 
 const PIXEL_TO_UNIT_RATIO: f32 = 0.005;
 pub const START_SCALE: f32 = 3.5;
@@ -28,16 +29,23 @@ pub const AVAILABLE_IMAGES: [&str; 7] = [
 
 #[derive(Default)]
 pub struct State {
-    pub queued_skins: Vec<AddSkinEvent>,
+    pub queued_skins: Vec<AddSkinOrder>,
 }
 
 #[derive(Clone)]
-pub struct AddSkinEvent {
-    pub path: String,
-    pub cols: u16,
-    pub rows: u16,
-    pub as_cloth: bool,
-    pub cut_out: bool,
+pub enum AddSkinOrder {
+    Grid {
+        path: String,
+        cols: u16,
+        rows: u16,
+        as_cloth: bool,
+        cut_out: bool,
+    },
+    Delaunay {
+        path: String,
+        borderline_width: f32,
+        triangle_size: f32,
+    },
 }
 
 #[derive(Default)]
@@ -110,36 +118,37 @@ impl LineStrip {
 #[derive(Default)]
 struct Contour {
     pub path: String,
+    pub img: Image,
     pub vertices: Vec<Vec2>,
     pub edges: Vec<[usize; 2]>,
 }
 impl Contour {
     fn from_image(
-        filename: &str,
+        path: &str,
         asset_server: &AssetServer,
         image_assets: &Assets<Image>,
         offset: u32,
     ) -> Option<Self> {
-        let img_handle = asset_server.load(filename);
+        let img_handle = asset_server.load(path);
         let opt_img = image_assets.get(&img_handle);
         let img = if opt_img.is_some() {
             opt_img.unwrap()
         } else {
-            println!("couldn't open image");
+            println!("loading image");
             return None;
         };
         let size = img.size();
         let (w, h) = (size.x as u32, size.y as u32);
 
         let max_distance = offset - 1;
-        let (output_w, output_h) = (w + offset as u32 * 2, h + offset as u32 * 2);
+        let (distance_field_w, distance_field_h) = (w + offset as u32 * 2, h + offset as u32 * 2);
 
-        let mut out = vec![vec![0; output_h as usize]; output_w as usize];
+        let mut out = vec![vec![0; distance_field_h as usize]; distance_field_w as usize];
 
-        // generate threshold distance map
-        for x in 0..output_w {
-            for y in 0..output_h {
-                out[x as usize][output_h as usize - y as usize - 1] =
+        // generate threshold distance field
+        for x in 0..distance_field_w {
+            for y in 0..distance_field_h {
+                out[x as usize][distance_field_h as usize - y as usize - 1] =
                     if is_close_to_visible_pixel(x, y, img, offset, max_distance as f32) {
                         1
                     } else {
@@ -151,9 +160,10 @@ impl Contour {
         // generate contour using marching square algorithm
         let mut contour_vertices: Vec<Vec2> = vec![];
         let mut contour_edges: Vec<[usize; 2]> = vec![];
-        let mut contour_grid = vec![vec![0_u8; output_h as usize - 1]; output_w as usize - 1];
-        for x in 0..output_w - 1 {
-            for y in 0..output_h - 1 {
+        let mut contour_grid =
+            vec![vec![0_u8; distance_field_h as usize - 1]; distance_field_w as usize - 1];
+        for x in 0..distance_field_w - 1 {
+            for y in 0..distance_field_h - 1 {
                 let x = x as usize;
                 let y = y as usize;
                 contour_grid[x][y] = (out[x][y + 1] << 3)
@@ -194,28 +204,417 @@ impl Contour {
             }
         }
 
-        let mut graph = Contour::default();
-        graph.path = String::from(filename);
+        let mut contour = Contour::default();
+        contour.path = String::from(path);
+        contour.img = img.clone();
 
-        // store all unique vertices in mesh resource
+        // add vertices to contour
         let mut i = 0;
         for (_, indices) in merged_vertices.iter() {
             for index in indices.iter() {
                 original_to_new_index.insert(*index, i);
             }
-            graph.vertices.push(contour_vertices[indices[0]]);
+            contour.vertices.push(contour_vertices[indices[0]]);
             i += 1;
         }
 
-        // store edges with new index in mesh resource
+        // add edges with changed indices to contour
         for [i0, i1] in contour_edges {
-            graph.edges.push([
+            contour.edges.push([
                 *original_to_new_index.get(&i0).unwrap(),
                 *original_to_new_index.get(&i1).unwrap(),
             ]);
         }
 
-        Some(graph)
+        Some(contour)
+    }
+
+    fn to_line_strings(&self) -> Vec<LineString<f32>> {
+
+        let vertices: &Vec<Vec2> = &self.vertices;
+        let mut edges: Vec<[usize; 2]> = self.edges.clone();
+        if edges.len() == 0 {
+            return vec![];
+        }
+
+        // Array containing result
+        let mut line_strings: Vec<LineString<f32>> = vec![];
+        // Array containing part of result
+        let mut line_string: LineString<f32> = LineString::new(vec![]);
+        // Start with first vertex of first edge
+        let mut next_index: usize = self.edges[0][0];
+
+        // Find and store coordinates in correct order
+        'outer: loop {
+            for i in 0..edges.len() {
+                // Check if one of the vertices is the sought vertex
+                let vertex_number: usize = if edges[i][0] == next_index {
+                    0
+                } else if edges[i][1] == next_index {
+                    1
+                } else {
+                    continue;
+                };
+
+                // Push next vec2 to line string
+                let v = vec2_as_coord(&vertices[edges[i][vertex_number]]);
+                line_string.0.push(v);
+
+                // Set next_index to the index of the neighbouring vertex
+                next_index = edges[i][if vertex_number == 0 {1} else {0}];
+
+                // Remove edge, so that it won't be checked again
+                edges.swap_remove(i);
+
+                // Exit for loop
+                continue 'outer;
+            }
+
+            line_strings.push(line_string);
+            line_string = LineString::new(vec![]);
+            if !edges.is_empty() {
+                next_index = edges[0][0];
+            } else {
+                for ls in line_strings.iter() {
+                    println!("ls.len(): {}", (*ls).0.len());
+                }
+                return line_strings;
+            }
+        }
+    }
+
+    fn simplify_line_strings(
+        &self,
+        line_strings: Vec<LineString<f32>>,
+        max_merge_size: usize,
+    ) -> Vec<LineString<f32>> {
+        let mut res = vec![LineString::<f32>::new(vec![]); line_strings.len()];
+        // Binary search for maximum number of edges that can be merged
+        for index in 0..line_strings.len() {
+            let mut a: usize = 0;
+            let mut n: usize = min(max_merge_size, line_strings[index].0.len() - 1);
+            let mut m: usize = n;
+            while a < line_strings[index].0.len() {
+                let a_coord = line_strings[index].0[a];
+                let b_coord = line_strings[index].0[n];
+                let a_vec2 = Vec2::new(a_coord.x, a_coord.y);
+                let b_vec2 = Vec2::new(b_coord.x, b_coord.y);
+                if !self.intersects_visible((a_vec2, b_vec2)) {
+                    if m == n {
+                        // Found!!
+                        res[index].0.push(a_coord);
+                        a = m;
+                        n = cmp::min(line_strings[index].0.len() - 1, m + max_merge_size);
+                        m = n;
+                    } else {
+                        m = ((m + n) as f32 / 2.0 + 0.5) as usize;
+                    }
+                } else {
+                    m = (a + a + max_merge_size) / 2;
+                }
+            }
+        }
+
+        res
+    }
+
+    fn intersects_visible(&self, line: (Vec2, Vec2)) -> bool {
+        let (w, h) = (self.img.size().x as u32, self.img.size().y as u32);
+        let a = line.0;
+        let b = line.1;
+        let magnitude = Vec2::distance(a, b) as i32 + 1;
+        let normalized = (b - a).normalize();
+
+        let mut is_collision = false;
+
+        // bug, collision is detected to soon
+        for i in 1..=magnitude {
+            let is_visible = || -> bool {
+                for j in 0..2 {
+                    for k in 0..2 {
+                        let current_pos = a + normalized * i as f32;
+                        let x = current_pos.x + j as f32;
+                        let y = current_pos.y + k as f32;
+                        if x < 0. || x as u32 >= w || y < 0. || y as u32 >= h {
+                            continue;
+                        }
+                        if self.img.get_pixel(x as u32, h - 1 - y as u32)[3] > 10 {
+                            return true;
+                        }
+                    }
+                }
+                false
+            };
+            if is_visible() {
+                is_collision = true;
+                break;
+            }
+        }
+
+        is_collision
+    }
+
+    fn to_multipoly(&self) -> MultiPolygon<f32> {
+        let line_strings = self.to_line_strings();
+        for ls in line_strings.iter() {
+            println!("ls.len(): {}", ls.0.len());
+        }
+        let mut exteriors: Vec<usize> = vec![];
+        let mut is_inside: Vec<Vec<usize>> = vec![vec![]; line_strings.len()];
+        for i in 0..line_strings.len() {
+            let poly = geo::Polygon::new(line_strings[i].clone(), vec![]);
+            for j in 0..line_strings.len() {
+                if i == j {
+                    continue;
+                } else {
+                    if poly.contains(&line_strings[j]) {
+                        is_inside[j].push(i);
+                    }
+                }
+            }
+        }
+        for i in 0..is_inside.len() {
+            if is_inside[i].len() == 0 {
+                exteriors.push(i);
+            }
+        }
+        let mut polygons: Vec<geo::Polygon<f32>> = exteriors
+            .iter()
+            .map(|&index| geo::Polygon::new(line_strings[index].clone(), vec![]))
+            .collect();
+        for i in 0..line_strings.len() {
+            if is_inside[i].len() > 0 {
+                polygons[0].interiors_push(line_strings[i].clone())
+            }
+        }
+        MultiPolygon::new(polygons)
+    }
+}
+
+trait DelaunayTriangulation {
+    // fn triangulate(&self, img_dimensions: Vec2, triangle_size: f32) -> Option<Skin>;
+    fn triangulate_delaunay(
+        &self,
+        triangle_size: f32,
+    ) -> Result<ConstrainedDelaunayTriangulation<Point2<f32>>, InsertionError>;
+}
+
+impl DelaunayTriangulation for MultiPolygon<f32> {
+    // fn triangulate(&self, img_dimensions: (f32, f32), triangle_size: f32) -> Option<Skin> {
+    //     let res_cdt = self.triangulate_delaunay(triangle_size);
+    //     let cdt = if res_cdt.is_ok() {
+    //         res_cdt.unwrap()
+    //     } else {
+    //         return None;
+    //     };
+    //     let mut vertices = vec![];
+    //     let mut indices = vec![];
+
+    //     let mut verts: HashMap<u64, u16> = HashMap::new();
+
+    //     for face in cdt.inner_faces() {
+    //         let positions: Vec<Point2<f32>> = face
+    //             .vertices()
+    //             .as_slice()
+    //             .iter()
+    //             .map(|v| v.position())
+    //             .collect();
+    //         for v in face.vertices().as_slice() {
+    //             let key = vec2_to_u64(Vec2::new(v.position().x, v.position().y));
+    //             let index: u16;
+    //             if verts.contains_key(&key) {
+    //                 index = verts[&key];
+    //             } else {
+    //                 index = verts.len() as u16;
+    //                 verts.insert(key, index);
+    //                 vertices.push([v.position().x, v.position().y, 0.]);
+    //             }
+    //             indices.push(index);
+    //         }
+    //     }
+
+    //     indices.reverse();
+
+    //     // let indices_len = indices.len();
+    //     // for i in (0..indices_len).rev() {
+    //     //     indices.push(indices[i]);
+    //     // }
+
+    //     // let uv_pixel = [cell_w * i as f32, cell_h * j as f32];
+    //     // vertices.push([
+    //     //     (uv_pixel[0] - w as f32 / 2.) * PIXEL_TO_UNIT_RATIO,
+    //     //     (uv_pixel[1] - h as f32 / 2.) * PIXEL_TO_UNIT_RATIO,
+    //     //     0.,
+    //     // ]);
+
+    //     // let img_handle = asset_server.load(&self.path);
+    //     // let opt_img = image_assets.get(&img_handle);
+
+    //     let (w, h) = (size.x as u32, size.y as u32);
+    //     for v in vertices {
+    //         uvs.push([v[0], v[1]]);
+    //     }
+
+    //     let multipoly = self.to_geo_multipoly();
+
+    //     for i in ((0..indices.len()).step_by(3)).rev() {
+    //         let mut center = Vec2::new(0., 0.);
+    //         for j in 0..3 {
+    //             let v = vertices[indices[i + j] as usize];
+    //             center.x += v[0];
+    //             center.y += v[1];
+    //             let v1 = vertices[indices[i + (j + 1) % 3] as usize];
+    //             // if !geo_poly.intersects(&Line::new(Coordinate{x: v0[0], y: v0[1]},Coordinate{x: v1[0], y: v1[1]})) {
+    //             //     remove = true;
+    //             //     break;
+    //             // }
+    //         }
+    //         center /= 3.;
+    //         if !multipoly.intersects(&Coordinate {
+    //             x: center.x,
+    //             y: center.y,
+    //         }) {
+    //             for j in (0..3).rev() {
+    //                 indices.swap_remove(i + j);
+    //             }
+    //         }
+    //     }
+
+    //     // Remove loose vertices
+    //     let mut keep_vertex_indices: HashSet<usize> = HashSet::new();
+    //     let mut removed_vertex_indices: Vec<usize> = vec![];
+    //     for &ind in indices.iter() {
+    //         keep_vertex_indices.insert(ind as usize);
+    //     }
+    //     for i in (0..vertices.len()).rev() {
+    //         if !keep_vertex_indices.contains(&i) {
+    //             vertices.remove(i);
+    //             removed_vertex_indices.push(i);
+    //         }
+    //     }
+    //     for ind in removed_vertex_indices {
+    //         for index in indices.iter_mut() {
+    //             if (ind as u16) < (*index) {
+    //                 *index -= 1;
+    //             }
+    //         }
+    //     }
+
+    //     let mut uvs: Vec<[f32; 2]> = vec![];
+    //     for v in vertices.iter() {
+    //         let x = v[0] / dimensions.x;
+    //         let y = 1. - v[1] / dimensions.y;
+    //         uvs.push([x, y]);
+    //     }
+
+    //     for i in 0..vertices.len() {
+    //         for j in 0..3 {
+    //             vertices[i][j] *= PIXEL_TO_UNIT_RATIO;
+    //         }
+    //     }
+
+    //     let skin = Skin {
+    //         path: String::from(&self.path),
+    //         vertices,
+    //         uvs,
+    //         indices,
+    //         mesh_handle: None,
+    //     };
+
+    //     Some(skin)
+
+    //     // for face in cdt.all_faces() {
+    //     //     if let Some(f) = face.as_inner() {
+    //     //         let mut v_first: Option<Vec2> = None;
+    //     //         for vertex in f.vertices() {
+    //     //             let v = Vec2::new(vertex.position().x as f32, vertex.position().y as f32);
+    //     //             if v_first.is_none() {
+    //     //                 path_builder.move_to(v);
+    //     //                 v_first = Some(v);
+    //     //             } else {
+    //     //                 path_builder.line_to(v);
+    //     //             }
+    //     //         }
+    //     //         path_builder.line_to(v_first.unwrap());
+    //     //     }
+    //     // }
+
+    //     // let mut geometry = GeometryBuilder::build_as(
+    //     //     &PathBuilder::new().build(),
+    //     //     DrawMode::Stroke(StrokeMode::new(
+    //     //         Color::Rgba {
+    //     //             red: 1.,
+    //     //             green: 1.,
+    //     //             blue: 0.,
+    //     //             alpha: 1.,
+    //     //         },
+    //     //         0.01,
+    //     //     )),
+    //     //     Transform::from_translation(Vec3::new(0., 0., 700.)),
+    //     // );
+    // }
+
+    fn triangulate_delaunay(
+        &self,
+        triangle_size: f32,
+    ) -> Result<ConstrainedDelaunayTriangulation<Point2<f32>>, InsertionError> {
+        let mut cdt = ConstrainedDelaunayTriangulation::<Point2<_>>::new();
+
+        // let mut first = true;
+        // let mut min = Vec2::new(0., 0.);
+        // let mut max = Vec2::new(0., 0.);
+        dbg!(self.coords_count());
+
+        for line in self.lines_iter() {
+            cdt.add_constraint_edge(
+                Point2::new(line.start.x, line.start.y),
+                Point2::new(line.end.x, line.end.y),
+            )?;
+        }
+
+        let opt_bounding_rect = self.bounding_rect();
+        let bounding_rect = if opt_bounding_rect.is_some() {
+            opt_bounding_rect.unwrap()
+        } else {
+            return Err(InsertionError::NAN);
+        };
+
+        let mut y = bounding_rect.min().y + triangle_size / 2.0 * 3f32.sqrt();
+        let mut x = bounding_rect.min().x + triangle_size;
+        while y < bounding_rect.max().y {
+            while x < bounding_rect.max().x {
+                if self.contains(&Coordinate { x, y }) {
+                    cdt.insert(Point2::new(x, y));
+                }
+                x += triangle_size;
+            }
+            y += triangle_size / 2.0 * 3f32.sqrt();
+        }
+
+        // let max_dist_squared = triangle_size.powi(2);
+        // for x in (min.x as i32)..(max.x as i32) {
+        //     for y in (min.y as i32)..(max.y as i32) {
+        //         if !self.intersects(&Coordinate {
+        //             x: x as f32,
+        //             y: y as f32,
+        //         }) {
+        //             continue;
+        //         }
+        //         let mut add_vertex = true;
+        //         let new_vertex = Point2::new(x as f32, y as f32);
+        //         for v in cdt.vertices() {
+        //             if v.position().distance_2(new_vertex) <= max_dist_squared {
+        //                 add_vertex = false;
+        //                 break;
+        //             }
+        //         }
+        //         if add_vertex {
+        //             cdt.insert(new_vertex)?;
+        //         }
+        //     }
+        // }
+
+        Ok(cdt)
     }
 }
 
@@ -224,6 +623,61 @@ pub struct Polygon {
     pub line_strips: Vec<LineStrip>,
 }
 impl Polygon {
+    fn to_geo_poly(&self) -> geo::Polygon<f32> {
+        geo::Polygon::new(
+            geo::LineString::new(
+                self.line_strips[0]
+                    .vertices
+                    .iter()
+                    .map(|v| Coordinate { x: v.x, y: v.y })
+                    .collect(),
+            ),
+            vec![],
+        )
+    }
+    fn to_geo_multipoly(&self) -> geo::MultiPolygon<f32> {
+        let line_strings: Vec<LineString<f32>> = self
+            .line_strips
+            .iter()
+            .map(|ls| {
+                LineString(
+                    ls.vertices
+                        .iter()
+                        .map(|v| Coordinate { x: v.x, y: v.y })
+                        .collect(),
+                )
+            })
+            .collect();
+        let mut exteriors: Vec<usize> = vec![];
+        let mut is_inside: Vec<Vec<usize>> = vec![vec![]; line_strings.len()];
+        for i in 0..line_strings.len() {
+            let poly = geo::Polygon::new(line_strings[i].clone(), vec![]);
+            for j in 0..line_strings.len() {
+                if i == j {
+                    continue;
+                } else {
+                    if poly.contains(&line_strings[j]) {
+                        is_inside[j].push(i);
+                    }
+                }
+            }
+        }
+        for i in 0..is_inside.len() {
+            if is_inside[i].len() == 0 {
+                exteriors.push(i);
+            }
+        }
+        let mut polygons: Vec<geo::Polygon<f32>> = exteriors
+            .iter()
+            .map(|&index| geo::Polygon::new(line_strings[index].clone(), vec![]))
+            .collect();
+        for i in 0..line_strings.len() {
+            if is_inside[i].len() > 0 {
+                polygons[0].interiors_push(line_strings[i].clone())
+            }
+        }
+        MultiPolygon::new(polygons)
+    }
     fn from_contour(contour: &Contour) -> Polygon {
         let mut polygons: Vec<LineStrip> = vec![];
         let mut first_indices_of_polygons: Vec<usize> = vec![0];
@@ -299,12 +753,11 @@ impl Polygon {
 
     fn triangulate(
         &self,
-        rows: u16,
-        cols: u16,
+        triangle_size: f32,
         asset_server: &AssetServer,
         image_assets: &Assets<Image>,
     ) -> Option<Skin> {
-        let res_cdt = self.triangulate_delaunay(rows, cols);
+        let res_cdt = self.triangulate_delaunay(triangle_size);
         let cdt = if res_cdt.is_ok() {
             res_cdt.unwrap()
         } else {
@@ -367,33 +820,27 @@ impl Polygon {
         //     }
         // }
 
-        let geo_poly = geo::Polygon::new(
-            geo::LineString::new(
-                self.line_strips[0]
-                    .vertices
-                    .iter()
-                    .map(|v| Coordinate { x: v.x, y: v.y })
-                    .collect(),
-            ),
-            vec![],
-        );
+        let multipoly = self.to_geo_multipoly();
 
         for i in ((0..indices.len()).step_by(3)).rev() {
-            let mut center = Vec2::new(0.,0.);
+            let mut center = Vec2::new(0., 0.);
             for j in 0..3 {
-                let v = vertices[indices[i+j] as usize];
+                let v = vertices[indices[i + j] as usize];
                 center.x += v[0];
                 center.y += v[1];
-                let v1 = vertices[indices[i+(j+1)%3] as usize];
+                let v1 = vertices[indices[i + (j + 1) % 3] as usize];
                 // if !geo_poly.intersects(&Line::new(Coordinate{x: v0[0], y: v0[1]},Coordinate{x: v1[0], y: v1[1]})) {
                 //     remove = true;
                 //     break;
                 // }
             }
             center /= 3.;
-            if !geo_poly.intersects(&Coordinate{x: center.x, y: center.y}) {
+            if !multipoly.intersects(&Coordinate {
+                x: center.x,
+                y: center.y,
+            }) {
                 for j in (0..3).rev() {
-                    indices.swap_remove(i+j);
+                    indices.swap_remove(i + j);
                 }
             }
         }
@@ -437,7 +884,6 @@ impl Polygon {
             uvs,
             indices,
             mesh_handle: None,
-            depth: 10.,
         };
 
         Some(skin)
@@ -475,8 +921,7 @@ impl Polygon {
 
     fn triangulate_delaunay(
         &self,
-        rows: u16,
-        cols: u16,
+        triangle_size: f32,
     ) -> Result<ConstrainedDelaunayTriangulation<Point2<f32>>, InsertionError> {
         let mut cdt = ConstrainedDelaunayTriangulation::<Point2<_>>::new();
 
@@ -512,14 +957,39 @@ impl Polygon {
             return Err(InsertionError::NAN);
         }
 
-        for i in 0..cols {
-            for j in 0..rows {
-                cdt.insert(Point2::new(
-                    min.x + i as f32 * dimensions.x / (cols as f32 - 1.),
-                    min.y + j as f32 * dimensions.y / (rows as f32 - 1.),
-                ))?;
+        let geo_poly = self.to_geo_poly();
+
+        let max_dist_squared = triangle_size.powi(2);
+        for x in (min.x as i32)..(max.x as i32) {
+            for y in (min.y as i32)..(max.y as i32) {
+                if !geo_poly.intersects(&Coordinate {
+                    x: x as f32,
+                    y: y as f32,
+                }) {
+                    continue;
+                }
+                let mut add_vertex = true;
+                let new_vertex = Point2::new(x as f32, y as f32);
+                for v in cdt.vertices() {
+                    if v.position().distance_2(new_vertex) <= max_dist_squared {
+                        add_vertex = false;
+                        break;
+                    }
+                }
+                if add_vertex {
+                    cdt.insert(new_vertex)?;
+                }
             }
         }
+
+        // for i in 0..cols {
+        //     for j in 0..rows {
+        //         cdt.insert(Point2::new(
+        //             min.x + i as f32 * dimensions.x / (cols as f32 - 1.),
+        //             min.y + j as f32 * dimensions.y / (rows as f32 - 1.),
+        //         ))?;
+        //     }
+        // }
 
         Ok(cdt)
     }
@@ -595,9 +1065,168 @@ pub struct Skin {
     pub uvs: Vec<[f32; 2]>,
     pub indices: Vec<u16>,
     pub mesh_handle: Option<Mesh2dHandle>,
-    pub depth: f32,
 }
 impl Skin {
+    fn from_contour(contour: Contour) -> Option<Skin> {
+        let multipoly = contour.to_multipoly();
+        println!("from contour v_count: {}", multipoly.coords_count());
+        let res_cdt = multipoly.triangulate_delaunay(20.);
+        let cdt = if res_cdt.is_ok() {
+            res_cdt.unwrap()
+        } else {
+            return None;
+        };
+
+        let mut vertices = vec![];
+        let mut indices = vec![];
+        let mut unique_vertices: HashMap<u64, u16> = HashMap::new();
+
+        for face in cdt.inner_faces() {
+            for v in face.vertices() {
+                let key = vec2_to_u64(Vec2::new(v.position().x, v.position().y));
+                let index: u16;
+                if unique_vertices.contains_key(&key) {
+                    index = unique_vertices[&key];
+                } else {
+                    index = unique_vertices.len() as u16;
+                    unique_vertices.insert(key, index);
+                    vertices.push([v.position().x, v.position().y, 0.]);
+                }
+                indices.push(index);
+            }
+        }
+
+        indices.reverse();
+
+        // let indices_len = indices.len();
+        // for i in (0..indices_len).rev() {
+        //     indices.push(indices[i]);
+        // }
+
+        let (w, h) = (contour.img.size().x, contour.img.size().y);
+        // let uv_pixel = [cell_w * i as f32, cell_h * j as f32];
+        // vertices.push([
+        //     (uv_pixel[0] - w as f32 / 2.) * PIXEL_TO_UNIT_RATIO,
+        //     (uv_pixel[1] - h as f32 / 2.) * PIXEL_TO_UNIT_RATIO,
+        //     0.,
+        // ]);
+
+        // let img_handle: Handle<Image> = asset_server.load(&contour.path);
+        // let opt_img = image_assets.get(&img_handle);
+        // let dimensions = if opt_img.is_none() {
+        //     println!("triangulate(): couldn't open image!");
+        //     return None;
+        // } else {
+        //     opt_img.unwrap().size()
+        // };
+
+        // let img_handle = asset_server.load(&self.path);
+        // let opt_img = image_assets.get(&img_handle);
+
+        // if let Some(img) = opt_img {
+        //     let size = img.size();
+        //     let (w, h) = (size.x as u32, size.y as u32);
+        //     for v in vertices {
+        //         uvs.push([v[0], v[1]]);
+        //     }
+        // }
+
+        for i in ((0..indices.len()).step_by(3)).rev() {
+            let mut center = Vec2::new(0., 0.);
+            for j in 0..3 {
+                let v = vertices[indices[i + j] as usize];
+                center.x += v[0];
+                center.y += v[1];
+                // let v1 = vertices[indices[i + (j + 1) % 3] as usize];
+                // if !geo_poly.intersects(&Line::new(Coordinate{x: v0[0], y: v0[1]},Coordinate{x: v1[0], y: v1[1]})) {
+                //     remove = true;
+                //     break;
+                // }
+            }
+            center /= 3.;
+            if !multipoly.intersects(&Coordinate {
+                x: center.x,
+                y: center.y,
+            }) {
+                for j in (0..3).rev() {
+                    indices.remove(i + j); // Swap removed could be used, but changes triangle ordering
+                }
+            }
+        }
+
+        // Remove loose vertices
+        let mut keep_vertex_indices: HashSet<usize> = HashSet::new();
+        let mut removed_vertex_indices: Vec<usize> = vec![];
+        for &ind in indices.iter() {
+            keep_vertex_indices.insert(ind as usize);
+        }
+        for i in (0..vertices.len()).rev() {
+            if !keep_vertex_indices.contains(&i) {
+                vertices.remove(i);
+                removed_vertex_indices.push(i);
+            }
+        }
+        for ind in removed_vertex_indices {
+            for index in indices.iter_mut() {
+                if (ind as u16) < (*index) {
+                    *index -= 1;
+                }
+            }
+        }
+
+        let mut uvs: Vec<[f32; 2]> = vec![];
+        for v in vertices.iter() {
+            let x = v[0] / w;
+            let y = 1. - v[1] / h;
+            uvs.push([x, y]);
+        }
+
+        for i in 0..vertices.len() {
+            for j in 0..3 {
+                vertices[i][j] *= PIXEL_TO_UNIT_RATIO;
+            }
+        }
+
+        let skin = Skin {
+            path: String::from(contour.path),
+            vertices,
+            uvs,
+            indices,
+            mesh_handle: None,
+        };
+
+        Some(skin)
+
+        // for face in cdt.all_faces() {
+        //     if let Some(f) = face.as_inner() {
+        //         let mut v_first: Option<Vec2> = None;
+        //         for vertex in f.vertices() {
+        //             let v = Vec2::new(vertex.position().x as f32, vertex.position().y as f32);
+        //             if v_first.is_none() {
+        //                 path_builder.move_to(v);
+        //                 v_first = Some(v);
+        //             } else {
+        //                 path_builder.line_to(v);
+        //             }
+        //         }
+        //         path_builder.line_to(v_first.unwrap());
+        //     }
+        // }
+
+        // let mut geometry = GeometryBuilder::build_as(
+        //     &PathBuilder::new().build(),
+        //     DrawMode::Stroke(StrokeMode::new(
+        //         Color::Rgba {
+        //             red: 1.,
+        //             green: 1.,
+        //             blue: 0.,
+        //             alpha: 1.,
+        //         },
+        //         0.01,
+        //     )),
+        //     Transform::from_translation(Vec3::new(0., 0., 700.)),
+        // );
+    }
     pub fn gl_vertices(&self, gl_transform: &GlobalTransform) -> Vec<[f32; 3]> {
         let (gl_scale, gl_rotation, gl_translation) = gl_transform.to_scale_rotation_translation();
         self.vertices
@@ -607,7 +1236,7 @@ impl Skin {
                 res *= gl_scale;
                 res = Quat::mul_vec3(gl_rotation, res);
                 res += gl_translation;
-                [res.x, res.y, self.depth]
+                [res.x, res.y, 0.]
             })
             .collect::<Vec<[f32; 3]>>()
     }
@@ -617,7 +1246,6 @@ impl Skin {
         image_assets: &Assets<Image>,
         cols: u16,
         rows: u16,
-        depth: f32,
         cut_out: bool,
     ) -> Option<Skin> {
         let img_handle = asset_server.load(path);
@@ -676,7 +1304,6 @@ impl Skin {
                 uvs,
                 indices,
                 mesh_handle: None,
-                depth,
             };
             // // Remove reduntant vertices and corresponding uvs and indices
             if cut_out {
@@ -785,6 +1412,7 @@ const MARCHING_SQUARE_LOOKUP_TABLE: [Edges; 16] = [
     Edges::zero(),
 ];
 
+// For some reason doesn't work with max_dist 1.0
 fn is_close_to_visible_pixel(x: u32, y: u32, img: &Image, offset: u32, max_dist: f32) -> bool {
     let max_dist_ceil = f32::ceil(max_dist) as i32;
     let x: i32 = x as i32 - offset as i32;
@@ -822,14 +1450,14 @@ pub fn add_pooh_on_startup(
     asset_server: Res<AssetServer>,
     image_assets: Res<Assets<Image>>,
 ) {
-    state.queued_skins.push(AddSkinEvent {
+    state.queued_skins.push(AddSkinOrder::Grid {
         path: String::from("img/honey.png"),
         cols: 6,
         rows: 10,
         as_cloth: true,
         cut_out: false,
     });
-    state.queued_skins.push(AddSkinEvent {
+    state.queued_skins.push(AddSkinOrder::Grid {
         path: String::from("img/pooh.png"),
         cols: 30,
         rows: 30,
@@ -843,29 +1471,28 @@ fn add_skin(
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<ColorMaterial>,
     asset_server: &AssetServer,
-    filename: &str,
-    cols: u16,
-    rows: u16,
-    depth: f32,
-    cut_out: bool,
+    order: &AddSkinOrder,
     image_assets: &Assets<Image>,
 ) -> Option<(Entity, Mesh2dHandle)> {
-    // let opt_skin = Skin::grid_mesh(
-    //     filename,
-    //     asset_server,
-    //     image_assets,
-    //     cols,
-    //     rows,
-    //     depth,
-    //     cut_out,
-    // );
-    let contour = Contour::from_image(filename, asset_server, image_assets, 5);
-    let opt_skin = Polygon::from_contour(&contour?).simplify().triangulate(
-        rows,
-        cols,
-        asset_server,
-        image_assets,
-    );
+    let mut opt_skin: Option<Skin> = match order {
+        AddSkinOrder::Grid {
+            path,
+            cols,
+            rows,
+            as_cloth,
+            cut_out,
+        } => Skin::grid_mesh(path, asset_server, image_assets, *cols, *rows, *cut_out),
+        AddSkinOrder::Delaunay {
+            path,
+            borderline_width: contour_size,
+            triangle_size,
+        } => {
+            let contour =
+                Contour::from_image(path, asset_server, image_assets, *contour_size as u32)?;
+            Skin::from_contour(contour)
+        }
+    };
+
     if opt_skin.is_none() {
         dbg!("couldn't generate skin");
         return None;
@@ -877,7 +1504,7 @@ fn add_skin(
         .vertices
         .clone()
         .iter()
-        .map(|v| [v[0], v[1], depth])
+        .map(|v| [v[0], v[1], 0.])
         .collect::<Vec<[f32; 3]>>();
     let mut normals = vec![];
     let uvs = skin.uvs.clone();
@@ -913,6 +1540,30 @@ fn add_skin(
         })
         .insert(skin)
         .id();
+
+    if let AddSkinOrder::Grid {
+        path: _,
+        cols,
+        rows,
+        as_cloth,
+        cut_out: _,
+    } = order
+    {
+        if *as_cloth {
+            let bounding_box = meshes.get(&handle.0).unwrap().compute_aabb().unwrap();
+            let diagonal = (bounding_box.max() - bounding_box.min()) * skin::START_SCALE;
+            let cloth = Cloth::new(
+                Vec3::new(0., 0., 0.),
+                diagonal.x,
+                diagonal.y,
+                *cols as usize,
+                *rows as usize,
+            )
+            .with_stiffness(10);
+            commands.entity(skin_id).insert(cloth);
+        }
+    }
+
     Some((skin_id, handle.clone()))
 }
 
@@ -926,37 +1577,18 @@ pub fn add_skins(
 ) {
     for i in (0..state.queued_skins.len()).rev() {
         let event = &state.queued_skins[i];
-        let opt_entity_mesh = add_skin(
+        if add_skin(
             &mut commands,
             &mut meshes,
             &mut materials,
             &asset_server,
-            &event.path,
-            event.cols,
-            event.rows,
-            90.,
-            event.cut_out,
+            &event,
             &image_assets,
-        );
-        if opt_entity_mesh.is_none() {
-            break;
+        )
+        .is_some()
+        {
+            state.queued_skins.swap_remove(i);
         }
-        let (entity, mesh_handle) = opt_entity_mesh.unwrap();
-
-        if event.as_cloth {
-            let bounding_box = meshes.get(&mesh_handle.0).unwrap().compute_aabb().unwrap();
-            let diagonal = (bounding_box.max() - bounding_box.min()) * skin::START_SCALE;
-            let cloth = Cloth::new(
-                Vec3::new(0., 0., 0.),
-                diagonal.x,
-                diagonal.y,
-                event.cols as usize,
-                event.rows as usize,
-            )
-            .with_stiffness(10);
-            commands.entity(entity).insert(cloth);
-        }
-        state.queued_skins.swap_remove(i);
     }
 }
 
@@ -989,4 +1621,12 @@ fn u64_to_vec2(u_64: u64) -> Vec2 {
     let x = f32::from_bits(u_64 as u32);
     let y = f32::from_bits((u_64 >> 32) as u32);
     Vec2::new(x, y)
+}
+
+fn coord_as_vec2(coord: &Coordinate<f32>) -> Vec2 {
+    Vec2::new(coord.x, coord.y)
+}
+
+fn vec2_as_coord(v: &Vec2) -> Coordinate<f32> {
+    Coordinate { x: v.x, y: v.y }
 }
