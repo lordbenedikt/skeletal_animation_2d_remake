@@ -27,7 +27,7 @@ pub fn setup(
     commands
         .spawn_bundle(SpriteBundle {
             sprite: Sprite {
-                color: image::ColorUtils::invert(&clear_color.0),
+                color: bevy_image::ColorUtils::invert(&clear_color.0),
                 ..Default::default()
             },
             visibility: Visibility { is_visible: false },

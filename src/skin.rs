@@ -1,4 +1,4 @@
-use crate::{image::Pixels, mesh_gen::Contour, *};
+use crate::{bevy_image::Pixels, mesh_gen::Contour, *};
 use bevy::{sprite::MaterialMesh2dBundle, utils::HashSet};
 use cloth::Cloth;
 use geo::*;

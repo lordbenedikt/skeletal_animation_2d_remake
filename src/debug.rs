@@ -227,7 +227,7 @@ pub fn draw_skin_bounding_box(
 
         let average = sum / vertices.len() as f32;
         transformable.collision_shape =
-            transform::Shape::Rectangle(Vec2::from_slice(&min), Vec2::from_slice(&max));
+            transform::PhantomShape::Rectangle(Vec2::from_slice(&min), Vec2::from_slice(&max));
 
         let color = if transformable.is_selected {
             COLOR_SELECTED
@@ -433,7 +433,7 @@ pub fn draw_select_box(
             transform.scale = Vec3::new((a.x - b.x).abs(), (a.y - b.y).abs(), 1.);
             visibility.is_visible = true;
         }
-        let color = image::ColorUtils::invert(&clear_color.0);
+        let color = bevy_image::ColorUtils::invert(&clear_color.0);
         debug_drawer.line_thick(a, Vec2::new(a.x, b.y), color, 2.0);
         debug_drawer.line_thick(a, Vec2::new(b.x, a.y), color, 2.0);
         debug_drawer.line_thick(b, Vec2::new(a.x, b.y), color, 2.0);

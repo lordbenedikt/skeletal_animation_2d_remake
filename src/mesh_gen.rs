@@ -3,7 +3,7 @@ use geo::*;
 use misc::*;
 use spade::*;
 
-use crate::{image::Pixels, *};
+use crate::{bevy_image::Pixels, *};
 
 struct Edges {
     count: u8,

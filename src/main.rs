@@ -5,7 +5,7 @@ mod ccd;
 mod cloth;
 mod debug;
 mod egui;
-mod image;
+mod bevy_image;
 mod interpolate;
 mod mesh;
 mod mesh_gen;

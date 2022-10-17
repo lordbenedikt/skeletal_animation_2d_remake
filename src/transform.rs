@@ -53,7 +53,7 @@ pub struct Transformable {
     pub translatable: bool,
     pub rotatable: bool,
     pub scalable: bool,
-    pub collision_shape: Shape,
+    pub collision_shape: PhantomShape,
 }
 impl Default for Transformable {
     fn default() -> Self {
@@ -63,19 +63,19 @@ impl Default for Transformable {
             translatable: true,
             rotatable: true,
             scalable: true,
-            collision_shape: Shape::None,
+            collision_shape: PhantomShape::None,
         }
     }
 }
 impl Transformable {
-    pub fn with_shape(mut self, shape: Shape) -> Self {
+    pub fn with_shape(mut self, shape: PhantomShape) -> Self {
         self.collision_shape = shape;
         self
     }
 }
 
 #[derive(PartialEq)]
-pub enum Shape {
+pub enum PhantomShape {
     Point(Vec2),
     Rectangle(Vec2, Vec2),
     Line(Vec2, Vec2),
@@ -104,8 +104,8 @@ pub fn start_action(
     q: Query<&Transform, With<Transform>>,
 ) {
     // // // WIP
-    // // Currently doesn't work with parent-child-hierarchies
-    // // To fix it might be necessary to implement own parent-child-system system
+    // // // Currently doesn't work with parent-child-hierarchies
+    // // // To fix this, it might be necessary to implement a custom parent-child-system system
     // Switch between scale modi
     if keys.just_released(KeyCode::S) {
         if state.action == Action::Scale {
@@ -351,9 +351,9 @@ pub fn select(
     if !state.drag_select {
         let mut shortest_distance = 999.;
         for (gl_transform, transformable, entity) in q.iter_mut() {
-            let distance: f32 = if let Shape::Rectangle(min, max) = transformable.collision_shape {
+            let distance: f32 = if let PhantomShape::Rectangle(min, max) = transformable.collision_shape {
                 Vec2::distance((min + max) / 2., cursor_pos.0)
-            } else if let Shape::Line(start, end) = transformable.collision_shape {
+            } else if let PhantomShape::Line(start, end) = transformable.collision_shape {
                 distance_segment_point(start, end, cursor_pos.0)
             } else {
                 // assert transformable.collision_shape == Shape::None
@@ -366,7 +366,7 @@ pub fn select(
                 Vec2::distance(center.truncate(), cursor_pos.0)
             };
             if distance < shortest_distance {
-                if let Shape::Rectangle(min, max) = transformable.collision_shape {
+                if let PhantomShape::Rectangle(min, max) = transformable.collision_shape {
                     if min.x <= cursor_pos.0.x
                         && min.y <= cursor_pos.0.y
                         && max.x >= cursor_pos.0.x
@@ -378,7 +378,7 @@ pub fn select(
                         select_entities.push(entity);
                         shortest_distance = distance;
                     }
-                } else if let Shape::Line(start, end) = transformable.collision_shape {
+                } else if let PhantomShape::Line(start, end) = transformable.collision_shape {
                     if distance < 1. {
                         if !select_entities.is_empty() {
                             select_entities.clear();
@@ -399,9 +399,9 @@ pub fn select(
         }
     } else {
         for (gl_transform, transformable, entity) in q.iter_mut() {
-            let center: Vec2 = if let Shape::Rectangle(min, max) = transformable.collision_shape {
+            let center: Vec2 = if let PhantomShape::Rectangle(min, max) = transformable.collision_shape {
                 (min + max) / 2.
-            } else if let Shape::Line(start, end) = transformable.collision_shape {
+            } else if let PhantomShape::Line(start, end) = transformable.collision_shape {
                 (start + end) / 2.
             } else {
                 // assert transformable.collision_shape == Shape::None
