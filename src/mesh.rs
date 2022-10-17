@@ -1,4 +1,4 @@
-use bevy::{sprite::Material2d, utils::HashMap};
+use bevy::utils::HashMap;
 
 use crate::{skin::Skin, *};
 
@@ -121,30 +121,5 @@ pub fn exchange_images(
         } else {
             continue;
         }
-
-        // dbg!(&alt_path);
-        // let image: Handle<Image> = asset_server.load(&alt_path);
-
-        // let opt_mesh = meshes.get_mut(&skin.mesh_handle.clone().unwrap().0);
-        // if let Some(mesh) = opt_mesh {
-        //     let mut normals = vec![];
-        //     for _ in skin.vertices.iter() {
-        //         normals.push([0., 1., 1.]);
-        //     }
-
-        //     let mut new_mesh = Mesh::new(PrimitiveTopology::TriangleList);
-        //     new_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, skin.vertices.clone());
-        //     new_mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-        //     new_mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, skin.uvs.clone());
-
-        //     let mut indices = skin.indices.clone();
-        //     indices.reverse();
-        //     new_mesh.set_indices(Some(Indices::U16(indices)));
-
-        //     let handle: Mesh2dHandle = meshes.add(new_mesh).into();
-
-        //     meshes.remove(skin.mesh_handle.clone().unwrap().0);
-        //     skin.mesh_handle = Some(handle);
-        // }
     }
 }

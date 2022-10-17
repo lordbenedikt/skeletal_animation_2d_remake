@@ -5,13 +5,11 @@ use crate::cloth::Cloth;
 use crate::skeleton::{Skeleton, SkinMapping};
 use crate::skin::Skin;
 use crate::*;
-use bevy::asset::Asset;
 use bevy::sprite::MaterialMesh2dBundle;
 use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::io::Write;
-use std::{fs, io::Error};
+use std::fs;
 
 #[derive(Default)]
 pub struct State {
@@ -371,7 +369,7 @@ fn load(
 ) {
     let save_slot = get_just_pressed_number(&keys);
     if keys.pressed(KeyCode::LAlt) && save_slot != -1 {
-        state.opt_load_path = Some(get_anim_path(&format!("animation_{}", save_slot)));
+        state.opt_load_path = Some(anim_name_to_path(&format!("animation_{}", save_slot)));
     }
 
     if let Some(path) = &state.opt_load_path {
@@ -547,6 +545,6 @@ fn get_just_pressed_number(keys: &Input<KeyCode>) -> i32 {
     }
 }
 
-pub fn get_anim_path(filename: &str) -> String {
+pub fn anim_name_to_path(filename: &str) -> String {
     String::from(format!("anims/{}.anim", filename))
 }

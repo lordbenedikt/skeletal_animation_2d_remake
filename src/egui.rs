@@ -51,7 +51,7 @@ impl Default for State {
             interpolation_function: Function::EaseInOut,
             keyframe_length: 400,
             edit_plot: 0,
-            skin_filename: String::from("filename"),
+            skin_filename: String::from("pooh.png"),
             step: 0,
             skin_cols: 10,
             skin_rows: 10,
@@ -62,8 +62,8 @@ impl Default for State {
             ui_hover: false,
             ui_drag: false,
             new_animation_name: String::from(""),
-            delaunay_triangle_size: 0.,
-            delaunay_borderline_width: 0.,
+            delaunay_triangle_size: 15.,
+            delaunay_borderline_width: 3.,
         }
     }
 }

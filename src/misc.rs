@@ -1,3 +1,5 @@
+use std::cmp;
+
 use crate::{skin::AVAILABLE_IMAGES, *};
 use bevy::{
     ecs::change_detection::MutUntyped,
@@ -25,7 +27,7 @@ pub fn setup(
     commands
         .spawn_bundle(SpriteBundle {
             sprite: Sprite {
-                color: clear_color.0.invert(),
+                color: image::ColorUtils::invert(&clear_color.0),
                 ..Default::default()
             },
             visibility: Visibility { is_visible: false },
@@ -42,7 +44,7 @@ pub fn setup(
     }
 
     // Load arachnoid animation
-    save_load_state.opt_load_path = Some(save_load::get_anim_path("arachnoid"));
+    save_load_state.opt_load_path = Some(save_load::anim_name_to_path("arachnoid"));
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -135,12 +137,11 @@ pub fn map(value: f32, from: [f32; 2], to: [f32; 2]) -> f32 {
     to[0] + progress * to_diff
 }
 
-pub trait ColorUtils {
-    fn invert(&self) -> Self;
+pub trait Hash {
+    fn hash(&self) -> u64;
 }
-impl ColorUtils for Color {
-    fn invert(&self) -> Self {
-        let col = self.as_rgba();
-        Color::rgba(1. - col.r(), 1. - col.g(), 1. - col.b(), 0.2)
+impl Hash for Vec2 {
+    fn hash(&self) -> u64 {
+        ((self.x.to_bits() as u64) << 32) + (self.y.to_bits() as u64)
     }
 }

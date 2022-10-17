@@ -1,23 +1,25 @@
 mod animation;
+mod bevy_ui;
 mod bone;
 mod ccd;
 mod cloth;
 mod debug;
 mod egui;
+mod image;
 mod interpolate;
 mod mesh;
+mod mesh_gen;
 mod misc;
 mod save_load;
 mod skeleton;
 mod skin;
 mod transform;
-mod bevy_ui;
 
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::{prelude::*, render::mesh::*, sprite::Mesh2dHandle};
+use bevy_common_assets::json::JsonAssetPlugin;
 use bevy_egui::EguiPlugin;
 use bevy_prototype_lyon::prelude::*;
-use bevy_common_assets::json::JsonAssetPlugin;
 use debug::DebugDrawer;
 use transform::*;
 use wasm_bindgen::prelude;
@@ -104,7 +106,11 @@ fn main() {
             .after("bone_systems")
             .after("animation_systems"),
     )
-    .add_system_set(ccd::system_set().label("ccd_systems").after("transform_systems"))
+    .add_system_set(
+        ccd::system_set()
+            .label("ccd_systems")
+            .after("transform_systems"),
+    )
     .add_system_set(
         debug::system_set()
             .after("bone_systems")
