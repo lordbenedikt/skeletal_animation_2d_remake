@@ -1,7 +1,7 @@
 use std::{cmp, f32::consts::E};
 
 use crate::{skin::START_SCALE, *};
-use bevy::{input::mouse::MouseWheel, math::Vec3A, sprite::MaterialMesh2dBundle};
+use bevy::{input::mouse::{MouseWheel, MouseScrollUnit}, math::Vec3A, sprite::MaterialMesh2dBundle};
 use bone::Bone;
 use cloth::Cloth;
 use serde::*;
@@ -368,7 +368,8 @@ fn adjust_vertex_weights(
     }
 
     for mouse_wheel in mouse_wheel_evr.iter() {
-        egui_state.brush_size = f32::max(0.05, egui_state.brush_size + mouse_wheel.y * 0.05);
+        let change_value = mouse_wheel.y * {if mouse_wheel.unit == MouseScrollUnit::Line {0.05} else {0.005}};
+        egui_state.brush_size = f32::max(0.05, egui_state.brush_size + change_value);
     }
 
     let increase = if keys.just_pressed(KeyCode::E) {

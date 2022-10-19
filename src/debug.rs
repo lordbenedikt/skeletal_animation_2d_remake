@@ -305,9 +305,8 @@ pub fn draw_skin_mesh(
 
         // draw VERTICES
         for i in 0..vertices.len() {
-
             // Determine Vertex display color
-            let mut vertex_color= Color::rgb(0.0,0.0,0.0);
+            let mut vertex_color = Color::rgb(0.0, 0.0, 0.0);
             let mut vertex_size: f32 = 5.0;
             if skin_mapping_index.is_some() && egui_state.adjust_vertex_weights_mode {
                 if transform_state.selected_entities.len() > 0 {
@@ -330,7 +329,11 @@ pub fn draw_skin_mesh(
                 vertex_color = color;
             };
 
-            let vertex_size = if egui_state.adjust_vertex_weights_mode {vertex_size} else {5.0};
+            let vertex_size = if egui_state.adjust_vertex_weights_mode {
+                vertex_size
+            } else {
+                5.0
+            };
             debug_drawer.square(vertices[i].truncate(), vertex_size, vertex_color);
         }
 
@@ -377,13 +380,23 @@ pub fn draw_bones(
         return;
     };
 
-    let mut angle = 0.0;
-    while angle < (2.0*std::f32::consts::PI) {
-        let last_angle = angle;
-        angle += f32::min(std::f32::consts::PI / 10., std::f32::consts::PI / (12.0 * egui_state.brush_size));
-        let v_diff_last = Vec2::new(0.0,egui_state.brush_size).rotate(Vec2::from_angle(last_angle));
-        let v_diff = Vec2::new(0.0,egui_state.brush_size).rotate(Vec2::from_angle(angle));
-        debug_drawer.line(cursor_pos.0 + v_diff_last, cursor_pos.0 + v_diff, COLOR_WHITE);
+    if egui_state.adjust_vertex_weights_mode {
+        let mut angle = 0.0;
+        while angle < (2.0 * std::f32::consts::PI) {
+            let last_angle = angle;
+            angle += f32::min(
+                std::f32::consts::PI / 10.,
+                std::f32::consts::PI / (12.0 * egui_state.brush_size),
+            );
+            let v_diff_last =
+                Vec2::new(0.0, egui_state.brush_size).rotate(Vec2::from_angle(last_angle));
+            let v_diff = Vec2::new(0.0, egui_state.brush_size).rotate(Vec2::from_angle(angle));
+            debug_drawer.line(
+                cursor_pos.0 + v_diff_last,
+                cursor_pos.0 + v_diff,
+                COLOR_WHITE,
+            );
+        }
     }
 
     let bone_entities: Vec<Entity> = set.p0().iter().collect();
