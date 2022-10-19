@@ -351,10 +351,14 @@ fn adjust_vertex_weights(
     q: Query<(&Transformable, &skin::Skin, Entity)>,
     mut skeleton: ResMut<skeleton::Skeleton>,
     transform_state: Res<transform::State>,
-    egui_state: Res<egui::State>,
+    mut egui_state: ResMut<egui::State>,
     cursor_pos: Res<CursorPos>,
     keys: Res<Input<KeyCode>>,
 ) {
+    if keys.just_pressed(KeyCode::W) {
+        egui_state.adjust_vertex_weights_mode = !egui_state.adjust_vertex_weights_mode;
+    }
+
     let increase = if keys.just_pressed(KeyCode::E) {
         true
     } else if keys.just_pressed(KeyCode::Q) {
