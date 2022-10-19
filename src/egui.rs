@@ -87,7 +87,7 @@ pub fn system_set() -> SystemSet {
 
 fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
     ui.horizontal(|ui| {
-        if ui.button("toogle adjust-vertex-weight-mode").clicked() {
+        if ui.button("toogle adjust weights mode").clicked() {
             state.adjust_vertex_weights_mode = !state.adjust_vertex_weights_mode;
         };
         ui.label(if state.skin_bound_status_is_valid {
