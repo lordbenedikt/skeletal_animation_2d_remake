@@ -365,15 +365,26 @@ pub fn draw_skin_mesh(
 
 pub fn draw_bones(
     mut debug_drawer: ResMut<DebugDrawer>,
+    cursor_pos: Res<CursorPos>,
     mut set: ParamSet<(
         Query<Entity, With<bone::Bone>>,
         Query<(&Transform, Option<&Parent>), With<bone::Bone>>,
         Query<&Transformable, With<bone::Bone>>,
     )>,
+    egui_state: Res<egui::State>,
 ) {
     if !debug_drawer.bone_debug_enabled {
         return;
     };
+
+    let mut angle = 0.0;
+    while angle < (2.0*std::f32::consts::PI) {
+        let last_angle = angle;
+        angle += f32::min(std::f32::consts::PI / 10., std::f32::consts::PI / (12.0 * egui_state.brush_size));
+        let v_diff_last = Vec2::new(0.0,egui_state.brush_size).rotate(Vec2::from_angle(last_angle));
+        let v_diff = Vec2::new(0.0,egui_state.brush_size).rotate(Vec2::from_angle(angle));
+        debug_drawer.line(cursor_pos.0 + v_diff_last, cursor_pos.0 + v_diff, COLOR_WHITE);
+    }
 
     let bone_entities: Vec<Entity> = set.p0().iter().collect();
     for entity in bone_entities {

@@ -14,6 +14,7 @@ pub struct MainCamera;
 #[derive(Component)]
 pub struct SelectBox;
 
+// TODO: Implement Parent-Child-System for bones using this component
 pub struct ParentBone(Entity);
 
 pub fn setup(

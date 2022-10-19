@@ -45,6 +45,7 @@ pub struct State {
     pub delaunay_triangle_size: f32,
     pub delaunay_borderline_width: f32,
     pub adjust_vertex_weights_mode: bool,
+    pub brush_size: f32,
 }
 impl Default for State {
     fn default() -> Self {
@@ -65,7 +66,8 @@ impl Default for State {
             new_animation_name: String::from(""),
             delaunay_triangle_size: 15.,
             delaunay_borderline_width: 3.,
-            adjust_vertex_weights_mode: true,
+            adjust_vertex_weights_mode: false,
+            brush_size: 0.5,
         }
     }
 }
@@ -85,6 +87,9 @@ pub fn system_set() -> SystemSet {
 
 fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
     ui.horizontal(|ui| {
+        if ui.button("toogle adjust-vertex-weight-mode").clicked() {
+            state.adjust_vertex_weights_mode = !state.adjust_vertex_weights_mode;
+        };
         ui.label(if state.skin_bound_status_is_valid {
             if state.skin_is_bound {
                 String::from("skin is bound")
@@ -95,6 +100,9 @@ fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
             String::from("-")
         });
     });
+    
+    ui.separator();
+
     ui.horizontal(|ui| {
         let widget = egui::ComboBox::from_id_source("skin")
             .selected_text(&state.skin_filename)

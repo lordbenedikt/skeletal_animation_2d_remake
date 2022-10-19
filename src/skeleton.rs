@@ -1,7 +1,7 @@
-use std::{f32::consts::E, cmp};
+use std::{cmp, f32::consts::E};
 
 use crate::{skin::START_SCALE, *};
-use bevy::{math::Vec3A, sprite::MaterialMesh2dBundle};
+use bevy::{input::mouse::MouseWheel, math::Vec3A, sprite::MaterialMesh2dBundle};
 use bone::Bone;
 use cloth::Cloth;
 use serde::*;
@@ -99,7 +99,7 @@ pub fn system_set() -> SystemSet {
         .with_system(apply_mesh_to_skeleton)
         .with_system(free_skins)
         .with_system(assign_skins_to_bones)
-        // .with_system(adjust_vertex_weights)
+        .with_system(adjust_vertex_weights)
 }
 
 pub fn free_skins(
@@ -310,15 +310,22 @@ pub fn apply_mesh_to_skeleton(
                     skeleton.remove_bone(bone);
                     continue 'outer;
                 };
-                
+
                 // Calculate total of all weights
-                let mut total_weight: f32 = 0.0; 
-                skeleton.skin_mappings[i].vertex_mappings[v_i].weights.iter().for_each(|&weight| total_weight += weight);
+                let mut total_weight: f32 = 0.0;
+                skeleton.skin_mappings[i].vertex_mappings[v_i]
+                    .weights
+                    .iter()
+                    .for_each(|&weight| total_weight += weight);
 
                 let weight = skeleton.skin_mappings[i].vertex_mappings[v_i].weights[b_i];
                 if weight == 0.0 {
-                    skeleton.skin_mappings[i].vertex_mappings[v_i].bones.swap_remove(b_i);
-                    skeleton.skin_mappings[i].vertex_mappings[v_i].weights.swap_remove(b_i);
+                    skeleton.skin_mappings[i].vertex_mappings[v_i]
+                        .bones
+                        .swap_remove(b_i);
+                    skeleton.skin_mappings[i].vertex_mappings[v_i]
+                        .weights
+                        .swap_remove(b_i);
                 }
 
                 let translation =
@@ -348,15 +355,20 @@ pub fn apply_mesh_to_skeleton(
 
 fn adjust_vertex_weights(
     meshes: Res<Assets<Mesh>>,
-    q: Query<(&Transformable, &skin::Skin, Entity)>,
+    q: Query<(&skin::Skin, Entity)>,
     mut skeleton: ResMut<skeleton::Skeleton>,
     transform_state: Res<transform::State>,
     mut egui_state: ResMut<egui::State>,
     cursor_pos: Res<CursorPos>,
     keys: Res<Input<KeyCode>>,
+    mut mouse_wheel_evr: EventReader<MouseWheel>,
 ) {
     if keys.just_pressed(KeyCode::W) {
         egui_state.adjust_vertex_weights_mode = !egui_state.adjust_vertex_weights_mode;
+    }
+
+    for mouse_wheel in mouse_wheel_evr.iter() {
+        egui_state.brush_size = f32::max(0.05, egui_state.brush_size + mouse_wheel.y * 0.05);
     }
 
     let increase = if keys.just_pressed(KeyCode::E) {
@@ -367,7 +379,7 @@ fn adjust_vertex_weights(
         return;
     };
 
-    for (transformable, skin, entity) in q.iter() {
+    for (skin, entity) in q.iter() {
         let opt_mesh = meshes.get(&skin.mesh_handle.clone().unwrap().0);
         if opt_mesh.is_none() {
             continue;
@@ -397,12 +409,15 @@ fn adjust_vertex_weights(
                     // Weight of current bone for current vertex
                     for j in 0..v_mapping.bones.len() {
                         if v_mapping.bones[j] == bone_entity {
-                            if vertices[i].truncate().distance(cursor_pos.0) < 1.0 {
+                            if vertices[i].truncate().distance(cursor_pos.0) < egui_state.brush_size
+                            {
                                 let value_change = 0.1;
                                 if increase {
-                                    v_mapping.weights[j] = f32::min(1.0, v_mapping.weights[j] + value_change);
+                                    v_mapping.weights[j] =
+                                        f32::min(1.0, v_mapping.weights[j] + value_change);
                                 } else {
-                                    v_mapping.weights[j] = f32::max(0.0, v_mapping.weights[j] - value_change);
+                                    v_mapping.weights[j] =
+                                        f32::max(0.0001, v_mapping.weights[j] - value_change);
                                 }
                             }
                         }

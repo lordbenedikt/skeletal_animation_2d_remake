@@ -92,7 +92,7 @@ fn main() {
 
     .add_system_set(skin::system_set().label("skin_systems"))
     .add_system_set(mesh::system_set().label("mesh_systems"))
-    .add_system_set(skeleton::system_set().after("mesh_systems"))
+    .add_system_set(skeleton::system_set().after("mesh_systems").label("skeleton_systems"))
     .add_system_set(bone::system_set().label("bone_systems").after("ui_action"))
     .add_system_set(animation::system_set().label("animation_systems"))
     .add_system_set(
@@ -118,6 +118,7 @@ fn main() {
             .after("bone_systems")
             .after("update_cloth")
             .after("ccd_systems")
+            .after("skeleton_systems")
             .label("debug_systems"),
     )
     .add_system_set(save_load::system_set());
