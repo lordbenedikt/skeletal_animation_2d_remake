@@ -368,7 +368,7 @@ fn adjust_vertex_weights(
     }
 
     for mouse_wheel in mouse_wheel_evr.iter() {
-        let change_value = mouse_wheel.y * {if mouse_wheel.unit == MouseScrollUnit::Line {0.05} else {0.005}};
+        let change_value = mouse_wheel.y * {if mouse_wheel.unit == MouseScrollUnit::Line {0.05} else {0.0005}};
         egui_state.brush_size = f32::max(0.05, egui_state.brush_size + change_value);
     }
 
