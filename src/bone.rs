@@ -124,3 +124,21 @@ pub fn add_bone_on_mouse_click(
     transform_state.selected_entities.clear();
     transform_state.selected_entities.insert(entity);
 }
+
+pub fn get_gl_transform(bone_entity: Entity, query: &Query<(&Transform, Option<&Parent>), With<Bone>>) -> Option<Transform> {
+    let mut bone_gl_transform = Transform::default();
+    let mut next_bone = bone_entity;
+    loop {
+        if let Ok((&bone_transform, opt_parent)) = query.get(next_bone) {
+            bone_gl_transform = combined_transform(bone_transform, bone_gl_transform);
+            if let Some(parent) = opt_parent {
+                next_bone = parent.get();
+            } else {
+                break;
+            }
+        } else {
+            return None;
+        }
+    }
+    Some(bone_gl_transform)
+}

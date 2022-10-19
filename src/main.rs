@@ -89,11 +89,7 @@ fn main() {
     .add_system(misc::get_mouse_position.label("input_handling"))
     .add_system_set(bevy_ui::system_set())
     .add_system_set(egui::system_set().label("ui_action"))
-    .add_system_set(
-        cloth::system_set()
-            .label("update_cloth")
-            .before("mesh_systems"),
-    )
+
     .add_system_set(skin::system_set().label("skin_systems"))
     .add_system_set(mesh::system_set().label("mesh_systems"))
     .add_system_set(skeleton::system_set().after("mesh_systems"))
@@ -104,6 +100,12 @@ fn main() {
             .label("transform_systems")
             .after("ui_action")
             .after("bone_systems")
+            .after("animation_systems"),
+    )
+    .add_system_set(
+        cloth::system_set()
+            .label("update_cloth")
+            .before("mesh_systems")
             .after("animation_systems"),
     )
     .add_system_set(

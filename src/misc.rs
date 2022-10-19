@@ -14,7 +14,7 @@ pub struct MainCamera;
 #[derive(Component)]
 pub struct SelectBox;
 
-
+pub struct ParentBone(Entity);
 
 pub fn setup(
     mut commands: Commands,

@@ -269,14 +269,17 @@ pub fn draw_skin_bounding_box(
 
 pub fn draw_skin_mesh(
     meshes: Res<Assets<Mesh>>,
-    q: Query<(&Transformable, &skin::Skin)>,
+    q: Query<(&Transformable, &skin::Skin, Entity)>,
+    skeleton: Res<skeleton::Skeleton>,
     mut debug_drawer: ResMut<DebugDrawer>,
+    transform_state: Res<transform::State>,
+    egui_state: Res<egui::State>,
 ) {
     if !debug_drawer.mesh_debug_enabled {
         return;
     };
 
-    for (transformable, skin) in q.iter() {
+    for (transformable, skin, entity) in q.iter() {
         let opt_mesh = meshes.get(&skin.mesh_handle.clone().unwrap().0);
         if opt_mesh.is_none() {
             continue;
@@ -291,9 +294,44 @@ pub fn draw_skin_mesh(
             COLOR_DEFAULT
         };
 
+        let mut skin_mapping_index: Option<usize> = None;
+        for i in 0..skeleton.skin_mappings.len() {
+            if let Some(skin_entity) = skeleton.skin_mappings[i].skin {
+                if skin_entity == entity {
+                    skin_mapping_index = Some(i);
+                }
+            }
+        }
+
         // draw VERTICES
         for i in 0..vertices.len() {
-            debug_drawer.square(vertices[i].truncate(), 5., color);
+
+            // Determine Vertex display color
+            let mut vertex_color= Color::rgb(0.0,0.0,0.0);
+            let mut vertex_size: f32 = 5.0;
+            if skin_mapping_index.is_some() && egui_state.adjust_vertex_weights_mode {
+                if transform_state.selected_entities.len() > 0 {
+                    // Currently selected bone
+                    let bone_entity = *transform_state.selected_entities.iter().next().unwrap();
+                    let v_mapping =
+                        &skeleton.skin_mappings[skin_mapping_index.unwrap()].vertex_mappings[i];
+
+                    // Weight of current bone for current vertex
+                    for j in 0..v_mapping.bones.len() {
+                        if v_mapping.bones[j] == bone_entity {
+                            let weight = v_mapping.weights[j];
+                            vertex_color = Color::rgb(weight, 1.0 - weight, 0.0);
+                            vertex_size = 10.0;
+                            break;
+                        }
+                    }
+                }
+            } else {
+                vertex_color = color;
+            };
+
+            let vertex_size = if egui_state.adjust_vertex_weights_mode {vertex_size} else {5.0};
+            debug_drawer.square(vertices[i].truncate(), vertex_size, vertex_color);
         }
 
         // draw LINES
@@ -327,58 +365,67 @@ pub fn draw_skin_mesh(
 
 pub fn draw_bones(
     mut debug_drawer: ResMut<DebugDrawer>,
-    bone_gl_transforms: Query<(&GlobalTransform, &Transformable), With<bone::Bone>>,
+    mut set: ParamSet<(
+        Query<Entity, With<bone::Bone>>,
+        Query<(&Transform, Option<&Parent>), With<bone::Bone>>,
+        Query<&Transformable, With<bone::Bone>>,
+    )>,
 ) {
     if !debug_drawer.bone_debug_enabled {
         return;
     };
 
-    for (gl_transform, transformable) in bone_gl_transforms.iter() {
-        if gl_transform.to_scale_rotation_translation().0.is_nan()
-            || gl_transform.to_scale_rotation_translation().1.is_nan()
-            || gl_transform.to_scale_rotation_translation().2.is_nan()
-        {
-            dbg!(gl_transform);
-            println!("transform is nan!");
-            continue;
-        }
+    let bone_entities: Vec<Entity> = set.p0().iter().collect();
+    for entity in bone_entities {
+        let opt_bone_gl_transform = bone::get_gl_transform(entity, &set.p1());
+        if let Some(gl_transform) = opt_bone_gl_transform {
+            if gl_transform.translation.is_nan()
+                || gl_transform.rotation.is_nan()
+                || gl_transform.scale.is_nan()
+            {
+                dbg!(gl_transform);
+                println!("transform is nan!");
+                continue;
+            }
 
-        let (gl_scale, gl_rotation, gl_translation) = gl_transform.to_scale_rotation_translation();
-        let z = 0.001;
-        let color = if transformable.is_selected {
-            if transformable.is_part_of_layer {
-                COLOR_SELECTED_ACTIVE
+            let z = 0.001;
+            let color = if set.p2().get(entity).unwrap().is_selected {
+                if set.p2().get(entity).unwrap().is_part_of_layer {
+                    COLOR_SELECTED_ACTIVE
+                } else {
+                    COLOR_SELECTED
+                }
             } else {
-                COLOR_SELECTED
+                if set.p2().get(entity).unwrap().is_part_of_layer {
+                    COLOR_DEFAULT_ACTIVE
+                } else {
+                    COLOR_DEFAULT
+                }
+            };
+            let mut points = vec![
+                Vec3::new(0., 0., z),
+                Vec3::new(-0.1, 0.1, z),
+                Vec3::new(0., 1., z),
+                Vec3::new(0.1, 0.1, z),
+                Vec3::new(0., 0., z),
+            ];
+            for i in 0..points.len() {
+                points[i].x *= gl_transform.scale.x;
+                points[i].y *= gl_transform.scale.y;
             }
-        } else {
-            if transformable.is_part_of_layer {
-                COLOR_DEFAULT_ACTIVE
-            } else {
-                COLOR_DEFAULT
-            }
-        };
-        let mut points = vec![
-            Vec3::new(0., 0., z),
-            Vec3::new(-0.1, 0.1, z),
-            Vec3::new(0., 1., z),
-            Vec3::new(0.1, 0.1, z),
-            Vec3::new(0., 0., z),
-        ];
-        for i in 0..points.len() {
-            points[i].x *= gl_scale.x;
-            points[i].y *= gl_scale.y;
-        }
-        for i in 0..points.len() {
-            debug_drawer.line_thick(
-                (gl_translation + Quat::mul_vec3(gl_rotation, points[i])).truncate(),
-                (gl_translation + Quat::mul_vec3(gl_rotation, points[(i + 1) % points.len()]))
+            for i in 0..points.len() {
+                debug_drawer.line_thick(
+                    (gl_transform.translation + Quat::mul_vec3(gl_transform.rotation, points[i]))
+                        .truncate(),
+                    (gl_transform.translation
+                        + Quat::mul_vec3(gl_transform.rotation, points[(i + 1) % points.len()]))
                     .truncate(),
-                color,
-                5.,
-            );
+                    color,
+                    5.,
+                );
+            }
+            debug_drawer.square(gl_transform.translation.truncate(), 7., color);
         }
-        debug_drawer.square(gl_translation.truncate(), 7., color);
     }
 }
 

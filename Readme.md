@@ -1,6 +1,6 @@
 # Skeletal Animation Editor
 
-This is a 2D skeletal animation editor was implemented with Rust and the Game Engine Bevy. A recent Bevy update added skeletal animation functionality to the game engine. This project does not use this functionality. It was put together using Bevy's parent child system and mesh rendering.
+This is a 2D skeletal animation editor was implemented with Rust and the Game Engine Bevy. A recent Bevy update added skeletal animation functionality to the game engine. This project does not use this functionality. It has its own implementation of skeletal animation logics.
 
 ## User Manual
 

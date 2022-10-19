@@ -7,8 +7,8 @@ pub struct FrameMaterialHandles(HashMap<String, Handle<ColorMaterial>>);
 
 pub fn system_set() -> SystemSet {
     SystemSet::new()
-        .with_system(update_mesh)
-        .with_system(update_mesh)
+        .with_system(update_loose_skin)
+        .with_system(update_loose_skin)
         // .with_system(exchange_images)
 }
 
@@ -51,7 +51,7 @@ pub fn get_vertices(mesh: &Mesh) -> Vec<Vec3> {
     vertices
 }
 
-pub fn update_mesh(
+pub fn update_loose_skin(
     skeleton: Res<skeleton::Skeleton>,
     mut meshes: ResMut<Assets<Mesh>>,
     q: Query<(&GlobalTransform, &skin::Skin, Entity)>,

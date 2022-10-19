@@ -484,6 +484,8 @@ pub fn get_global_transform(origin: &GlobalTransform, rel_transform: &Transform)
     let mut result = rel_transform.clone();
     let (origin_scale, origin_rotation, origin_translation) =
         origin.to_scale_rotation_translation();
+    result.translation *= origin_scale;
+    result.translation = origin_rotation.mul_vec3(result.translation);
     result.translation += origin_translation;
     result.rotation *= origin_rotation;
     result.scale *= origin_scale;

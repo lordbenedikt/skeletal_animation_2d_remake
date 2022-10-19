@@ -1,3 +1,5 @@
+use std::{f32::consts::E, cmp};
+
 use crate::{skin::START_SCALE, *};
 use bevy::{math::Vec3A, sprite::MaterialMesh2dBundle};
 use bone::Bone;
@@ -97,6 +99,7 @@ pub fn system_set() -> SystemSet {
         .with_system(apply_mesh_to_skeleton)
         .with_system(free_skins)
         .with_system(assign_skins_to_bones)
+        // .with_system(adjust_vertex_weights)
 }
 
 pub fn free_skins(
@@ -250,7 +253,7 @@ pub fn assign_skins_to_bones(
 pub fn apply_mesh_to_skeleton(
     mut meshes: ResMut<Assets<Mesh>>,
     mut skeleton: ResMut<Skeleton>,
-    q_bones: Query<&GlobalTransform, With<Bone>>,
+    q_bones: Query<(&Transform, Option<&Parent>), With<Bone>>,
     q_skins: Query<&Skin>,
 ) {
     if skeleton.skin_mappings.is_empty() {
@@ -285,7 +288,7 @@ pub fn apply_mesh_to_skeleton(
 
         // for each VERTEX
         for v_i in 0..skin.vertices.len() {
-            // CONFUSION!!! TODO: Fix! After removeing bone confusion!!
+            // CONFUSION!!! TODO: Fix! After removing bone confusion!!
             if i >= skeleton.skin_mappings.len() {
                 vertices.push(mesh::get_vertex(mesh, v_i));
                 continue;
@@ -297,24 +300,36 @@ pub fn apply_mesh_to_skeleton(
             }
             let mut v_gl_position = Vec3::new(0., 0., 0.);
             // for each BONE
-            for b_i in (0..skeleton.skin_mappings[i].vertex_mappings[v_i].bones.len()).rev() {
+            'outer: for b_i in (0..skeleton.skin_mappings[i].vertex_mappings[v_i].bones.len()).rev()
+            {
                 let bone = skeleton.skin_mappings[i].vertex_mappings[v_i].bones[b_i];
-                if let Ok(bone_gl_transform) = q_bones.get(bone) {
-                    let weight = skeleton.skin_mappings[i].vertex_mappings[v_i].weights[b_i];
-                    let mut position = skeleton.skin_mappings[i].vertex_mappings[v_i].rel_positions
-                        [b_i]
-                        .extend(0.);
-                    let (bone_gl_scale, bone_gl_rotation, bone_gl_translation) =
-                        bone_gl_transform.to_scale_rotation_translation();
-                    position = Quat::mul_vec3(bone_gl_rotation, position);
-                    position *= bone_gl_scale;
-                    position += bone_gl_translation;
-                    v_gl_position += weight * position;
+                let opt_bone_gl_transform = bone::get_gl_transform(bone, &q_bones);
+                let bone_gl_transform = if opt_bone_gl_transform.is_some() {
+                    opt_bone_gl_transform.unwrap()
                 } else {
                     skeleton.remove_bone(bone);
-                    continue;
+                    continue 'outer;
+                };
+                
+                // Calculate total of all weights
+                let mut total_weight: f32 = 0.0; 
+                skeleton.skin_mappings[i].vertex_mappings[v_i].weights.iter().for_each(|&weight| total_weight += weight);
+
+                let weight = skeleton.skin_mappings[i].vertex_mappings[v_i].weights[b_i];
+                if weight == 0.0 {
+                    skeleton.skin_mappings[i].vertex_mappings[v_i].bones.swap_remove(b_i);
+                    skeleton.skin_mappings[i].vertex_mappings[v_i].weights.swap_remove(b_i);
                 }
+
+                let translation =
+                    skeleton.skin_mappings[i].vertex_mappings[v_i].rel_positions[b_i].extend(0.);
+                let vertex_rel_transform = Transform::from_translation(translation);
+                let vertex_gl_transform =
+                    combined_transform(bone_gl_transform, vertex_rel_transform);
+
+                v_gl_position += weight / total_weight * vertex_gl_transform.translation;
             }
+
             if skeleton.skin_mappings[i].vertex_mappings[v_i].bones.len() == 0 {
                 v_gl_position = Vec3::from_slice(
                     &q_skins
@@ -328,5 +343,68 @@ pub fn apply_mesh_to_skeleton(
 
         // update mesh vertices
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
+    }
+}
+
+fn adjust_vertex_weights(
+    meshes: Res<Assets<Mesh>>,
+    q: Query<(&Transformable, &skin::Skin, Entity)>,
+    mut skeleton: ResMut<skeleton::Skeleton>,
+    transform_state: Res<transform::State>,
+    egui_state: Res<egui::State>,
+    cursor_pos: Res<CursorPos>,
+    keys: Res<Input<KeyCode>>,
+) {
+    let increase = if keys.just_pressed(KeyCode::E) {
+        true
+    } else if keys.just_pressed(KeyCode::Q) {
+        false
+    } else {
+        return;
+    };
+
+    for (transformable, skin, entity) in q.iter() {
+        let opt_mesh = meshes.get(&skin.mesh_handle.clone().unwrap().0);
+        if opt_mesh.is_none() {
+            continue;
+        }
+        let mesh = opt_mesh.unwrap();
+
+        let vertices: Vec<Vec3> = mesh::get_vertices(mesh);
+
+        let mut skin_mapping_index: Option<usize> = None;
+        for i in 0..skeleton.skin_mappings.len() {
+            if let Some(skin_entity) = skeleton.skin_mappings[i].skin {
+                if skin_entity == entity {
+                    skin_mapping_index = Some(i);
+                }
+            }
+        }
+
+        // Adjust weight for each vertex
+        for i in 0..vertices.len() {
+            if skin_mapping_index.is_some() && egui_state.adjust_vertex_weights_mode {
+                if transform_state.selected_entities.len() > 0 {
+                    // Currently selected bone
+                    let bone_entity = *transform_state.selected_entities.iter().next().unwrap();
+                    let v_mapping =
+                        &mut skeleton.skin_mappings[skin_mapping_index.unwrap()].vertex_mappings[i];
+
+                    // Weight of current bone for current vertex
+                    for j in 0..v_mapping.bones.len() {
+                        if v_mapping.bones[j] == bone_entity {
+                            if vertices[i].truncate().distance(cursor_pos.0) < 1.0 {
+                                let value_change = 0.1;
+                                if increase {
+                                    v_mapping.weights[j] = f32::min(1.0, v_mapping.weights[j] + value_change);
+                                } else {
+                                    v_mapping.weights[j] = f32::max(0.0, v_mapping.weights[j] - value_change);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

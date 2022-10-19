@@ -44,6 +44,7 @@ pub struct State {
     pub new_animation_name: String,
     pub delaunay_triangle_size: f32,
     pub delaunay_borderline_width: f32,
+    pub adjust_vertex_weights_mode: bool,
 }
 impl Default for State {
     fn default() -> Self {
@@ -64,6 +65,7 @@ impl Default for State {
             new_animation_name: String::from(""),
             delaunay_triangle_size: 15.,
             delaunay_borderline_width: 3.,
+            adjust_vertex_weights_mode: true,
         }
     }
 }
@@ -185,7 +187,7 @@ fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
 
     ui.separator();
 
-    ui.label("Delaunay Triangulation (WIP)");
+    ui.label("Delaunay Triangulation");
     ui.horizontal(|ui| {
         if ui.button("add skin").clicked() {
             if state.skin_filename != "filename" {

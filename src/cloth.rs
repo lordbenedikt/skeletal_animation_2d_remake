@@ -3,7 +3,7 @@ use serde::*;
 use skin::Skin;
 use std::{ops::{AddAssign, SubAssign}, time::Duration};
 
-const STEP_DURATION: Duration = Duration::new(0, 15_000_000);
+const STEP_DURATION: Duration = Duration::new(0, 20_000_000);
 
 #[derive(Default)]
 pub struct State {
@@ -46,7 +46,7 @@ impl Cloth {
         let links: Vec<Link> = vec![];
         let mut cloth = Self {
             point_masses,
-            stiffness: 4,
+            stiffness: 2,
             ..Default::default()
         };
         if let Indices::U16(indices) = mesh.indices().unwrap() {
@@ -206,7 +206,7 @@ impl PointMass {
         }
 
         // Compute velocity from current position - last position
-        self.velocity = self.position - self.last_position;
+        self.velocity = (self.position - self.last_position) * 0.99;
 
         // Save position for next frame;
         self.last_position = self.position;
@@ -215,7 +215,7 @@ impl PointMass {
         self.position = self.position + self.velocity + self.acceleration;
 
         // Set acceleration to gravity
-        self.acceleration = Vec3::new(0., -0.01, 0.);
+        self.acceleration = Vec3::new(0., -0.02, 0.);
     }
 }
 
