@@ -116,6 +116,7 @@ fn main() {
         skeleton::system_set()
             .after("mesh_systems")
             .after("ccd_systems")
+            .after("animation_systems")
             .label("skeleton_systems"),
     )
     .add_system_set(

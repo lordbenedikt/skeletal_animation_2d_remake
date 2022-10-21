@@ -196,6 +196,10 @@ pub fn system_set() -> SystemSet {
     {
         set = set.with_system(save);
     }
+    #[cfg(target_arch = "wasm32")]
+    {
+        
+    }
 
     set
 }
