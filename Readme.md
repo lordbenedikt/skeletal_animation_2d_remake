@@ -3,7 +3,9 @@
 This is a 2D skeletal animation editor was implemented with Rust and the Game Engine Bevy. A recent Bevy update added skeletal animation functionality to the game engine. This project does not use this functionality. It has its own implementation of skeletal animation logics.
 
 A WebAssembly demo of the application can be found here:
-https://lordbenedikt.github.io/skeletal_animation_2d_remake/## User Manual
+https://lordbenedikt.github.io/skeletal_animation_2d_remake/
+
+## User Manual
 
 The editor allows the creation of a hierarchical bone structure and the generation of a 2D mesh from a simple png-file. Meshes can be bound to one or multiple bones and they will be deformed when the corresponding bones are moved, rotated or scaled. It is possible to create animations. An animation consists of keyframes. Between keyframes sufficient frames to create a fluent animation will be generated using interpolation. The nature of interpolation can be specified per keyframe by changing the easing function. The editor also supports animation layering and additive animation blending.
 
