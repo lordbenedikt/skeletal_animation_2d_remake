@@ -1,11 +1,11 @@
 mod animation;
+mod bevy_image;
 mod bevy_ui;
 mod bone;
 mod ccd;
 mod cloth;
 mod debug;
 mod egui;
-mod bevy_image;
 mod interpolate;
 mod mesh;
 mod mesh_gen;
@@ -56,7 +56,7 @@ fn main() {
         mode: bevy::window::WindowMode::BorderlessFullscreen,
         ..Default::default()
     })
-    .insert_resource(ClearColor(COLOR_GRAY))
+    .insert_resource(ClearColor(COLOR_WHITE))
     .insert_resource(CursorPos(Vec2::new(0., 0.)))
     .insert_resource(transform::State::new())
     .insert_resource(animation::Animations::new())
@@ -89,10 +89,8 @@ fn main() {
     .add_system(misc::get_mouse_position.label("input_handling"))
     .add_system_set(bevy_ui::system_set())
     .add_system_set(egui::system_set().label("ui_action"))
-
     .add_system_set(skin::system_set().label("skin_systems"))
     .add_system_set(mesh::system_set().label("mesh_systems"))
-    .add_system_set(skeleton::system_set().after("mesh_systems").label("skeleton_systems"))
     .add_system_set(bone::system_set().label("bone_systems").after("ui_action"))
     .add_system_set(animation::system_set().label("animation_systems"))
     .add_system_set(
@@ -111,7 +109,14 @@ fn main() {
     .add_system_set(
         ccd::system_set()
             .label("ccd_systems")
-            .after("transform_systems"),
+            .after("transform_systems")
+            .after("animation_systems"),
+    )
+    .add_system_set(
+        skeleton::system_set()
+            .after("mesh_systems")
+            .after("ccd_systems")
+            .label("skeleton_systems"),
     )
     .add_system_set(
         debug::system_set()
