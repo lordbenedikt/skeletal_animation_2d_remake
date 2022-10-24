@@ -18,7 +18,11 @@ function dateiauswahl(evt) {
           .then(function (response) {
             response.text().then(function (text) {
               window.localStorage.setItem("loaded_anim", text);
-              window.localStorage.setItem("loaded_count", parseInt(window.localStorage.getItem("loaded_count")) + 1);
+              window.localStorage.setItem("load_count", parseInt(window.localStorage.getItem("load_count")) + 1);
+              console.log("then");
+              console.log(window.localStorage.getItem("loaded_anim"));
+              console.log(window.localStorage.getItem("load_count"));
+
             });
           });
       };
