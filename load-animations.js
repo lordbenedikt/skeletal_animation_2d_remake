@@ -2,6 +2,7 @@
 
   export function uploadFile() {
     document.getElementById('files').click();
+    return loaded_anim
   }
   function dateiauswahl(evt) {
 console.log("auswahl");
