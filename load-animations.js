@@ -18,6 +18,7 @@ console.log("auswahl");
             .then(function (response) {
               response.text().then(function (text) {
                 window.localStorage.setItem("loaded_anim", text);
+                window.localStorage.setItem("loaded_anim", window.localStorage.getItem(loaded_anim) + 1);
               });
             });
         };
