@@ -74,6 +74,8 @@ fn main() {
     .insert_resource(save_load::State::default())
     // EVENTS
     .add_event::<animation::ShowKeyframeEvent>()
+    .add_event::<save_load::SaveEvent>()
+    .add_event::<save_load::LoadEvent>()
     // PLUGINS
     .add_plugins(DefaultPlugins)
     .add_plugin(ShapePlugin)

@@ -1,5 +1,6 @@
 use crate::{
     animation::{Animations, ShowKeyframeEvent},
+    save_load::SaveEvent,
     skin::{AddSkinOrder, AVAILABLE_IMAGES},
     *,
 };
@@ -102,7 +103,7 @@ fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
             String::from("-")
         });
     });
-    
+
     ui.separator();
 
     ui.horizontal(|ui| {
@@ -686,6 +687,7 @@ pub fn animation_menu(
     mut anim_state: ResMut<animation::State>,
     mut q: Query<&mut Transform>,
     mut q_bones: Query<(Entity, &transform::Transformable), With<bone::Bone>>,
+    mut save_evw: EventWriter<save_load::SaveEvent>,
 ) {
     // Hide window when transforming
     if transform_state.action != transform::Action::None
@@ -698,6 +700,21 @@ pub fn animation_menu(
     let response = egui::Window::new("Animations")
         .resizable(false)
         .show(egui_context.ctx_mut(), |ui| {
+            #[cfg(target_arch = "wasm32")]
+            {
+                if ui.button("Save to local disc").clicked() {
+                    save_evw.send(SaveEvent(None));
+                }
+                if ui.button("Load locally saved file").clicked() {
+                    #[link(wasm_import_module = "./load-animations.js")]
+                    extern "C" {
+                        fn uploadFileToLocalStorage();
+                    }
+                    unsafe {
+                        uploadFileToLocalStorage();
+                    }
+                }
+            }
             ui.label(state.debug_message.clone());
             animations_all(
                 ui,

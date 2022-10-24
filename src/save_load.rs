@@ -8,13 +8,14 @@ use crate::*;
 use bevy::sprite::MaterialMesh2dBundle;
 use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
-use wasm_bindgen::JsValue;
 use std::fs;
 use std::io::Write;
+use wasm_bindgen::JsValue;
 
 #[derive(Default)]
 pub struct State {
     pub opt_load_path: Option<String>,
+    pub load_count: i32,
 }
 
 #[derive(Serialize, Deserialize, Clone, bevy::reflect::TypeUuid)]
@@ -25,6 +26,10 @@ pub struct CompleteJson {
     animation_layers: Vec<String>,
     blending_style: animation::BlendingStyle,
 }
+
+pub struct SaveEvent(pub Option<i32>);
+
+pub struct LoadEvent(CompleteJson);
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AnimationsJson {
@@ -190,38 +195,41 @@ struct TargetJson {
 }
 
 pub fn system_set() -> SystemSet {
-    let mut set = SystemSet::new().with_system(load).with_system(test_rust).with_system(test_read);
+    SystemSet::new()
+        .with_system(load)
+        .with_system(call_load_event)
+        .with_system(save)
+        .with_system(call_save_event)
+}
 
-    // Saving currently not supported on WASM
-    // #[cfg(not(target_arch = "wasm32"))]
-    {
-        set = set.with_system(save);
+fn call_save_event(keys: Res<Input<KeyCode>>, mut save_evw: EventWriter<SaveEvent>) {
+    #[cfg(not(target_arch = "wasm32"))]
+    if !keys.pressed(KeyCode::LControl) {
+        let save_slot = get_just_pressed_number(&keys);
+        if save_slot == -1 {
+            return;
+        }
+        save_evw.send(SaveEvent(Some(save_slot)));
     }
-
-    set
 }
 
 fn save(
     mut set: ParamSet<(
-        Query<(Entity, &Bone, &Transform, Option<&Parent>)>,
+        Query<(Entity, &Transform, Option<&Parent>), With<Bone>>,
         Query<(Entity, &Skin, Option<&Cloth>)>,
         Query<(Entity, &Target, &Transform)>,
     )>,
     animations: Res<Animations>,
     anim_state: Res<animation::State>,
     skeleton: Res<Skeleton>,
-    keys: Res<Input<KeyCode>>,
+    mut save_evr: EventReader<SaveEvent>,
 ) {
-    if keys.pressed(KeyCode::LControl) {
-        let save_slot = get_just_pressed_number(&keys);
-        if save_slot == -1 {
-            return;
-        }
-        let mut res = Entity::from_bits(0);
+    for e in save_evr.iter() {
+        let opt_save_slot = e.0;
         let bones = set
             .p0()
             .iter()
-            .map(|(entity, bone, transform, opt_parent)| BoneJson {
+            .map(|(entity, transform, opt_parent)| BoneJson {
                 entity,
                 parent: if let Some(parent) = opt_parent {
                     Some(parent.get())
@@ -272,49 +280,39 @@ fn save(
             blending_style: anim_state.blending_style,
         })
         .unwrap();
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let mut file = fs::File::create(format!("assets/anims/animation_{}.anim", save_slot))
-                .expect("Failed to create file!");
-            file.write_all(serialized.as_bytes()).unwrap();
-        }
-
-        // If on web, download anim-file
-        // #[cfg(target_arch = "wasm32")]
-        {
-            let document = web_sys::window().unwrap().document().unwrap();
-            let element = document.create_element("a").unwrap();
-
-            element.set_attribute(
-                "href",
-                &format!("data:text/plain;charset=utf-8,{}", js_sys::encode_uri_component(&serialized)),
-            );
-            element.set_attribute("download", &format!("my_animation.anim"));
-
-            let event = document.create_event("MouseEvents").unwrap();
-            event.init_event("click");
-            element.dispatch_event(&event);
-        }
+        save_to_file(&serialized, opt_save_slot);
     }
 }
 
-#[link(wasm_import_module = "./load-animations.js")]
-extern { fn uploadFile();}
-
-fn test_rust(keys: Res<Input<KeyCode>>) {
-    if keys.just_pressed(KeyCode::V) {
-        unsafe {
-            uploadFile();
-        }
-
+fn save_to_file(serialized: &str, save_slot: Option<i32>) {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let mut file = fs::File::create(format!(
+            "assets/anims/animation_{}.anim",
+            save_slot.unwrap()
+        ))
+        .expect("Failed to create file!");
+        file.write_all(serialized.as_bytes()).unwrap();
     }
-}
 
-fn test_read(mut egui_state: ResMut<egui::State>) {
-    let local_storage = web_sys::window().unwrap().local_storage().unwrap().unwrap();
-    let opt_value = local_storage.get("loaded_anim").unwrap();
-    if let Some(value) = opt_value {
-        egui_state.debug_message = value;
+    // If on web, download anim-file
+    #[cfg(target_arch = "wasm32")]
+    {
+        let document = web_sys::window().unwrap().document().unwrap();
+        let element = document.create_element("a").unwrap();
+
+        element.set_attribute(
+            "href",
+            &format!(
+                "data:text/plain;charset=utf-8,{}",
+                js_sys::encode_uri_component(&serialized)
+            ),
+        );
+        element.set_attribute("download", &format!("my_animation.anim"));
+
+        let event = document.create_event("MouseEvents").unwrap();
+        event.init_event("click");
+        element.dispatch_event(&event);
     }
 }
 
@@ -388,9 +386,47 @@ fn load_bone_recursive_with_parent(
     spawned_bones.insert(current_bone.entity, bone_entity);
 }
 
-fn load(
-    // asset_server: Res<AssetServer>,
+fn call_load_event(
     keys: Res<Input<KeyCode>>,
+    mut load_evw: EventWriter<LoadEvent>,
+    savefile_assets: Res<Assets<CompleteJson>>,
+    asset_server: Res<AssetServer>,
+    mut state: ResMut<State>,
+) {
+    // #[cfg(not(target_arch = "wasm32"))]
+    {
+        let save_slot = get_just_pressed_number(&keys);
+        if keys.pressed(KeyCode::LAlt) && save_slot != -1 {
+            state.opt_load_path = Some(anim_name_to_path(&format!("animation_{}", save_slot)));
+        }
+
+        if let Some(path) = &state.opt_load_path {
+            let anim_handle = asset_server.load(path);
+            let opt_data = savefile_assets.get(&anim_handle);
+
+            if let Some(data) = opt_data {
+                load_evw.send(LoadEvent(data.clone()));
+                state.opt_load_path = None
+            }
+        }
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        let local_storage = web_sys::window().unwrap().local_storage().unwrap().unwrap();
+        if let Some(count) = local_storage.get("load_count").unwrap() {
+            let count_i32 = count.parse::<i32>().unwrap();
+            if count_i32 != state.load_count {
+                state.load_count = count_i32;
+                let data_string = local_storage.get("loaded_anim").unwrap().unwrap();
+                let data = serde_json::from_str::<CompleteJson>(&data_string).unwrap();
+                load_evw.send(LoadEvent(data));
+            }
+        }
+    }
+
+}
+
+fn load(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
@@ -405,158 +441,145 @@ fn load(
     mut transform_state: ResMut<transform::State>,
     mut egui_state: ResMut<egui::State>,
     mut anim_state: ResMut<animation::State>,
-    mut state: ResMut<save_load::State>,
-    savefile_assets: Res<Assets<CompleteJson>>,
+    mut load_evr: EventReader<LoadEvent>,
 ) {
-    let save_slot = get_just_pressed_number(&keys);
-    if keys.pressed(KeyCode::LAlt) && save_slot != -1 {
-        state.opt_load_path = Some(anim_name_to_path(&format!("animation_{}", save_slot)));
-    }
+    for e in load_evr.iter() {
+        let mut data = e.0.clone();
 
-    if let Some(path) = &state.opt_load_path {
-        let anim_handle = asset_server.load(path);
-        let opt_data = savefile_assets.get(&anim_handle);
-
-        if let Some(data) = opt_data {
-            let mut data = data.clone();
-
-            for entity in q.p0().iter() {
-                commands.entity(entity).despawn();
-            }
-            for (entity, skin) in q.p1().iter() {
-                commands.entity(entity).despawn();
-                meshes.remove(skin.mesh_handle.clone().unwrap().0);
-            }
-            for (entity, target) in q.p2().iter() {
-                commands.entity(entity).despawn();
-            }
-
-            // Json ID to spawned entity ID, necessary because Game Engines assigns IDs automatically
-            let mut spawned_entities: HashMap<Entity, Entity> = HashMap::new();
-
-            // Spawn Bones
-            for i in 0..data.skeleton.bones.len() {
-                if data.skeleton.bones[i].parent.is_none() {
-                    load_bone_recursive_no_parent(
-                        &mut commands,
-                        &data.skeleton.bones,
-                        &mut spawned_entities,
-                        i,
-                    );
-                }
-            }
-            // Spawn Skins
-            for i in 0..data.skeleton.skins.len() {
-                let mut skin = data.skeleton.skins[i].as_skin();
-
-                let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-                mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, skin.vertices.clone());
-                mesh.insert_attribute(
-                    Mesh::ATTRIBUTE_NORMAL,
-                    vec![[0., 0., 1.]; skin.vertices.len()],
-                );
-                mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, skin.uvs.clone());
-                mesh.set_indices(Some(Indices::U16(skin.indices.clone())));
-
-                let handle: Mesh2dHandle = meshes.add(mesh).into();
-                skin.mesh_handle = Some(handle.clone());
-
-                commands.spawn_bundle(MaterialMesh2dBundle {
-                    mesh: handle.clone(),
-                    material: materials.add(ColorMaterial::from(asset_server.load(&skin.path))),
-                    ..default()
-                });
-                let skin_entity = commands
-                    .spawn_bundle(TransformBundle::from_transform(Transform {
-                        scale: Vec3::new(3.5, 3.5, 1.),
-                        ..default()
-                    }))
-                    .insert(Transformable {
-                        is_selected: false,
-                        ..default()
-                    })
-                    .insert(skin)
-                    .id();
-                if let Some(cloth) = data.skeleton.skins[i].cloth.clone() {
-                    commands.entity(skin_entity).insert(cloth);
-                }
-                spawned_entities.insert(
-                    data.skeleton.skins[i].entity,
-                    commands.entity(skin_entity).id(),
-                );
-            }
-
-            // Spawn Targets
-            for i in 0..data.skeleton.targets.len() {
-                let target = data.skeleton.targets[i].clone();
-                let target_entity = commands
-                    .spawn_bundle(SpriteBundle {
-                        transform: Transform::from_translation(target.translation),
-                        sprite: Sprite {
-                            color: COLOR_DEFAULT,
-                            custom_size: Some(Vec2::new(0.4, 0.4)),
-                            ..Default::default()
-                        },
-                        texture: asset_server.load("img/ccd_target.png"),
-                        ..Default::default()
-                    })
-                    .insert(Target {
-                        bone: *spawned_entities.get(&target.bone).unwrap(),
-                        depth: target.depth,
-                    })
-                    .insert(Transformable::default())
-                    .insert(Animatable)
-                    .id();
-                spawned_entities.insert(target.entity, target_entity);
-            }
-
-            // Build Skeleton
-            skeleton.bones = spawned_entities.values().into_iter().map(|&e| e).collect();
-            for skin_mapping in data.skeleton.skin_mappings.iter_mut() {
-                if let Some(json_entity) = skin_mapping.skin {
-                    let opt_new_entity = spawned_entities.get(&json_entity);
-                    skin_mapping.skin = if let Some(new_entity) = opt_new_entity {
-                        Some(*new_entity)
-                    } else {
-                        None
-                    };
-                }
-                for vertex_mapping in skin_mapping.vertex_mappings.iter_mut() {
-                    for i in (0..vertex_mapping.bones.len()).rev() {
-                        if spawned_entities.get(&vertex_mapping.bones[i]).is_none() {
-                            vertex_mapping.weights.swap_remove(i);
-                            vertex_mapping.bones.swap_remove(i);
-                            vertex_mapping.rel_positions.swap_remove(i);
-                            continue;
-                        }
-                        vertex_mapping.bones[i] =
-                            *spawned_entities.get(&vertex_mapping.bones[i]).unwrap();
-                    }
-                }
-            }
-            skeleton.skin_mappings = data.skeleton.skin_mappings;
-
-            // Clear Selection
-            transform_state.selected_entities.clear();
-
-            // Load Animations
-            animations.map = data.animations.as_animations(&spawned_entities).map;
-
-            // Load Layers
-            anim_state.layers = data.animation_layers;
-
-            // Load Blending Style
-            anim_state.blending_style = data.blending_style;
-
-            // Select first Animation
-            egui_state.plots[0].name = if let Some(name) = animations.map.keys().next() {
-                name.clone()
-            } else {
-                String::new()
-            };
-
-            state.opt_load_path = None
+        for entity in q.p0().iter() {
+            commands.entity(entity).despawn();
         }
+        for (entity, skin) in q.p1().iter() {
+            commands.entity(entity).despawn();
+            meshes.remove(skin.mesh_handle.clone().unwrap().0);
+        }
+        for (entity, target) in q.p2().iter() {
+            commands.entity(entity).despawn();
+        }
+
+        // Json ID to spawned entity ID, necessary because Game Engines assigns IDs automatically
+        let mut spawned_entities: HashMap<Entity, Entity> = HashMap::new();
+
+        // Spawn Bones
+        for i in 0..data.skeleton.bones.len() {
+            if data.skeleton.bones[i].parent.is_none() {
+                load_bone_recursive_no_parent(
+                    &mut commands,
+                    &data.skeleton.bones,
+                    &mut spawned_entities,
+                    i,
+                );
+            }
+        }
+        // Spawn Skins
+        for i in 0..data.skeleton.skins.len() {
+            let mut skin = data.skeleton.skins[i].as_skin();
+
+            let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, skin.vertices.clone());
+            mesh.insert_attribute(
+                Mesh::ATTRIBUTE_NORMAL,
+                vec![[0., 0., 1.]; skin.vertices.len()],
+            );
+            mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, skin.uvs.clone());
+            mesh.set_indices(Some(Indices::U16(skin.indices.clone())));
+
+            let handle: Mesh2dHandle = meshes.add(mesh).into();
+            skin.mesh_handle = Some(handle.clone());
+
+            commands.spawn_bundle(MaterialMesh2dBundle {
+                mesh: handle.clone(),
+                material: materials.add(ColorMaterial::from(asset_server.load(&skin.path))),
+                ..default()
+            });
+            let skin_entity = commands
+                .spawn_bundle(TransformBundle::from_transform(Transform {
+                    scale: Vec3::new(3.5, 3.5, 1.),
+                    ..default()
+                }))
+                .insert(Transformable {
+                    is_selected: false,
+                    ..default()
+                })
+                .insert(skin)
+                .id();
+            if let Some(cloth) = data.skeleton.skins[i].cloth.clone() {
+                commands.entity(skin_entity).insert(cloth);
+            }
+            spawned_entities.insert(
+                data.skeleton.skins[i].entity,
+                commands.entity(skin_entity).id(),
+            );
+        }
+
+        // Spawn Targets
+        for i in 0..data.skeleton.targets.len() {
+            let target = data.skeleton.targets[i].clone();
+            let target_entity = commands
+                .spawn_bundle(SpriteBundle {
+                    transform: Transform::from_translation(target.translation),
+                    sprite: Sprite {
+                        color: COLOR_DEFAULT,
+                        custom_size: Some(Vec2::new(0.4, 0.4)),
+                        ..Default::default()
+                    },
+                    texture: asset_server.load("img/ccd_target.png"),
+                    ..Default::default()
+                })
+                .insert(Target {
+                    bone: *spawned_entities.get(&target.bone).unwrap(),
+                    depth: target.depth,
+                })
+                .insert(Transformable::default())
+                .insert(Animatable)
+                .id();
+            spawned_entities.insert(target.entity, target_entity);
+        }
+
+        // Build Skeleton
+        skeleton.bones = spawned_entities.values().into_iter().map(|&e| e).collect();
+        for skin_mapping in data.skeleton.skin_mappings.iter_mut() {
+            if let Some(json_entity) = skin_mapping.skin {
+                let opt_new_entity = spawned_entities.get(&json_entity);
+                skin_mapping.skin = if let Some(new_entity) = opt_new_entity {
+                    Some(*new_entity)
+                } else {
+                    None
+                };
+            }
+            for vertex_mapping in skin_mapping.vertex_mappings.iter_mut() {
+                for i in (0..vertex_mapping.bones.len()).rev() {
+                    if spawned_entities.get(&vertex_mapping.bones[i]).is_none() {
+                        vertex_mapping.weights.swap_remove(i);
+                        vertex_mapping.bones.swap_remove(i);
+                        vertex_mapping.rel_positions.swap_remove(i);
+                        continue;
+                    }
+                    vertex_mapping.bones[i] =
+                        *spawned_entities.get(&vertex_mapping.bones[i]).unwrap();
+                }
+            }
+        }
+        skeleton.skin_mappings = data.skeleton.skin_mappings;
+
+        // Clear Selection
+        transform_state.selected_entities.clear();
+
+        // Load Animations
+        animations.map = data.animations.as_animations(&spawned_entities).map;
+
+        // Load Layers
+        anim_state.layers = data.animation_layers;
+
+        // Load Blending Style
+        anim_state.blending_style = data.blending_style;
+
+        // Select first Animation
+        egui_state.plots[0].name = if let Some(name) = animations.map.keys().next() {
+            name.clone()
+        } else {
+            String::new()
+        };
     }
 }
 
