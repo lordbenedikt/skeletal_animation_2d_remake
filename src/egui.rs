@@ -70,7 +70,7 @@ impl Default for State {
             delaunay_borderline_width: 3.,
             adjust_vertex_weights_mode: false,
             brush_size: 0.5,
-            save_filename: String::new(),
+            save_filename: String::from("my_animation"),
         }
     }
 }
