@@ -19,7 +19,7 @@ console.log("auswahl");
             .then(function (response) {
               response.text().then(function (text) {
                 loaded_anim = text;
-                done();
+                return loaded_anim;
               });
             });
         };
