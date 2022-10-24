@@ -75,12 +75,18 @@ It is possible to place a target for a bone. This bone and its parents, until th
 
 ### Save and Load
 
+Desktop version:
 |             Input             |               Action               |
 | ----------------------------- | ---------------------------------- |
 | LControl + Number             | save animation (skeleton, skin, animation layers and settings) to one of 10 save slots        |
 | LAlt + Number                 | load previously saved animation |
 
-Currently WebAssembly doesn't support loading animations. Saved animations can be loaded in the editor's desktop version. Default animations can still be loaded.
+WebAssembly:
+|             Input             |               Action               |
+| ----------------------------- | ---------------------------------- |
+| Save Button in animation menu             | download animation |
+| Load Button in animation menu             | upload locally saved animation |
+| LAlt + Number                 | load default animations |
 
 ### Show/Hide Debug Shapes
 
