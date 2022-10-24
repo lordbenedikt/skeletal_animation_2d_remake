@@ -413,7 +413,7 @@ fn call_load_event(
             }
         }
     }
-    #[cfg(target_arch = "wasm32")]
+    // #[cfg(target_arch = "wasm32")]
     {
         let local_storage = web_sys::window().unwrap().local_storage().unwrap().unwrap();
         if let Some(count) = local_storage.get("load_count").unwrap() {
