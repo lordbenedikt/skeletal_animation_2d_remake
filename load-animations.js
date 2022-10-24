@@ -1,6 +1,7 @@
   var loaded_anim = "nothing";
 
   export function uploadFile() {
+    //new
     document.getElementById('files').click();
     return loaded_anim
   }
