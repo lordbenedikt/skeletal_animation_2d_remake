@@ -1,5 +1,3 @@
-  var loaded_anim = "nothing";
-
   export function uploadFile() {
     //new
     document.getElementById('files').click();
@@ -19,8 +17,7 @@ console.log("auswahl");
           fetch(e.target.result)
             .then(function (response) {
               response.text().then(function (text) {
-                loaded_anim = text;
-                done()
+                window.localStorage.setItem("loaded_anim", text);
               });
             });
         };
@@ -28,9 +25,6 @@ console.log("auswahl");
       // Als Data URL auslesen.
       reader.readAsDataURL(f);
     }
-  }
-  export function done() {
-    window.localStorage.setItem("loaded_anim", loaded_anim);
   }
 
   // Auf neue Auswahl reagieren und gegebenenfalls Funktion dateiauswahl neu ausführen.
