@@ -1,5 +1,8 @@
   var loaded_anim = "nothing";
 
+  function uploadFile() {
+    document.getElementById('files').click();
+  }
   function dateiauswahl(evt) {
 console.log("auswahl");
     var dateien = evt.target.files; // FileList object
@@ -27,6 +30,9 @@ console.log("auswahl");
   }
   function done() {
     console.log(loaded_anim);
+  }
+  function test() {
+    console.log("test");
   }
   // Auf neue Auswahl reagieren und gegebenenfalls Funktion dateiauswahl neu ausführen.
   let element = document.getElementById('files');
