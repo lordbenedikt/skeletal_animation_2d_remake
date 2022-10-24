@@ -316,10 +316,10 @@ fn test_rust(keys: Res<Input<KeyCode>>) {
     }
 }
 
-fn test_upload(keys: Res<Input<KeyCode>>) {
+fn test_upload(keys: Res<Input<KeyCode>>,mut egui_state: ResMut<egui::State>) {
     if keys.just_pressed(KeyCode::B) {
         unsafe {
-            println!("{}", uploadFile().as_string().unwrap());
+            egui_state.debug_message = uploadFile().as_string().unwrap();
         }
 
     }
