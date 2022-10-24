@@ -48,6 +48,7 @@ pub struct State {
     pub adjust_vertex_weights_mode: bool,
     pub brush_size: f32,
     pub debug_message: String,
+    pub save_filename: String,
 }
 impl Default for State {
     fn default() -> Self {
@@ -71,6 +72,7 @@ impl Default for State {
             adjust_vertex_weights_mode: false,
             brush_size: 0.5,
             debug_message: String::new(),
+            save_filename: String::new(),
         }
     }
 }
@@ -700,10 +702,11 @@ pub fn animation_menu(
     let response = egui::Window::new("Animations")
         .resizable(false)
         .show(egui_context.ctx_mut(), |ui| {
-            #[cfg(target_arch = "wasm32")]
-            {
+            // #[cfg(target_arch = "wasm32")]
+            ui.horizontal(|ui| {
+                ui.text_edit_singleline(&mut state.save_filename);
                 if ui.button("Save to local disc").clicked() {
-                    save_evw.send(SaveEvent(None));
+                    save_evw.send(SaveEvent(state.save_filename.clone()));
                 }
                 if ui.button("Load locally saved file").clicked() {
                     #[link(wasm_import_module = "./load-animations.js")]
@@ -714,7 +717,8 @@ pub fn animation_menu(
                         uploadFileToLocalStorage();
                     }
                 }
-            }
+            });
+
             ui.label(state.debug_message.clone());
             animations_all(
                 ui,

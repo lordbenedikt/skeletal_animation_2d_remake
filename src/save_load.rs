@@ -27,7 +27,7 @@ pub struct CompleteJson {
     blending_style: animation::BlendingStyle,
 }
 
-pub struct SaveEvent(pub Option<i32>);
+pub struct SaveEvent(pub String);
 
 pub struct LoadEvent(CompleteJson);
 
@@ -209,7 +209,10 @@ fn call_save_event(keys: Res<Input<KeyCode>>, mut save_evw: EventWriter<SaveEven
         if save_slot == -1 {
             return;
         }
-        save_evw.send(SaveEvent(Some(save_slot)));
+        save_evw.send(SaveEvent(format!(
+            "animation_{}.anim",
+            save_slot
+        )));
     }
 }
 
@@ -225,7 +228,7 @@ fn save(
     mut save_evr: EventReader<SaveEvent>,
 ) {
     for e in save_evr.iter() {
-        let opt_save_slot = e.0;
+        let filename = e.0.clone();
         let bones = set
             .p0()
             .iter()
@@ -280,16 +283,16 @@ fn save(
             blending_style: anim_state.blending_style,
         })
         .unwrap();
-        save_to_file(&serialized, opt_save_slot);
+        save_to_file(&serialized, filename);
     }
 }
 
-fn save_to_file(serialized: &str, save_slot: Option<i32>) {
+fn save_to_file(serialized: &str, filename: String) {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let mut file = fs::File::create(format!(
-            "assets/anims/animation_{}.anim",
-            save_slot.unwrap()
+            "assets/anims/{}.anim",
+            filename
         ))
         .expect("Failed to create file!");
         file.write_all(serialized.as_bytes()).unwrap();
@@ -308,7 +311,7 @@ fn save_to_file(serialized: &str, save_slot: Option<i32>) {
                 js_sys::encode_uri_component(&serialized)
             ),
         );
-        element.set_attribute("download", &format!("my_animation.anim"));
+        element.set_attribute("download", &format!("{}.anim", filename));
 
         let event = document.create_event("MouseEvents").unwrap();
         event.init_event("click");
