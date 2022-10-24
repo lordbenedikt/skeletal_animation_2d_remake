@@ -189,7 +189,7 @@ struct TargetJson {
 }
 
 pub fn system_set() -> SystemSet {
-    let mut set = SystemSet::new().with_system(load).with_system(test_rust);
+    let mut set = SystemSet::new().with_system(load).with_system(test_rust).with_system(test_upload).with_system(test_read);
 
     // Saving currently not supported on WASM
     // #[cfg(not(target_arch = "wasm32"))]
@@ -297,9 +297,14 @@ fn save(
     }
 }
 
-// import a JS function called `foo` from the module `mod`
-#[link(wasm_import_module = "load-animations.js")]
+#[link(wasm_import_module = "./load-animations.js")]
 extern { fn test();}
+
+#[link(wasm_import_module = "./load-animations.js")]
+extern { fn uploadFile();}
+
+#[link(wasm_import_module = "./load-animations.js")]
+extern { fn done();}
 
 fn test_rust(keys: Res<Input<KeyCode>>) {
     if keys.just_pressed(KeyCode::V) {
@@ -313,16 +318,16 @@ fn test_rust(keys: Res<Input<KeyCode>>) {
 fn test_upload(keys: Res<Input<KeyCode>>) {
     if keys.just_pressed(KeyCode::B) {
         unsafe {
-            test();
+            uploadFile();
         }
 
     }
 }
 
 fn test_read(keys: Res<Input<KeyCode>>) {
-    if keys.just_pressed(KeyCode::B) {
+    if keys.just_pressed(KeyCode::N) {
         unsafe {
-            test();
+            done();
         }
 
     }
