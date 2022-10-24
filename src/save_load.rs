@@ -8,6 +8,7 @@ use crate::*;
 use bevy::sprite::MaterialMesh2dBundle;
 use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
+use wasm_bindgen::JsValue;
 use std::fs;
 use std::io::Write;
 
@@ -301,7 +302,7 @@ fn save(
 extern { fn test();}
 
 #[link(wasm_import_module = "./load-animations.js")]
-extern { fn uploadFile();}
+extern { fn uploadFile() -> JsValue;}
 
 #[link(wasm_import_module = "./load-animations.js")]
 extern { fn done();}
@@ -318,7 +319,7 @@ fn test_rust(keys: Res<Input<KeyCode>>) {
 fn test_upload(keys: Res<Input<KeyCode>>) {
     if keys.just_pressed(KeyCode::B) {
         unsafe {
-            uploadFile();
+            println!("{}", uploadFile().as_string().unwrap());
         }
 
     }
