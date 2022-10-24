@@ -284,12 +284,11 @@ fn save(
             let document = web_sys::window().unwrap().document().unwrap();
             let element = document.create_element("a").unwrap();
 
-            let text = "Hello there!!!";
             element.set_attribute(
                 "href",
-                &format!("data:text/plain;charset=utf-8,{}", js_sys::encode_uri_component(text)),
+                &format!("data:text/plain;charset=utf-8,{}", js_sys::encode_uri_component(&serialized)),
             );
-            element.set_attribute("download", &format!("animation_{}.anim", save_slot));
+            element.set_attribute("download", &format!("my_animation.anim"));
 
             let event = document.create_event("MouseEvents").unwrap();
             event.init_event("click");

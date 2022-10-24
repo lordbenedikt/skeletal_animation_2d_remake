@@ -46,6 +46,7 @@ pub struct State {
     pub delaunay_borderline_width: f32,
     pub adjust_vertex_weights_mode: bool,
     pub brush_size: f32,
+    pub debug_message: String,
 }
 impl Default for State {
     fn default() -> Self {
@@ -68,6 +69,7 @@ impl Default for State {
             delaunay_borderline_width: 3.,
             adjust_vertex_weights_mode: false,
             brush_size: 0.5,
+            debug_message: String::new(),
         }
     }
 }
@@ -696,6 +698,7 @@ pub fn animation_menu(
     let response = egui::Window::new("Animations")
         .resizable(false)
         .show(egui_context.ctx_mut(), |ui| {
+            ui.label(state.debug_message.clone());
             animations_all(
                 ui,
                 &mut state,
