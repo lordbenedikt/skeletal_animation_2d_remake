@@ -4,7 +4,6 @@ export function uploadFileToLocalStorage() {
 }
 
 function dateiauswahl(evt) {
-  console.log("auswahl");
   var dateien = evt.target.files; // FileList object
   // Auslesen der gespeicherten Dateien durch Schleife
   for (var i = 0, f; f = dateien[i]; i++) {
