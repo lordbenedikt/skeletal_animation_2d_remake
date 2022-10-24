@@ -3,7 +3,6 @@
   export function uploadFile() {
     //new
     document.getElementById('files').click();
-    return loaded_anim
   }
   function dateiauswahl(evt) {
 console.log("auswahl");
@@ -21,7 +20,7 @@ console.log("auswahl");
             .then(function (response) {
               response.text().then(function (text) {
                 loaded_anim = text;
-                return loaded_anim;
+                done()
               });
             });
         };
@@ -31,11 +30,9 @@ console.log("auswahl");
     }
   }
   export function done() {
-    console.log(loaded_anim);
+    window.localStorage.setItem("loaded_anim", loaded_anim);
   }
-  export function test() {
-    console.log("test");
-  }
+
   // Auf neue Auswahl reagieren und gegebenenfalls Funktion dateiauswahl neu ausführen.
   let element = document.getElementById('files');
 
