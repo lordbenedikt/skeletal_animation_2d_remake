@@ -1,4 +1,4 @@
-  export function uploadFile() {
+  export function uploadFileToLocalStorage() {
     //new
     document.getElementById('files').click();
   }
@@ -26,7 +26,7 @@ console.log("auswahl");
       reader.readAsDataURL(f);
     }
   }
-
+  
   // Auf neue Auswahl reagieren und gegebenenfalls Funktion dateiauswahl neu ausführen.
   let element = document.getElementById('files');
 
