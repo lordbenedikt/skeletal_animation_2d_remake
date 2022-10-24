@@ -32,7 +32,7 @@ function dateiauswahl(evt) {
   }
 }
 
-window.localStorage.setItem("loaded_count", 0);
+window.localStorage.setItem("load_count", 0);
 
 // Auf neue Auswahl reagieren und gegebenenfalls Funktion dateiauswahl neu ausführen.
 let element = document.getElementById('files');
