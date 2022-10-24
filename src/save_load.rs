@@ -190,7 +190,7 @@ struct TargetJson {
 }
 
 pub fn system_set() -> SystemSet {
-    let mut set = SystemSet::new().with_system(load).with_system(test_rust).with_system(test_upload).with_system(test_read);
+    let mut set = SystemSet::new().with_system(load).with_system(test_rust).with_system(test_read);
 
     // Saving currently not supported on WASM
     // #[cfg(not(target_arch = "wasm32"))]
@@ -299,38 +299,22 @@ fn save(
 }
 
 #[link(wasm_import_module = "./load-animations.js")]
-extern { fn test();}
-
-#[link(wasm_import_module = "./load-animations.js")]
-extern { fn uploadFile() -> JsValue;}
-
-#[link(wasm_import_module = "./load-animations.js")]
-extern { fn done();}
+extern { fn uploadFile();}
 
 fn test_rust(keys: Res<Input<KeyCode>>) {
     if keys.just_pressed(KeyCode::V) {
         unsafe {
-            test();
+            uploadFile();
         }
 
     }
 }
 
-fn test_upload(keys: Res<Input<KeyCode>>,mut egui_state: ResMut<egui::State>) {
-    if keys.just_pressed(KeyCode::B) {
-        unsafe {
-            egui_state.debug_message = uploadFile().as_string().unwrap();
-        }
-
-    }
-}
-
-fn test_read(keys: Res<Input<KeyCode>>) {
-    if keys.just_pressed(KeyCode::N) {
-        unsafe {
-            done();
-        }
-
+fn test_read(mut egui_state: ResMut<egui::State>) {
+    let local_storage = web_sys::window().unwrap().local_storage().unwrap().unwrap();
+    let opt_value = local_storage.get("loaded_anim").unwrap();
+    if let Some(value) = opt_value {
+        egui_state.debug_message = value;
     }
 }
 
