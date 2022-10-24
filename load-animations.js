@@ -1,6 +1,6 @@
   var loaded_anim = "nothing";
 
-  function uploadFile() {
+  export function uploadFile() {
     document.getElementById('files').click();
   }
   function dateiauswahl(evt) {
@@ -28,10 +28,10 @@ console.log("auswahl");
       reader.readAsDataURL(f);
     }
   }
-  function done() {
+  export function done() {
     console.log(loaded_anim);
   }
-  function test() {
+  export function test() {
     console.log("test");
   }
   // Auf neue Auswahl reagieren und gegebenenfalls Funktion dateiauswahl neu ausführen.
