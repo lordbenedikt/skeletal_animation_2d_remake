@@ -718,7 +718,7 @@ pub fn animation_menu(
                     }
                 });
 
-                ui.seperator();
+                ui.separator();
             }
 
             animations_all(
