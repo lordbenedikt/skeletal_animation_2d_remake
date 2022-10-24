@@ -8,8 +8,8 @@ use crate::*;
 use bevy::sprite::MaterialMesh2dBundle;
 use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
-use std::io::Write;
 use std::fs;
+use std::io::Write;
 
 #[derive(Default)]
 pub struct State {
@@ -192,13 +192,9 @@ pub fn system_set() -> SystemSet {
     let mut set = SystemSet::new().with_system(load);
 
     // Saving currently not supported on WASM
-    #[cfg(not(target_arch = "wasm32"))]
+    // #[cfg(not(target_arch = "wasm32"))]
     {
         set = set.with_system(save);
-    }
-    #[cfg(target_arch = "wasm32")]
-    {
-        
     }
 
     set
@@ -275,9 +271,30 @@ fn save(
             blending_style: anim_state.blending_style,
         })
         .unwrap();
-        let mut file = fs::File::create(format!("assets/anims/animation_{}.anim", save_slot))
-            .expect("Failed to create file!");
-        file.write_all(serialized.as_bytes()).unwrap();
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let mut file = fs::File::create(format!("assets/anims/animation_{}.anim", save_slot))
+                .expect("Failed to create file!");
+            file.write_all(serialized.as_bytes()).unwrap();
+        }
+
+        // If on web, download anim-file
+        // #[cfg(target_arch = "wasm32")]
+        {
+            let document = web_sys::window().unwrap().document().unwrap();
+            let element = document.create_element("a").unwrap();
+
+            let text = "Hello there!!!";
+            element.set_attribute(
+                "href",
+                &format!("data:text/plain;charset=utf-8,{}", js_sys::encode_uri_component(text)),
+            );
+            element.set_attribute("download", &format!("animation_{}.anim", save_slot));
+
+            let event = document.create_event("MouseEvents").unwrap();
+            event.init_event("click");
+            element.dispatch_event(&event);
+        }
     }
 }
 
