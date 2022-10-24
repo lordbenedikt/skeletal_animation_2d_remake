@@ -14,7 +14,7 @@ use std::{cmp::*, f32::consts::SQRT_2};
 
 pub const PIXEL_TO_UNIT_RATIO: f32 = 0.005;
 pub const START_SCALE: f32 = 3.5;
-pub const AVAILABLE_IMAGES: [&str; 7] = [
+pub const AVAILABLE_IMAGES: [&str; 13] = [
     "pooh.png",
     "honey.png",
     "head.png",
@@ -22,6 +22,12 @@ pub const AVAILABLE_IMAGES: [&str; 7] = [
     "left_arm.png",
     "right_arm.png",
     "left_leg.png",
+    "cobra.png",
+    "spinnenmann.png",
+    "tulip.png",
+    "carpet.png",
+    "snake.png",
+    "web.png",
 ];
 
 #[derive(Default)]
