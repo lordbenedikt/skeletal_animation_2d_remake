@@ -1,4 +1,5 @@
 use std::cmp;
+use std::thread::sleep;
 
 use crate::{skin::AVAILABLE_IMAGES, *};
 use bevy::{

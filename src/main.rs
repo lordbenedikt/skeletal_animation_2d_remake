@@ -2,7 +2,7 @@ mod animation;
 mod bevy_image;
 mod bevy_ui;
 mod bone;
-mod ccd;
+mod inverse_kinematics;
 mod cloth;
 mod debug;
 mod egui;
@@ -14,6 +14,11 @@ mod save_load;
 mod skeleton;
 mod skin;
 mod transform;
+mod kinematic_chain;
+
+#[cfg(test)]
+#[path = "tests/assert.rs"]
+mod assert;
 
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::{prelude::*, render::mesh::*, sprite::Mesh2dHandle};
@@ -47,8 +52,7 @@ pub struct General {
 fn main() {
     let mut app = App::new();
 
-    // RESOURCES
-    // general resources
+    // GENERAL RESOURCES
     app.insert_resource(WindowDescriptor {
         title: "Skeletal Animation".to_string(),
         // width: 800.,
@@ -66,7 +70,7 @@ fn main() {
     .insert_resource(General::default())
     .insert_resource(bevy_ui::UiElements::default())
     .insert_resource(mesh::FrameMaterialHandles::default())
-    // state resources
+    // STATE RESOURCES
     .insert_resource(animation::State::new())
     .insert_resource(skin::State::default())
     .insert_resource(egui::State::default())
@@ -109,7 +113,7 @@ fn main() {
             .after("animation_systems"),
     )
     .add_system_set(
-        ccd::system_set()
+        inverse_kinematics::system_set()
             .label("ccd_systems")
             .after("transform_systems")
             .after("animation_systems"),

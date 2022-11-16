@@ -401,7 +401,7 @@ pub fn draw_bones(
 
     let bone_entities: Vec<Entity> = set.p0().iter().collect();
     for entity in bone_entities {
-        let opt_bone_gl_transform = bone::get_gl_transform(entity, &set.p1());
+        let opt_bone_gl_transform = bone::get_bone_gl_transform(entity, &set.p1());
         if let Some(gl_transform) = opt_bone_gl_transform {
             if gl_transform.translation.is_nan()
                 || gl_transform.rotation.is_nan()
@@ -464,7 +464,7 @@ pub fn enable_debug_lines(keys: Res<Input<KeyCode>>, mut debug_drawer: ResMut<De
 
 pub fn draw_ccd_target(
     debug_drawer: Res<DebugDrawer>,
-    mut q: Query<(&Transformable, &mut Visibility, &mut Sprite), With<ccd::Target>>,
+    mut q: Query<(&Transformable, &mut Visibility, &mut Sprite), With<inverse_kinematics::Target>>,
 ) {
     for (transformable, mut visibility, mut sprite) in q.iter_mut() {
         if debug_drawer.bone_debug_enabled {

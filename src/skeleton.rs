@@ -83,6 +83,8 @@ impl VertexMapping {
                 self.bones.swap_remove(i);
             }
         }
+    }
+    fn invert(&mut self) {
         for weight in self.weights.iter_mut() {
             *weight = f32::powi(VERTEX_BONE_MAX_DISTANCE - *weight, 10);
         }
@@ -236,6 +238,7 @@ pub fn assign_skins_to_bones(
                             };
                         }
                         mapping.refine(); // Remove bones that are too far from mapping
+                        mapping.invert();
                         mapping.normalize(); // normalize weighting
                     }
 
@@ -303,7 +306,7 @@ pub fn apply_mesh_to_skeleton(
             'outer: for b_i in (0..skeleton.skin_mappings[i].vertex_mappings[v_i].bones.len()).rev()
             {
                 let bone = skeleton.skin_mappings[i].vertex_mappings[v_i].bones[b_i];
-                let opt_bone_gl_transform = bone::get_gl_transform(bone, &q_bones);
+                let opt_bone_gl_transform = bone::get_bone_gl_transform(bone, &q_bones);
                 let bone_gl_transform = if opt_bone_gl_transform.is_some() {
                     opt_bone_gl_transform.unwrap()
                 } else {
@@ -332,7 +335,7 @@ pub fn apply_mesh_to_skeleton(
                     skeleton.skin_mappings[i].vertex_mappings[v_i].rel_positions[b_i].extend(0.);
                 let vertex_rel_transform = Transform::from_translation(translation);
                 let vertex_gl_transform =
-                    combined_transform(bone_gl_transform, vertex_rel_transform);
+                    combined_transform(&bone_gl_transform, &vertex_rel_transform);
 
                 v_gl_position += weight / total_weight * vertex_gl_transform.translation;
             }

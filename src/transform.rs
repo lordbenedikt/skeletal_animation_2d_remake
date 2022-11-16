@@ -6,6 +6,10 @@ use bevy::{
 
 use crate::{bone::Bone, *};
 
+#[cfg(test)]
+#[path = "tests/transform_tests.rs"]
+mod transform_tests;
+
 #[derive(Default, Component)]
 pub struct TransformParent {
     pub opt_entity: Option<Entity>,
@@ -174,7 +178,7 @@ fn transform_error_possible(
                     let (parent_gl_scale, parent_gl_rotation, _) =
                         parent_gl_transform.to_scale_rotation_translation();
                     let rel_translation =
-                        Quat::mul_vec3(Quat::inverse(parent_gl_rotation), v_diff_vec3)
+                        animation::quat_rot_vec3(Quat::inverse(parent_gl_rotation), v_diff_vec3)
                             / Vec3::new(parent_gl_scale.x, parent_gl_scale.y, 1.);
                     q.get_mut(entity).unwrap().2.translation =
                         orig_transform.translation + rel_translation;
@@ -351,20 +355,21 @@ pub fn select(
     if !state.drag_select {
         let mut shortest_distance = 999.;
         for (gl_transform, transformable, entity) in q.iter_mut() {
-            let distance: f32 = if let PhantomShape::Rectangle(min, max) = transformable.collision_shape {
-                Vec2::distance((min + max) / 2., cursor_pos.0)
-            } else if let PhantomShape::Line(start, end) = transformable.collision_shape {
-                distance_segment_point(start, end, cursor_pos.0)
-            } else {
-                // assert transformable.collision_shape == Shape::None
-                let length = gl_transform.to_scale_rotation_translation().0.y;
-                let center = gl_transform.affine().translation
-                    + Quat::mul_vec3a(
-                        gl_transform.to_scale_rotation_translation().1,
-                        Vec3A::new(0., length / 3., 0.),
-                    );
-                Vec2::distance(center.truncate(), cursor_pos.0)
-            };
+            let distance: f32 =
+                if let PhantomShape::Rectangle(min, max) = transformable.collision_shape {
+                    Vec2::distance((min + max) / 2., cursor_pos.0)
+                } else if let PhantomShape::Line(start, end) = transformable.collision_shape {
+                    distance_segment_point(start, end, cursor_pos.0)
+                } else {
+                    // assert transformable.collision_shape == Shape::None
+                    let length = gl_transform.to_scale_rotation_translation().0.y;
+                    let center = gl_transform.affine().translation
+                        + Quat::mul_vec3a(
+                            gl_transform.to_scale_rotation_translation().1,
+                            Vec3A::new(0., length / 3., 0.),
+                        );
+                    Vec2::distance(center.truncate(), cursor_pos.0)
+                };
             if distance < shortest_distance {
                 if let PhantomShape::Rectangle(min, max) = transformable.collision_shape {
                     if min.x <= cursor_pos.0.x
@@ -399,20 +404,21 @@ pub fn select(
         }
     } else {
         for (gl_transform, transformable, entity) in q.iter_mut() {
-            let center: Vec2 = if let PhantomShape::Rectangle(min, max) = transformable.collision_shape {
-                (min + max) / 2.
-            } else if let PhantomShape::Line(start, end) = transformable.collision_shape {
-                (start + end) / 2.
-            } else {
-                // assert transformable.collision_shape == Shape::None
-                let length = gl_transform.to_scale_rotation_translation().0.y;
-                let center = Vec3::from(gl_transform.affine().translation)
-                    + Quat::mul_vec3(
-                        gl_transform.to_scale_rotation_translation().1,
-                        Vec3::new(0., length / 3., 0.),
-                    );
-                center.truncate()
-            };
+            let center: Vec2 =
+                if let PhantomShape::Rectangle(min, max) = transformable.collision_shape {
+                    (min + max) / 2.
+                } else if let PhantomShape::Line(start, end) = transformable.collision_shape {
+                    (start + end) / 2.
+                } else {
+                    // assert transformable.collision_shape == Shape::None
+                    let length = gl_transform.to_scale_rotation_translation().0.y;
+                    let center = Vec3::from(gl_transform.affine().translation)
+                        + Quat::mul_vec3(
+                            gl_transform.to_scale_rotation_translation().1,
+                            Vec3::new(0., length / 3., 0.),
+                        );
+                    center.truncate()
+                };
 
             let is_outside_rect = (center.x < cursor_pos.0.x && center.x < state.cursor_anchor.x)
                 || (center.x > cursor_pos.0.x && center.x > state.cursor_anchor.x)
@@ -459,17 +465,17 @@ pub fn select(
     }
 }
 
-pub fn get_relative_transform(origin: &GlobalTransform, gl_transform: &Transform) -> Transform {
+/// Returns a transform, that equals gl_transform, but with the base represented by origin
+pub fn get_relative_transform(origin: &Transform, gl_transform: &Transform) -> Transform {
     let mut result = gl_transform.clone();
-    let (origin_scale, origin_rotation, origin_translation) =
-        origin.to_scale_rotation_translation();
-    result.translation -= origin_translation;
-    let origin_rotation_inverse = origin_rotation.inverse();
+
+    result.translation -= origin.translation;
+    let origin_rotation_inverse = origin.rotation.inverse();
     result.translation = Quat::mul_vec3(origin_rotation_inverse, result.translation);
     result.rotation *= origin_rotation_inverse;
-    if origin_scale.x != 0. && origin_scale.y != 0. && origin_scale.z != 0. {
-        result.translation /= origin_scale;
-        result.scale /= origin_scale;
+    if origin.scale.x != 0. && origin.scale.y != 0. && origin.scale.z != 0. {
+        result.translation /= origin.scale;
+        result.scale /= origin.scale;
     } else {
         println!("get_relative_transform: Failed to compute relative transform, because origin's scale is 0");
     }
@@ -480,37 +486,39 @@ pub fn get_relative_transform(origin: &GlobalTransform, gl_transform: &Transform
     }
 }
 
-pub fn get_global_transform(origin: &GlobalTransform, rel_transform: &Transform) -> Transform {
-    let mut result = rel_transform.clone();
-    let (origin_scale, origin_rotation, origin_translation) =
-        origin.to_scale_rotation_translation();
-    result.translation *= origin_scale;
-    result.translation = origin_rotation.mul_vec3(result.translation);
-    result.translation += origin_translation;
-    result.rotation *= origin_rotation;
-    result.scale *= origin_scale;
-    Transform {
-        translation: result.translation,
-        rotation: result.rotation,
-        scale: result.scale,
-    }
-}
-
 pub fn distance_segment_point(start: Vec2, end: Vec2, v: Vec2) -> f32 {
-    let length = Vec2::distance_squared(start, end);
-    if length == 0.0 {
+    let length_squared = Vec2::distance_squared(start, end);
+    if length_squared == 0.0 {
         return Vec2::distance(v, start);
     }
-    let t = f32::max(0., f32::min(1., Vec2::dot(v - start, end - start) / length));
+    let t = f32::max(
+        0.,
+        f32::min(1., Vec2::dot(v - start, end - start) / length_squared),
+    );
     let projection: Vec2 = start + t * (end - start);
     return Vec2::distance(v, projection);
 }
 
-pub fn combined_transform(parent: Transform, child: Transform) -> Transform {
+pub fn combined_transform(parent: &Transform, child: &Transform) -> Transform {
     Transform {
         translation: parent.translation
             + parent.rotation.mul_vec3(child.translation * parent.scale),
         rotation: parent.rotation * child.rotation,
         scale: parent.scale * child.scale,
+    }
+}
+
+pub trait AsTransform {
+    fn as_transform(&self) -> Transform;
+}
+impl AsTransform for GlobalTransform {
+    fn as_transform(&self) -> Transform {
+        let (parent_scale, parent_rotation, parent_translation) =
+        self.affine().to_scale_rotation_translation();
+        Transform {
+            translation: parent_translation,
+            rotation: parent_rotation,
+            scale:parent_scale,
+        }
     }
 }

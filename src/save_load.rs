@@ -1,6 +1,6 @@
 use crate::animation::{Animatable, Animation, Animations, ComponentAnimation};
 use crate::bone::Bone;
-use crate::ccd::Target;
+use crate::inverse_kinematics::Target;
 use crate::cloth::Cloth;
 use crate::skeleton::{Skeleton, SkinMapping};
 use crate::skin::Skin;
@@ -530,6 +530,7 @@ fn load(
                     ..Default::default()
                 })
                 .insert(Target {
+                    ik_method: inverse_kinematics::IKMethod::CCD,
                     bone: *spawned_entities.get(&target.bone).unwrap(),
                     depth: target.depth,
                 })

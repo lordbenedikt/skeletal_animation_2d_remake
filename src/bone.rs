@@ -2,7 +2,7 @@ use crate::{animation::Animatable, skeleton::Skeleton, *};
 
 #[derive(Component, Default)]
 pub struct Bone {
-    pub is_ccd_maneuvered: bool
+    pub is_ik_maneuvered: bool,
 }
 impl Bone {
     pub fn get_tip(gl_transform: &GlobalTransform) -> Vec2 {
@@ -11,7 +11,7 @@ impl Bone {
         res += rotation.mul_vec3(Vec3::new(0., scale.y, 0.));
         res.truncate()
     }
-    pub fn get_true_tip(gl_transform: &Transform) -> Vec2 {
+    pub fn get_tip_global(gl_transform: &Transform) -> Vec2 {
         let mut res = gl_transform.translation;
         res += gl_transform
             .rotation
@@ -21,8 +21,7 @@ impl Bone {
 }
 
 pub fn system_set() -> SystemSet {
-    SystemSet::new()
-        .with_system(add_bone_on_mouse_click)
+    SystemSet::new().with_system(add_bone_on_mouse_click)
 }
 
 pub fn add_bone_on_mouse_click(
@@ -75,7 +74,8 @@ pub fn add_bone_on_mouse_click(
         };
 
         gl_transform.scale.z = 1.;
-        let transform = transform::get_relative_transform(parent_gl_transform, &gl_transform);
+
+        let transform = transform::get_relative_transform(&parent_gl_transform.as_transform(), &gl_transform);
 
         commands.entity(parent).with_children(|parent| {
             res = parent
@@ -125,12 +125,15 @@ pub fn add_bone_on_mouse_click(
     transform_state.selected_entities.insert(entity);
 }
 
-pub fn get_gl_transform(bone_entity: Entity, query: &Query<(&Transform, Option<&Parent>), With<Bone>>) -> Option<Transform> {
+pub fn get_bone_gl_transform(
+    bone_entity: Entity,
+    query: &Query<(&Transform, Option<&Parent>), With<Bone>>,
+) -> Option<Transform> {
     let mut bone_gl_transform = Transform::default();
     let mut next_bone = bone_entity;
     loop {
         if let Ok((&bone_transform, opt_parent)) = query.get(next_bone) {
-            bone_gl_transform = combined_transform(bone_transform, bone_gl_transform);
+            bone_gl_transform = combined_transform(&bone_transform, &bone_gl_transform);
             if let Some(parent) = opt_parent {
                 next_bone = parent.get();
             } else {

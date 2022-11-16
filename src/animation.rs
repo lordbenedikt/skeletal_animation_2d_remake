@@ -180,7 +180,7 @@ pub fn apply_animation(
                     continue;
                 }
                 if let Some(bone) = q.get_mut(key).unwrap().1 {
-                    if bone.is_ccd_maneuvered {
+                    if bone.is_ik_maneuvered {
                         continue;
                     }
                 }
@@ -302,7 +302,7 @@ pub fn apply_animation(
                     continue;
                 }
                 if let Some(bone) = q.get_mut(key).unwrap().1 {
-                    if bone.is_ccd_maneuvered {
+                    if bone.is_ik_maneuvered {
                         continue;
                     }
                 }
@@ -468,6 +468,16 @@ fn transform_is_valid(transform: &Transform) -> bool {
     !invalid
 }
 
+// Quaternion Multiplication
+// Taken from Wikipedia
+pub fn quat_multiply(a: Quat, b: Quat) -> Quat {
+    let real = a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z;
+    let x = a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y;
+    let y = a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x;
+    let z = a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w;
+    Quat::from_xyzw(x, y, z, real)
+}
+
 //// Normalised Lerp function for quaternions
 //// Taken from: https://stackoverflow.com/questions/46156903/how-to-lerp-between-two-quaternions
 fn quat_dot(a: Quat, b: Quat) -> f32 {
@@ -475,18 +485,18 @@ fn quat_dot(a: Quat, b: Quat) -> f32 {
 }
 
 fn quat_negate(a: Quat) -> Quat {
-    Quat::from_xyzw(-a.x,-a.y,-a.z,-a.w)
+    Quat::from_xyzw(-a.x, -a.y, -a.z, -a.w)
 }
 
 fn quat_normalise(a: Quat) -> Quat {
-    let scalar = 1.0 / f32::sqrt(quat_dot(a,a));
-    Quat::from_xyzw(a.x*scalar,a.y*scalar,a.z*scalar,a.w*scalar)
+    let scalar = 1.0 / f32::sqrt(quat_dot(a, a));
+    Quat::from_xyzw(a.x * scalar, a.y * scalar, a.z * scalar, a.w * scalar)
 }
 
 fn quat_lerp(a: Quat, b: Quat, x: f32) -> Quat {
     let mut _b = b.clone();
 
-    if quat_dot(a,b) < 0.0 {
+    if quat_dot(a, b) < 0.0 {
         _b = quat_negate(b);
     }
 
@@ -497,6 +507,45 @@ fn quat_lerp(a: Quat, b: Quat, x: f32) -> Quat {
     Quat::from_xyzw(cx, cy, cz, cw)
 }
 
-fn quat_nlerp(a:Quat,b:Quat,x:f32) -> Quat {
-    quat_normalise(quat_lerp(a,b,x))
+fn quat_nlerp(a: Quat, b: Quat, x: f32) -> Quat {
+    quat_normalise(quat_lerp(a, b, x))
+}
+
+// Drehe den Vektor v mit der Quaternion q
+pub fn quat_rot_vec3(q: Quat, v: Vec3) -> Vec3 {
+    // Vektorteil
+    let q_vec = Vec3::new(q.x, q.y, q.z);
+
+    // Rechnung nach Formel 2.11
+    let res = 2.0 * dot_product(q_vec, v) * q_vec
+        + (q.w * q.w - dot_product(q_vec, q_vec)) * v
+        + 2.0 * q.w * cross_product(q_vec, v);
+
+    return res;
+}
+
+// Skalarprodukt zweier Quaternionen
+pub fn dot_product(u: Vec3, v: Vec3) -> f32 {
+    return u.x * v.x + u.y * v.y + u.z * v.z;
+}
+
+// Kreuzprodukt zweier Vektoren
+pub fn cross_product(u: Vec3, v: Vec3) -> Vec3 {
+    let x = u.y * v.z - u.z * v.y;
+    let y = u.z * v.x - u.x * v.z;
+    let z = u.x * v.y - u.y * v.x;
+    return Vec3::new(x, y, z);
+}
+
+// Rotationsquaternion erstellen
+fn quat_from_angle_and_axis(angle: f32, unit_vector: Vec3) -> Quat {
+    // Realteil
+    let w = (angle / 2.0).cos();
+
+    // Vektorteil
+    let x = (unit_vector.x / 2.0).sin();
+    let y = (unit_vector.y / 2.0).sin();
+    let z = (unit_vector.z / 2.0).sin();
+
+    return Quat::from_xyzw(x, y, z, w);
 }

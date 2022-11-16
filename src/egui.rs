@@ -1,19 +1,18 @@
 use crate::{
     animation::{Animations, ShowKeyframeEvent},
-    save_load::SaveEvent,
-    skin::{AddSkinOrder, AVAILABLE_IMAGES},
     *,
 };
 use bevy_egui::{
     egui::{
         self,
-        plot::{MarkerShape, PlotPoint, PlotPoints, Points},
-        Color32, Pos2, TextBuffer, Ui,
+        plot::{MarkerShape, PlotPoint, Points},
+        Color32, Ui,
     },
     EguiContext,
 };
 use interpolate::Function;
-use std::{fs, ops::RangeInclusive};
+use std::fs;
+use inverse_kinematics::*;
 
 pub struct PlotState {
     pub name: String,
@@ -35,7 +34,8 @@ pub struct State {
     pub skin_cols: u16,
     pub skin_rows: u16,
     pub step: i32,
-    pub ccd_depth: u8,
+    pub ik_depth: u8,
+    pub ik_method: IKMethod,
     pub skin_is_bound: bool,
     pub skin_bound_status_is_valid: bool,
     pub edit_plot: usize,
@@ -59,7 +59,8 @@ impl Default for State {
             step: 0,
             skin_cols: 10,
             skin_rows: 10,
-            ccd_depth: 2,
+            ik_depth: 2,
+            ik_method: IKMethod::Jacobian,
             skin_is_bound: false,
             skin_bound_status_is_valid: false,
             plots: vec![PlotState::default()],
@@ -228,12 +229,19 @@ fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
 fn animation_settings_grid(ui: &mut Ui, state: &mut State, anim_state: &mut animation::State) {
     ui.horizontal(|ui| {
         ui.vertical(|ui| {
-            egui::Grid::new("ccd_and_keyframe_length").show(ui, |ui| {
-                ui.label("default ccd Depth");
+            egui::Grid::new("ik_and_keyframe_length").show(ui, |ui| {
+                if ui.button(state.ik_method.to_string()).clicked() {
+                    state.ik_method = if state.ik_method == IKMethod::CCD {
+                        IKMethod::Jacobian
+                    } else {
+                        IKMethod::CCD
+                    };
+                }
+                ui.label("Depth: ");
                 ui.add(
-                    egui::DragValue::new(&mut state.ccd_depth)
+                    egui::DragValue::new(&mut state.ik_depth)
                         .speed(1)
-                        .clamp_range(1..=10),
+                        .clamp_range(1..=30),
                 );
                 ui.end_row();
 
