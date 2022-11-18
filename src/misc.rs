@@ -46,7 +46,7 @@ pub fn setup(
     }
 
     // Load arachnoid animation
-    save_load_state.opt_load_path = Some(save_load::anim_name_to_path("arachnoid"));
+    save_load_state.opt_load_path = Some(save_load::anim_name_to_path("standard_anims/arachnoid.anim"));
 }
 
 #[cfg(target_arch = "wasm32")]

@@ -30,7 +30,7 @@ Use **LCtrl + LMouse** to create a new bone. The currently selected bone will au
 
 ### Skins
 
-Inside the window labeled 'Skins' a graphics file can be selected. The listed files are stored in the folder './assets/img'. Any custom PNG-file can be added by placing it inside of that folder. The values 'cols' and 'rows' can be adjusted to define the grid that will be used to generate the skins mesh. 'add skin' will create a regular skin. 'add as cloth' will create a physics-simulated cloth. Currently it isn't possible to pin/unpin a cloth's vertices or change the cloths shape. All cloths are rectangular and the top row of vertices is pinned.
+Inside the window labeled 'Skins' a graphics file can be selected. The listed files are stored in the folder './assets/img'. Any custom PNG-file can be added by placing it inside of that folder. The values 'cols' and 'rows' can be adjusted to define the grid that will be used to generate the skins mesh. 'add skin' will create a regular skin. 'add as cloth' will create a physics-simulated cloth. Below 'Delaunay Triangulation' there is a second 'add skin' button that will use Delaunay Triangulation to generate a tightly fitted mesh for the image. Currently there is no algorithm implemented for triangle ordering, so self overlap can't be handled well. Currently it isn't possible to pin/unpin a cloth's vertices or change the cloths shape. All cloths are rectangular and the top row of vertices is pinned.
 
 ### Bind / Unbind Skin
 
