@@ -35,6 +35,7 @@ Inside the window labeled 'Skins' a graphics file can be selected. The listed fi
 ### Bind / Unbind Skin
 
 Create a skeleton along the shape of the unbound skin. Select both skin and bones and press **A**. The selected skin is now bound to the selected bones. To unbind a skin, select it, then press **LCtrl + A**.
+The weighting of each vertex relative to each bone can be adjusted in the **Adjust Vertex Weights** mode. It can be toggled with **W** or by clicking the button in the Skins-menu. A circle around the cursor will indicate the area of adjustment. With **Q** the weights for the vertices within the circle are reduced, with **E** they are increased. Currently this mode is still a work in progress and might not be intuitive to use yet.
 
 ### Animations
 
@@ -97,13 +98,13 @@ Displaying bones and meshes can be toggled.
 | B                             | Show / Hide bones                  |
 | M                             | Show / Hide mesh vertices and edges|
 
-|             ease in out       |               ease out elastic     |
+|             linear            |               ease in out          |
 | ----------------------------- | ---------------------------------- |
-| ![ease in out](img/interpolate_linear.gif)  | ![ease out elastic](img/interpolate_ease_in_out.gif)   |
+| ![linear](img/interpolate_linear.gif)  | ![ease in out](img/interpolate_ease_in_out.gif)   |
 
 |            ease out elastic       |               ease in out back     |
 | ----------------------------- | ---------------------------------- |
-| ![ease in out](img/interpolate_ease_out_elastic.gif)  | ![ease out elastic](img/interpolate_ease_in_out_back.gif)   |
+| ![ease out elastic](img/interpolate_ease_out_elastic.gif)  | ![ease in out back](img/interpolate_ease_in_out_back.gif)   |
 
 
 
@@ -194,6 +195,10 @@ Displaying bones and meshes can be toggled.
   <tr>
     <td>M</td>
     <td>Show / Hide mesh vertices and edges</td>
+  </tr>
+  <tr>
+    <td>W</td>
+    <td>Toggle adjust vertex weights mode</td>
   </tr>
   <tr>
     <td>LMouse</td>
