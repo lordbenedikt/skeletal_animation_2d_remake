@@ -119,7 +119,7 @@ fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
                 // Webassembly
                 #[cfg(target_arch = "wasm32")]
                 {
-                    filenames = AVAILABLE_IMAGES
+                    filenames = skin::AVAILABLE_IMAGES
                         .iter()
                         .map(|&str| String::from(str))
                         .collect();
