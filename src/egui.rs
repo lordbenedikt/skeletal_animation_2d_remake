@@ -27,7 +27,6 @@ impl Default for PlotState {
     }
 }
 
-#[derive(Resource)]
 pub struct State {
     pub interpolation_function: Function,
     pub keyframe_length: i32,

@@ -3,7 +3,6 @@ use crate::{animation::Animatable, skeleton::Skeleton, *};
 #[derive(Component, Default)]
 pub struct Bone {
     pub is_ik_maneuvered: bool,
-    pub ik_angle_constraint: (f32, f32),
 }
 impl Bone {
     pub fn get_tip(gl_transform: &GlobalTransform) -> Vec2 {
@@ -80,7 +79,7 @@ pub fn add_bone_on_mouse_click(
 
         commands.entity(parent).with_children(|parent| {
             res = parent
-                .spawn(SpriteBundle {
+                .spawn_bundle(SpriteBundle {
                     sprite: Sprite {
                         color: Color::rgb(0.4, 0.4, 0.4),
                         ..Default::default()
@@ -98,7 +97,7 @@ pub fn add_bone_on_mouse_click(
     } else {
         // Spawn without parent
         commands
-            .spawn(SpriteBundle {
+            .spawn_bundle(SpriteBundle {
                 sprite: Sprite::default(),
                 transform: Transform {
                     translation: Vec3::new(cursor_pos.0.x, cursor_pos.0.y, bone_depth),

@@ -30,7 +30,7 @@ pub const AVAILABLE_IMAGES: [&str; 13] = [
     "web.png",
 ];
 
-#[derive(Resource, Default)]
+#[derive(Default)]
 pub struct State {
     pub queued_skins: Vec<AddSkinOrder>,
 }
@@ -198,7 +198,7 @@ impl Skin {
     }
 }
 
-#[derive(Resource, Default)]
+#[derive(Default)]
 pub struct Skins {
     pub vec: Vec<Skin>,
 }
@@ -284,13 +284,13 @@ fn add_skin(
     let handle: Mesh2dHandle = meshes.add(mesh).into();
     skin.mesh_handle = Some(handle.clone());
 
-    commands.spawn(MaterialMesh2dBundle {
+    commands.spawn_bundle(MaterialMesh2dBundle {
         mesh: handle.clone(),
         material: materials.add(ColorMaterial::from(asset_server.load(&skin.path))),
         ..default()
     });
     let skin_id = commands
-        .spawn(TransformBundle::from_transform(Transform {
+        .spawn_bundle(TransformBundle::from_transform(Transform {
             scale: Vec3::new(3.5, 3.5, 1.),
             ..default()
         }))

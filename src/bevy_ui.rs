@@ -2,7 +2,7 @@ use bevy::utils::HashMap;
 
 use crate::*;
 
-#[derive(Resource, Default)]
+#[derive(Default)]
 pub struct UiElements(HashMap<String, Entity>);
 
 pub fn system_set() -> SystemSet {
@@ -20,7 +20,7 @@ pub fn spawn_ui_elements(
     // ui_elements.0.insert(
     //     String::from("debug_mouse_position"),
     //     commands
-    //         .spawn(TextBundle {
+    //         .spawn_bundle(TextBundle {
     //             text: Text::from_section(
     //                 String::from("Position"),
     //                 TextStyle {
@@ -38,7 +38,7 @@ pub fn spawn_ui_elements(
     ui_elements.0.insert(
         String::from("manual_button"),
         commands
-            .spawn(ButtonBundle {
+            .spawn_bundle(ButtonBundle {
                 style: Style {
                     size: Size::new(Val::Px(150.0), Val::Px(45.0)),
                     position: UiRect {
@@ -51,11 +51,11 @@ pub fn spawn_ui_elements(
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
-                background_color: (*COLOR_BLACK.set_a(0.3)).into(),
+                color: (*COLOR_BLACK.set_a(0.3)).into(),
                 ..default()
             })
             .with_children(|parent| {
-                parent.spawn(TextBundle::from_section(
+                parent.spawn_bundle(TextBundle::from_section(
                     "Manual",
                     TextStyle {
                         font: asset_server.load("fonts/FiraSans-Bold.ttf"),
@@ -70,7 +70,7 @@ pub fn spawn_ui_elements(
 
 pub fn manual_button(
     mut interaction_query: Query<
-        (&Interaction, &mut BackgroundColor),
+        (&Interaction, &mut UiColor),
         (Changed<Interaction>, With<Button>),
     >,
     ui_elements: Res<UiElements>,
