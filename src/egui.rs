@@ -28,6 +28,7 @@ impl Default for PlotState {
 }
 
 pub struct State {
+    pub loaded_standard_anim: String,
     pub interpolation_function: Function,
     pub keyframe_length: i32,
     pub skin_filename: String,
@@ -52,6 +53,7 @@ pub struct State {
 impl Default for State {
     fn default() -> Self {
         Self {
+            loaded_standard_anim: String::from("Choose..."),
             interpolation_function: Function::EaseInOut,
             keyframe_length: 400,
             edit_plot: 0,
@@ -122,23 +124,23 @@ fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
                         .collect();
                 }
 
-                // All other platforms
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    filenames = fs::read_dir("./assets/img/")
-                        .unwrap()
-                        .map(|read_dir| {
-                            read_dir
-                                .unwrap()
-                                .path()
-                                .file_name()
-                                .unwrap()
-                                .to_str()
-                                .unwrap()
-                                .to_string()
-                        })
-                        .collect();
-                }
+                // // All other platforms
+                // #[cfg(not(target_arch = "wasm32"))]
+                // {
+                //     filenames = fs::read_dir("./assets/img/")
+                //         .unwrap()
+                //         .map(|read_dir| {
+                //             read_dir
+                //                 .unwrap()
+                //                 .path()
+                //                 .file_name()
+                //                 .unwrap()
+                //                 .to_str()
+                //                 .unwrap()
+                //                 .to_string()
+                //         })
+                //         .collect();
+                // }
 
                 for filename in filenames {
                     let option =
@@ -729,6 +731,18 @@ pub fn animation_menu(
                         unsafe {
                             uploadFileToLocalStorage();
                         }
+                    }
+                });
+
+                ui.separator();
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                ui.text_edit_singleline(&mut state.save_filename);
+                ui.horizontal(|ui| {
+                    if ui.button("Save to local disc").clicked() {
+                        save_evw.send(SaveEvent(state.save_filename.clone()));
                     }
                 });
 
