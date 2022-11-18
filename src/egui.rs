@@ -1,5 +1,6 @@
 use crate::{
     animation::{Animations, ShowKeyframeEvent},
+    save_load::SaveEvent,
     *,
 };
 use bevy_egui::{
@@ -124,23 +125,23 @@ fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
                         .collect();
                 }
 
-                // // All other platforms
-                // #[cfg(not(target_arch = "wasm32"))]
-                // {
-                //     filenames = fs::read_dir("./assets/img/")
-                //         .unwrap()
-                //         .map(|read_dir| {
-                //             read_dir
-                //                 .unwrap()
-                //                 .path()
-                //                 .file_name()
-                //                 .unwrap()
-                //                 .to_str()
-                //                 .unwrap()
-                //                 .to_string()
-                //         })
-                //         .collect();
-                // }
+                // All other platforms
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    filenames = fs::read_dir("./assets/img/")
+                        .unwrap()
+                        .map(|read_dir| {
+                            read_dir
+                                .unwrap()
+                                .path()
+                                .file_name()
+                                .unwrap()
+                                .to_str()
+                                .unwrap()
+                                .to_string()
+                        })
+                        .collect();
+                }
 
                 for filename in filenames {
                     let option =
@@ -463,7 +464,6 @@ fn animations_all(
     animation_settings_grid(ui, state, anim_state);
     // Choose Easing Function
     ui.horizontal(|ui| {
-
         ui.label("Easing Function:");
         let function_combo_box =
             egui::ComboBox::from_id_source(format!("easing_function_{}", state.edit_plot))
@@ -479,7 +479,9 @@ fn animations_all(
                             .changed()
                         {
                             // Easing Function was changed
-                            if let Some(anim) = animations.map.get_mut(&state.plots[state.edit_plot].name) {
+                            if let Some(anim) =
+                                animations.map.get_mut(&state.plots[state.edit_plot].name)
+                            {
                                 for (_, comp_anim) in anim.comp_animations.iter_mut() {
                                     for i in 0..comp_anim.transforms.len() {
                                         if i == state.plots[state.edit_plot].selected_keyframe_index
@@ -712,6 +714,24 @@ pub fn animation_menu(
         return;
     }
 
+    // // All other platforms
+    // #[cfg(not(target_arch = "wasm32"))]
+    // {
+    //     filenames = fs::read_dir("./assets/img/")
+    //         .unwrap()
+    //         .map(|read_dir| {
+    //             read_dir
+    //                 .unwrap()
+    //                 .path()
+    //                 .file_name()
+    //                 .unwrap()
+    //                 .to_str()
+    //                 .unwrap()
+    //                 .to_string()
+    //         })
+    //         .collect();
+    // }
+
     // Show Window
     let response = egui::Window::new("Animations")
         .resizable(false)
@@ -737,17 +757,16 @@ pub fn animation_menu(
                 ui.separator();
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                ui.text_edit_singleline(&mut state.save_filename);
-                ui.horizontal(|ui| {
-                    if ui.button("Save to local disc").clicked() {
-                        save_evw.send(SaveEvent(state.save_filename.clone()));
-                    }
-                });
-
-                ui.separator();
-            }
+            // WIP
+            // #[cfg(not(target_arch = "wasm32"))]
+            // {
+            //     ui.label("Load standard animation: ");
+            //     let choose_standard_animation = egui::ComboBox::from_id_source("standard_animation")
+            //         .selected_text(&state.loaded_standard_anim)
+            //         .show_ui(ui, |ui| {
+            //             ui.selectable_value();
+            //         });
+            // }
 
             animations_all(
                 ui,
