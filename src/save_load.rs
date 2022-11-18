@@ -204,13 +204,13 @@ pub fn system_set() -> SystemSet {
 
 fn call_save_event(keys: Res<Input<KeyCode>>, mut save_evw: EventWriter<SaveEvent>) {
     #[cfg(not(target_arch = "wasm32"))]
-    if !keys.pressed(KeyCode::LControl) {
+    if keys.pressed(KeyCode::LControl) {
         let save_slot = get_just_pressed_number(&keys);
         if save_slot == -1 {
             return;
         }
         save_evw.send(SaveEvent(format!(
-            "animation_{}.anim",
+            "animation_{}",
             save_slot
         )));
     }

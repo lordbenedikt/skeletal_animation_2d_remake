@@ -11,8 +11,8 @@ use bevy_egui::{
     EguiContext,
 };
 use interpolate::Function;
-use std::fs;
 use inverse_kinematics::*;
+use std::fs;
 
 pub struct PlotState {
     pub name: String,
@@ -328,7 +328,7 @@ fn layer_label(ui: &mut Ui, dir: usize, anim_state: &animation::State) {
 fn animation_single(
     ui: &mut Ui,
     state: &mut State,
-    layer_index: usize,
+    plot_index: usize,
     anim_state: &animation::State,
     animations: &mut Animations,
     mouse: &Input<MouseButton>,
@@ -336,66 +336,38 @@ fn animation_single(
     show_keyframe_evw: &mut EventWriter<animation::ShowKeyframeEvent>,
     q: &Query<&mut Transform>,
 ) {
-    if layer_index >= state.plots.len() {
+    if plot_index >= state.plots.len() {
         return;
     }
     ui.horizontal(|ui| {
         // Choose Animation
-        egui::ComboBox::from_id_source(format!("current_animation_{}", layer_index))
-            .selected_text(&state.plots[layer_index].name)
+        egui::ComboBox::from_id_source(format!("current_animation_{}", plot_index))
+            .selected_text(&state.plots[plot_index].name)
             .show_ui(ui, |ui| {
                 for animation_name in animations.map.keys() {
                     ui.selectable_value(
-                        &mut state.plots[layer_index].name,
+                        &mut state.plots[plot_index].name,
                         String::from(animation_name),
                         animation_name,
                     );
                 }
             });
-        // Choose Easing Function
-        let function_combo_box =
-            egui::ComboBox::from_id_source(format!("easing_function_{}", layer_index))
-                .selected_text(state.interpolation_function.to_string())
-                .show_ui(ui, |ui| {
-                    for function in Function::all() {
-                        if ui
-                            .selectable_value(
-                                &mut state.interpolation_function,
-                                function,
-                                function.to_string(),
-                            )
-                            .changed()
-                        {
-                            // Easing Function was changed
-                            for (_, anim) in animations.map.iter_mut() {
-                                for (_, comp_anim) in anim.comp_animations.iter_mut() {
-                                    for i in 0..comp_anim.transforms.len() {
-                                        if i == state.plots[layer_index].selected_keyframe_index {
-                                            comp_anim.interpolation_functions[i] =
-                                                state.interpolation_function;
-                                        }
-                                    }
-                                }
-                            }
-                        };
-                    }
-                });
         // Remove Keyframe
         if ui.button("remove keyframe").clicked() {
-            let opt_animation = animations.map.get_mut(&state.plots[layer_index].name);
+            let opt_animation = animations.map.get_mut(&state.plots[plot_index].name);
             if let Some(animation) = opt_animation {
-                if state.plots[layer_index].selected_keyframe_index == 0 {
+                if state.plots[plot_index].selected_keyframe_index == 0 {
                     for i in (1..animation.keyframes.len()).rev() {
                         animation.keyframes[i] -= animation.keyframes[1];
                     }
                 }
-                animation.remove_keyframe(state.plots[layer_index].selected_keyframe_index);
+                animation.remove_keyframe(state.plots[plot_index].selected_keyframe_index);
             }
         };
         // Remove Plot
         if state.plots.len() > 1 {
             if ui.button("remove plot").clicked() {
-                state.plots.remove(layer_index);
+                state.plots.remove(plot_index);
                 if state.edit_plot == state.plots.len() {
                     state.edit_plot = core::cmp::max(0, state.plots.len() - 1);
                 }
@@ -403,14 +375,14 @@ fn animation_single(
             };
         }
         // Show edit label, if currently editing this animation
-        if state.edit_plot == layer_index {
+        if state.edit_plot == plot_index {
             ui.label("Edit");
         }
     });
     animation_plot(
         ui,
         state,
-        layer_index,
+        plot_index,
         mouse,
         keys,
         animations,
@@ -487,18 +459,52 @@ fn animations_all(
     // General Animation Settings
     ui.label("Animations                        ");
     animation_settings_grid(ui, state, anim_state);
-    // Free selected bones removing them from the current animation layer
-    if ui.button("Free Bones").clicked() {
-        let anim = animations
-            .map
-            .get_mut(&state.plots[state.edit_plot].name)
-            .unwrap();
-        for (entity, transformable) in q_bones.iter() {
-            if transformable.is_selected {
-                anim.comp_animations.remove(&entity);
+    // Choose Easing Function
+    ui.horizontal(|ui| {
+
+        ui.label("Easing Function:");
+        let function_combo_box =
+            egui::ComboBox::from_id_source(format!("easing_function_{}", state.edit_plot))
+                .selected_text(state.interpolation_function.to_string())
+                .show_ui(ui, |ui| {
+                    for function in Function::all() {
+                        if ui
+                            .selectable_value(
+                                &mut state.interpolation_function,
+                                function,
+                                function.to_string(),
+                            )
+                            .changed()
+                        {
+                            // Easing Function was changed
+                            if let Some(anim) = animations.map.get_mut(&state.plots[state.edit_plot].name) {
+                                for (_, comp_anim) in anim.comp_animations.iter_mut() {
+                                    for i in 0..comp_anim.transforms.len() {
+                                        if i == state.plots[state.edit_plot].selected_keyframe_index
+                                        {
+                                            comp_anim.interpolation_functions[i] =
+                                                state.interpolation_function;
+                                        }
+                                    }
+                                }
+                            }
+                        };
+                    }
+                });
+
+        // Free selected bones removing them from the current animation layer
+        if ui.button("Free Bones").clicked() {
+            let anim = animations
+                .map
+                .get_mut(&state.plots[state.edit_plot].name)
+                .unwrap();
+            for (entity, transformable) in q_bones.iter() {
+                if transformable.is_selected {
+                    anim.comp_animations.remove(&entity);
+                }
             }
         }
-    }
+    });
 
     ui.separator();
 
@@ -538,24 +544,24 @@ fn animations_all(
 fn animation_plot(
     ui: &mut egui::Ui,
     state: &mut State,
-    layer_index: usize,
+    plot_index: usize,
     mouse: &Input<MouseButton>,
     keys: &Input<KeyCode>,
     animations: &mut animation::Animations,
     show_keyframe_evw: &mut EventWriter<animation::ShowKeyframeEvent>,
 ) {
     // if layer doesn't exist, return
-    if layer_index >= state.plots.len() {
+    if plot_index >= state.plots.len() {
         return;
     }
-    let response = egui::plot::Plot::new(format!("example_plot_{}", layer_index))
+    let response = egui::plot::Plot::new(format!("example_plot_{}", plot_index))
         .height(50.0)
         .center_y_axis(true)
         .allow_drag(!keys.pressed(KeyCode::LControl))
         .show_y(false)
         .data_aspect(1.0)
         .show(ui, |plot_ui| {
-            if let Some(anim) = animations.map.get_mut(&state.plots[layer_index].name) {
+            if let Some(anim) = animations.map.get_mut(&state.plots[plot_index].name) {
                 // Create values for keyframe markers
                 let values_all: Vec<PlotPoint> = anim
                     .keyframes
@@ -566,7 +572,7 @@ fn animation_plot(
                 let mut values_selected: Vec<PlotPoint> = vec![];
                 for i in 0..values_all.len() {
                     let new_value = values_all[i];
-                    if i == state.plots[layer_index].selected_keyframe_index {
+                    if i == state.plots[plot_index].selected_keyframe_index {
                         values_selected.push(new_value);
                     } else {
                         values_not_selected.push(new_value);
@@ -613,17 +619,17 @@ fn animation_plot(
                 if let Some(hovered_keyframe) = opt_hovered_keyframe {
                     // Select keyframe
                     if mouse.just_pressed(MouseButton::Left) {
-                        state.plots[layer_index].selected_keyframe_index = hovered_keyframe;
+                        state.plots[plot_index].selected_keyframe_index = hovered_keyframe;
                         // Show keyframe
                         show_keyframe_evw.send(ShowKeyframeEvent {
-                            animation_name: state.plots[layer_index].name.clone(),
-                            keyframe_index: state.plots[layer_index].selected_keyframe_index,
+                            animation_name: state.plots[plot_index].name.clone(),
+                            keyframe_index: state.plots[plot_index].selected_keyframe_index,
                         });
                         // Show interpolation function of current keyframe in ui
                         for (_, comp_anim) in anim.comp_animations.iter() {
                             let mut stop = false;
                             for i in 0..comp_anim.transforms.len() {
-                                if i == state.plots[layer_index].selected_keyframe_index {
+                                if i == state.plots[plot_index].selected_keyframe_index {
                                     state.interpolation_function =
                                         comp_anim.interpolation_functions[i];
                                     stop = true;
@@ -640,13 +646,13 @@ fn animation_plot(
                         && plot_ui.pointer_coordinate_drag_delta().x != 0.0
                     {
                         // Determine amount of disposition
-                        let move_amount = if state.plots[layer_index].selected_keyframe_index == 0 {
+                        let move_amount = if state.plots[plot_index].selected_keyframe_index == 0 {
                             0.0
                         } else {
                             let current_x =
-                                anim.keyframes[state.plots[layer_index].selected_keyframe_index];
-                            let min_x = anim.keyframes
-                                [state.plots[layer_index].selected_keyframe_index - 1];
+                                anim.keyframes[state.plots[plot_index].selected_keyframe_index];
+                            let min_x =
+                                anim.keyframes[state.plots[plot_index].selected_keyframe_index - 1];
                             f64::max(
                                 plot_ui.pointer_coordinate_drag_delta().x as f64,
                                 min_x - current_x,
@@ -655,7 +661,7 @@ fn animation_plot(
 
                         // Move keyframe and all following keyframes by move_amount
                         for i in
-                            state.plots[layer_index].selected_keyframe_index..anim.keyframes.len()
+                            state.plots[plot_index].selected_keyframe_index..anim.keyframes.len()
                         {
                             anim.keyframes[i] += move_amount;
                         }
@@ -665,7 +671,7 @@ fn animation_plot(
         })
         .response;
     if response.clicked() {
-        state.edit_plot = layer_index;
+        state.edit_plot = plot_index;
     };
 }
 
