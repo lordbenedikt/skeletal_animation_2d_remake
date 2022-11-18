@@ -4,6 +4,7 @@ use crate::*;
 
 const RIGHT_HALF_BITMASK: u32 = (1 << 16) - 1;
 
+#[derive(Resource)]
 pub struct DebugDrawer {
     lines: Vec<Line>,
     squares: Vec<Square>,
@@ -178,7 +179,7 @@ pub fn draw_all_debug_shapes(
         geometry.path = lines;
         debug_drawer
             .test_entities
-            .push(commands.spawn_bundle(geometry).id());
+            .push(commands.spawn(geometry).id());
     }
 }
 

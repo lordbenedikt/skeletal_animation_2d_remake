@@ -31,7 +31,7 @@ impl ToString for BlendingStyle {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Resource, Serialize, Deserialize)]
 pub struct State {
     pub running: bool,
     pub layers: Vec<String>,
@@ -49,6 +49,7 @@ impl State {
     }
 }
 
+#[derive(Resource)]
 pub struct Animations {
     pub map: HashMap<String, Animation>,
 }
@@ -85,7 +86,7 @@ impl Animation {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ComponentAnimation {
     pub transforms: Vec<Transform>,
     pub interpolation_functions: Vec<interpolate::Function>,
@@ -145,7 +146,7 @@ pub fn check_which_animatables_are_part_of_current_layer(
 pub fn start_stop(keys: Res<Input<KeyCode>>, mut state: ResMut<State>, time: Res<Time>) {
     if keys.just_pressed(KeyCode::P) {
         state.running = !state.running;
-        state.start_time = time.seconds_since_startup();
+        state.start_time = time.elapsed_seconds_f64();
     }
 }
 
@@ -174,7 +175,7 @@ pub fn apply_animation(
                 return;
             }
             let anim_length_in_secs = anim.keyframes.iter().last().unwrap() - anim.keyframes[0]; // + 1.;
-            let time_diff = (time.seconds_since_startup() - state.start_time) % anim_length_in_secs;
+            let time_diff = (time.elapsed_seconds_f64() - state.start_time) % anim_length_in_secs;
             for (&key, comp_animation) in anim.comp_animations.iter() {
                 if q.get_mut(key).is_err() || comp_animation.transforms.len() == 0 {
                     continue;
@@ -225,11 +226,12 @@ pub fn apply_animation(
                         comp_animation.transforms[current_frame_b].translation,
                         x,
                     );
-                    transform.rotation = quat_nlerp(
+                    transform.rotation = quat_slerp(
                         comp_animation.transforms[current_frame_a].rotation,
                         comp_animation.transforms[current_frame_b].rotation,
                         x,
-                    );
+                    )
+                    .normalize();
                     transform.scale = interpolate::lerp(
                         comp_animation.transforms[current_frame_a].scale,
                         comp_animation.transforms[current_frame_b].scale,
@@ -296,7 +298,7 @@ pub fn apply_animation(
                 return;
             }
             let anim_length_in_secs = anim.keyframes.iter().last().unwrap() - anim.keyframes[0]; // + 1.;
-            let time_diff = (time.seconds_since_startup() - state.start_time) % anim_length_in_secs;
+            let time_diff = (time.elapsed_seconds_f64() - state.start_time) % anim_length_in_secs;
             for (&key, comp_animation) in anim.comp_animations.iter() {
                 if q.get_mut(key).is_err() || comp_animation.transforms.len() == 0 {
                     continue;
@@ -352,7 +354,7 @@ pub fn apply_animation(
                     comp_animation.transforms[current_frame_b].translation,
                     x,
                 ) * weight;
-                transform.rotation *= Quat::lerp(
+                transform.rotation *= Quat::slerp(
                     comp_animation.transforms[current_frame_a].rotation,
                     comp_animation.transforms[current_frame_b].rotation,
                     x,
@@ -491,6 +493,42 @@ fn quat_negate(a: Quat) -> Quat {
 fn quat_normalise(a: Quat) -> Quat {
     let scalar = 1.0 / f32::sqrt(quat_dot(a, a));
     Quat::from_xyzw(a.x * scalar, a.y * scalar, a.z * scalar, a.w * scalar)
+}
+
+fn quat_naive_lerp(mut a: Quat, b: Quat, mut x: f32) -> Quat {
+    if a.dot(b) < 0.0 {
+        x = -x;
+    }
+    a * (1.0 - x) + b * x
+}
+
+fn quat_slerp(mut a: Quat, b: Quat, mut x: f32) -> Quat {
+    if x==0.0 {
+        return a;
+    }
+    if x==1.0 {
+        return b;
+    }
+    // // If quaternions are equal, return a
+    // if a==b || -a==b {
+    //     return a;
+    // }
+
+    let dotproduct = a.dot(b);
+
+    if dotproduct < 0.0 {
+        a = -a;
+    }
+
+    let theta = dotproduct.abs().acos();
+    if theta.sin()==0.0 {
+        return a;
+    }
+
+    let coefficient_a = ((1.0 - x) * theta).sin() / theta.sin();
+    let coefficient_b = (x * theta).sin() / theta.sin();
+
+    a * coefficient_a + b * coefficient_b
 }
 
 fn quat_lerp(a: Quat, b: Quat, x: f32) -> Quat {

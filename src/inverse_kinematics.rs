@@ -68,7 +68,7 @@ pub fn add_target(
         transform_state.selected_entities.clear();
         transform_state.selected_entities.insert(
             commands
-                .spawn_bundle(SpriteBundle {
+                .spawn(SpriteBundle {
                     transform: Transform::default().with_translation(cursor_pos.0.extend(500.)),
                     sprite: Sprite {
                         color: COLOR_DEFAULT,

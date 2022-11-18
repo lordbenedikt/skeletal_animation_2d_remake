@@ -42,9 +42,10 @@ const COLOR_DEFAULT_ACTIVE: Color = Color::rgb(0.2, 0.2, 1.);
 const PIXELS_PER_UNIT: u32 = 100;
 
 // RESOURCES
+#[derive(Resource)]
 pub struct CursorPos(Vec2);
 
-#[derive(Default)]
+#[derive(Resource, Default)]
 pub struct General {
     done: bool,
 }
@@ -53,13 +54,7 @@ fn main() {
     let mut app = App::new();
 
     // GENERAL RESOURCES
-    app.insert_resource(WindowDescriptor {
-        title: "Skeletal Animation".to_string(),
-        // width: 800.,
-        // height: 600.,
-        mode: bevy::window::WindowMode::BorderlessFullscreen,
-        ..Default::default()
-    })
+    app
     .insert_resource(ClearColor(COLOR_GRAY))
     .insert_resource(CursorPos(Vec2::new(0., 0.)))
     .insert_resource(transform::State::new())
@@ -81,10 +76,20 @@ fn main() {
     .add_event::<save_load::SaveEvent>()
     .add_event::<save_load::LoadEvent>()
     // PLUGINS
-    .add_plugins(DefaultPlugins)
+    .add_plugins(DefaultPlugins.set(WindowPlugin {
+        window: WindowDescriptor {
+            title: "Skeletal Animation".to_string(),
+            // width: 800.,
+            // height: 600.,
+            mode: bevy::window::WindowMode::BorderlessFullscreen,
+            ..Default::default()
+        },
+        ..Default::default()
+    }))
     .add_plugin(ShapePlugin)
     .add_plugin(EguiPlugin)
     .add_plugin(JsonAssetPlugin::<save_load::CompleteJson>::new(&["anim"]))
+    .add_plugin(JsonAssetPlugin::<save_load::CompleteJsonOld>::new(&["anim"]))
     // LOG DIAGNOSTICS
     // .add_plugin(LogDiagnosticsPlugin::default())
     // .add_plugin(FrameTimeDiagnosticsPlugin::default())

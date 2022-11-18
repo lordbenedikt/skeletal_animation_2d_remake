@@ -5,7 +5,7 @@ use std::{ops::{AddAssign, SubAssign}, time::Duration};
 
 const STEP_DURATION: Duration = Duration::new(0, 20_000_000);
 
-#[derive(Default)]
+#[derive(Resource, Default)]
 pub struct State {
     rest_duration: Duration,
 }

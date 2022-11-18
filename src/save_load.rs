@@ -1,7 +1,7 @@
 use crate::animation::{Animatable, Animation, Animations, ComponentAnimation};
 use crate::bone::Bone;
-use crate::inverse_kinematics::Target;
 use crate::cloth::Cloth;
+use crate::inverse_kinematics::Target;
 use crate::skeleton::{Skeleton, SkinMapping};
 use crate::skin::Skin;
 use crate::*;
@@ -12,10 +12,111 @@ use std::fs;
 use std::io::Write;
 use wasm_bindgen::JsValue;
 
+
+#[derive(Resource)]
+pub struct AnimationsOld {
+    pub map: HashMap<String, AnimationOld>,
+}
+impl AnimationsOld {
+    pub fn new() -> Self {
+        let mut map = HashMap::new();
+        map.insert(String::from("anim_0"), AnimationOld::default());
+        Self { map }
+    }
+}
+
+
 #[derive(Default)]
+pub struct AnimationOld {
+    pub keyframes: Vec<f64>,
+    pub comp_animations: HashMap<u32, ComponentAnimation>,
+}
+impl AnimationOld {
+    pub fn remove_keyframe(&mut self, index: usize) {
+        if index >= self.keyframes.len() {
+            return;
+        }
+        self.keyframes.remove(index);
+        for bone_animation in self.comp_animations.values_mut() {
+            bone_animation.remove_keyframe(index);
+        }
+    }
+    pub fn as_animation(self) -> Animation {
+        let mut new_c_anims = HashMap::<Entity, ComponentAnimation>::new();
+        for (key, value) in self.comp_animations.iter() {
+            new_c_anims.insert(Entity::from_raw(*key), value.clone());
+        }
+        Animation {
+            keyframes: self.keyframes,
+            comp_animations: new_c_anims,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Default, Clone)]
+pub struct VertexMappingOld {
+    pub is_free: bool,
+    pub weights: Vec<f32>,
+    pub bones: Vec<u32>,
+    pub rel_positions: Vec<Vec2>,
+}
+impl VertexMappingOld {
+    fn normalize(&mut self) {
+        let mut total = 0.;
+        for weight in self.weights.iter() {
+            total += *weight;
+        }
+        for weight in self.weights.iter_mut() {
+            *weight /= total;
+        }
+    }
+    fn refine(&mut self) {
+        let mut min = 9999999.;
+        for weight in self.weights.iter() {
+            if *weight < min {
+                min = *weight;
+            }
+        }
+        for i in (0..self.weights.len()).rev() {
+            if self.weights[i] > crate::skeleton::VERTEX_BONE_MAX_DISTANCE && self.weights[i] > min
+            {
+                self.weights.swap_remove(i);
+                self.rel_positions.swap_remove(i);
+                self.bones.swap_remove(i);
+            }
+        }
+    }
+    fn invert(&mut self) {
+        for weight in self.weights.iter_mut() {
+            *weight = f32::powi(crate::skeleton::VERTEX_BONE_MAX_DISTANCE - *weight, 10);
+        }
+    }
+    fn clear(&mut self) {
+        self.weights.clear();
+        self.bones.clear();
+        self.rel_positions.clear();
+    }
+}
+
+#[derive(Serialize, Deserialize, Default, Clone)]
+pub struct SkinMappingOld {
+    pub skin: Option<u32>,
+    pub vertex_mappings: Vec<VertexMappingOld>,
+}
+
+#[derive(Resource, Default)]
 pub struct State {
     pub opt_load_path: Option<String>,
     pub load_count: i32,
+}
+
+#[derive(Serialize, Deserialize, Clone, bevy::reflect::TypeUuid)]
+#[uuid = "413be529-bfeb-41b3-9db0-4b8b380a2c10"]
+pub struct CompleteJsonOld {
+    skeleton: SkeletonJsonOld,
+    animations: AnimationsJsonOld,
+    animation_layers: Vec<String>,
+    blending_style: animation::BlendingStyle,
 }
 
 #[derive(Serialize, Deserialize, Clone, bevy::reflect::TypeUuid)]
@@ -29,9 +130,42 @@ pub struct CompleteJson {
 
 pub struct SaveEvent(pub String);
 
-pub struct LoadEvent(CompleteJson);
+pub struct LoadEvent(CompleteJsonOld);
 
-#[derive(Serialize, Deserialize, Clone)]
+
+#[derive(Serialize, Deserialize, Clone, bevy::reflect::TypeUuid)]
+#[uuid = "413be529-bfeb-41b3-9db0-4b8b380a2c21"]
+pub struct AnimationsJsonOld {
+    map: HashMap<String, AnimationJsonOld>,
+}
+impl AnimationsJsonOld {
+    fn from_animations(anims: &Animations) -> Self {
+        Self {
+            map: anims
+                .map
+                .iter()
+                .map(|(key, value)| (key.clone(), AnimationJsonOld::from_animation(value)))
+                .collect(),
+        }
+    }
+    fn as_animations(&self, spawned_entities: &HashMap<Entity, Entity>) -> Animations {
+        Animations {
+            map: self
+                .map
+                .iter()
+                .map(|(key, value)| {
+                    (
+                        key.clone(),
+                        AnimationJsonOld::as_animation(value, spawned_entities),
+                    )
+                })
+                .collect(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, bevy::reflect::TypeUuid)]
+#[uuid = "413be529-bfeb-41b3-9db0-4b8b380a2c23"]
 pub struct AnimationsJson {
     map: HashMap<String, AnimationJson>,
 }
@@ -61,7 +195,8 @@ impl AnimationsJson {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, bevy::reflect::TypeUuid)]
+#[uuid = "413be529-bfeb-41b3-9db0-4b8b380a2c22"]
 pub struct AnimationJson {
     keyframes: Vec<f64>,
     comp_animations: HashMap<Entity, ComponentAnimationJson>,
@@ -99,7 +234,50 @@ impl AnimationJson {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, bevy::reflect::TypeUuid)]
+#[uuid = "413be529-bfeb-41b3-9db0-4b8b380a2c24"]
+pub struct AnimationJsonOld {
+    keyframes: Vec<f64>,
+    comp_animations: HashMap<u32, ComponentAnimationJson>,
+}
+impl AnimationJsonOld {
+    fn from_animation(anim: &Animation) -> Self {
+        Self {
+            keyframes: anim.keyframes.clone(),
+            comp_animations: {
+                let mut res: HashMap<u32, ComponentAnimationJson> = HashMap::new();
+                for (&key, value) in anim.comp_animations.iter() {
+                    res.insert(
+                        key.index(),
+                        ComponentAnimationJson::from_component_animation(value),
+                    );
+                }
+                res
+            },
+        }
+    }
+    fn as_animation(&self, spawned_entities: &HashMap<Entity, Entity>) -> Animation {
+        Animation {
+            keyframes: self.keyframes.clone(),
+            comp_animations: {
+                let mut res: HashMap<Entity, ComponentAnimation> = HashMap::new();
+                for (&key, value) in self.comp_animations.iter() {
+                    if spawned_entities.get(&Entity::from_raw(key)).is_none() {
+                        continue;
+                    }
+                    res.insert(
+                        *spawned_entities.get(&Entity::from_raw(key)).unwrap(),
+                        ComponentAnimationJson::as_component_animation(value),
+                    );
+                }
+                res
+            },
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, bevy::reflect::TypeUuid)]
+#[uuid = "413be529-bfeb-41b3-9db0-4b8b380a2c25"]
 struct ComponentAnimationJson {
     translations: Vec<Vec3>,
     scales: Vec<Vec3>,
@@ -139,8 +317,18 @@ impl ComponentAnimationJson {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-struct SkeletonJson {
+#[derive(Serialize, Deserialize, Clone, bevy::reflect::TypeUuid)]
+#[uuid = "413be529-bfeb-41b3-9db0-4b8b380a2c11"]
+pub struct SkeletonJsonOld {
+    bones: Vec<BoneJsonOld>,
+    skins: Vec<SkinJsonOld>,
+    targets: Vec<TargetJson>,
+    skin_mappings: Vec<SkinMappingOld>,
+}
+
+#[derive(Serialize, Deserialize, Clone, bevy::reflect::TypeUuid)]
+#[uuid = "413be529-bfeb-41b3-9db0-4b8b380a2c11"]
+pub struct SkeletonJson {
     bones: Vec<BoneJson>,
     skins: Vec<SkinJson>,
     targets: Vec<TargetJson>,
@@ -150,7 +338,23 @@ struct SkeletonJson {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
 struct ID(Entity);
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, bevy::reflect::TypeUuid)]
+#[uuid = "413be529-bfeb-41b3-9db0-4b8b380a2c26"]
+struct BoneJsonOld {
+    entity: u32,
+    parent: Option<u32>,
+    translation: Vec3,
+    scale: Vec3,
+    rotation: Quat,
+}
+impl PartialEq for BoneJsonOld {
+    fn eq(&self, other: &Self) -> bool {
+        self.entity == other.entity
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, bevy::reflect::TypeUuid)]
+#[uuid = "413be529-bfeb-41b3-9db0-4b8b380a2c27"]
 struct BoneJson {
     entity: Entity,
     parent: Option<Entity>,
@@ -164,7 +368,31 @@ impl PartialEq for BoneJson {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, bevy::reflect::TypeUuid)]
+#[uuid = "413be529-bfeb-41b3-9db0-4b8b380a2c31"]
+pub struct SkinJsonOld {
+    entity: u32,
+    filename: String,
+    vertices: Vec<[f32; 3]>,
+    uvs: Vec<[f32; 2]>,
+    indices: Vec<u16>,
+    depth: f32,
+    cloth: Option<Cloth>,
+}
+impl SkinJsonOld {
+    fn as_skin(&self) -> Skin {
+        Skin {
+            path: self.filename.clone(),
+            vertices: self.vertices.clone(),
+            uvs: self.uvs.clone(),
+            indices: self.indices.clone(),
+            mesh_handle: None,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, bevy::reflect::TypeUuid)]
+#[uuid = "413be529-bfeb-41b3-9db0-4b8b380a2c32"]
 pub struct SkinJson {
     entity: Entity,
     filename: String,
@@ -186,7 +414,8 @@ impl SkinJson {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, bevy::reflect::TypeUuid)]
+#[uuid = "413be529-bfeb-41b3-9db0-4b8b380a2c36"]
 struct TargetJson {
     entity: Entity,
     bone: Entity,
@@ -204,15 +433,15 @@ pub fn system_set() -> SystemSet {
 
 fn call_save_event(keys: Res<Input<KeyCode>>, mut save_evw: EventWriter<SaveEvent>) {
     #[cfg(not(target_arch = "wasm32"))]
-    if !keys.pressed(KeyCode::LControl) {
+    if keys.pressed(KeyCode::LControl) {
+        if get_just_pressed_number(&keys) == 1 {
+            // panic!("Save to slot {}!", get_just_pressed_number(&keys));
+        }
         let save_slot = get_just_pressed_number(&keys);
         if save_slot == -1 {
             return;
         }
-        save_evw.send(SaveEvent(format!(
-            "animation_{}.anim",
-            save_slot
-        )));
+        save_evw.send(SaveEvent(format!("animation_{}", save_slot)));
     }
 }
 
@@ -283,6 +512,7 @@ fn save(
             blending_style: anim_state.blending_style,
         })
         .unwrap();
+        println!("save_content: {}", &serialized);
         save_to_file(&serialized, filename);
     }
 }
@@ -290,11 +520,8 @@ fn save(
 fn save_to_file(serialized: &str, filename: String) {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let mut file = fs::File::create(format!(
-            "assets/anims/{}.anim",
-            filename
-        ))
-        .expect("Failed to create file!");
+        let mut file = fs::File::create(format!("assets/anims/{}.anim", filename))
+            .expect("Failed to create file!");
         file.write_all(serialized.as_bytes()).unwrap();
     }
 
@@ -321,13 +548,13 @@ fn save_to_file(serialized: &str, filename: String) {
 
 fn load_bone_recursive_no_parent(
     commands: &mut Commands,
-    bones: &Vec<BoneJson>,
+    bones: &Vec<BoneJsonOld>,
     spawned_entities: &mut HashMap<Entity, Entity>,
     index: usize,
 ) {
     let current_bone = bones[index].clone();
     let bone_entity = commands
-        .spawn_bundle(SpriteBundle {
+        .spawn(SpriteBundle {
             sprite: Sprite::default(),
             transform: Transform {
                 translation: current_bone.translation,
@@ -351,18 +578,18 @@ fn load_bone_recursive_no_parent(
             }
         })
         .id();
-    spawned_entities.insert(current_bone.entity, bone_entity);
+    spawned_entities.insert(Entity::from_raw(current_bone.entity), bone_entity);
 }
 
 fn load_bone_recursive_with_parent(
     parent: &mut ChildBuilder,
-    bones: &Vec<BoneJson>,
+    bones: &Vec<BoneJsonOld>,
     spawned_bones: &mut HashMap<Entity, Entity>,
     index: usize,
 ) {
     let current_bone = bones[index].clone();
     let bone_entity = parent
-        .spawn_bundle(SpriteBundle {
+        .spawn(SpriteBundle {
             sprite: Sprite::default(),
             transform: Transform {
                 translation: current_bone.translation,
@@ -386,13 +613,13 @@ fn load_bone_recursive_with_parent(
             }
         })
         .id();
-    spawned_bones.insert(current_bone.entity, bone_entity);
+    spawned_bones.insert(Entity::from_raw(current_bone.entity), bone_entity);
 }
 
 fn call_load_event(
     keys: Res<Input<KeyCode>>,
     mut load_evw: EventWriter<LoadEvent>,
-    savefile_assets: Res<Assets<CompleteJson>>,
+    savefile_assets: Res<Assets<CompleteJsonOld>>,
     asset_server: Res<AssetServer>,
     mut state: ResMut<State>,
 ) {
@@ -426,7 +653,6 @@ fn call_load_event(
             }
         }
     }
-
 }
 
 fn load(
@@ -490,13 +716,13 @@ fn load(
             let handle: Mesh2dHandle = meshes.add(mesh).into();
             skin.mesh_handle = Some(handle.clone());
 
-            commands.spawn_bundle(MaterialMesh2dBundle {
+            commands.spawn(MaterialMesh2dBundle {
                 mesh: handle.clone(),
                 material: materials.add(ColorMaterial::from(asset_server.load(&skin.path))),
                 ..default()
             });
             let skin_entity = commands
-                .spawn_bundle(TransformBundle::from_transform(Transform {
+                .spawn(TransformBundle::from_transform(Transform {
                     scale: Vec3::new(3.5, 3.5, 1.),
                     ..default()
                 }))
@@ -510,7 +736,7 @@ fn load(
                 commands.entity(skin_entity).insert(cloth);
             }
             spawned_entities.insert(
-                data.skeleton.skins[i].entity,
+                Entity::from_raw(data.skeleton.skins[i].entity),
                 commands.entity(skin_entity).id(),
             );
         }
@@ -519,7 +745,7 @@ fn load(
         for i in 0..data.skeleton.targets.len() {
             let target = data.skeleton.targets[i].clone();
             let target_entity = commands
-                .spawn_bundle(SpriteBundle {
+                .spawn(SpriteBundle {
                     transform: Transform::from_translation(target.translation),
                     sprite: Sprite {
                         color: COLOR_DEFAULT,
@@ -544,27 +770,52 @@ fn load(
         skeleton.bones = spawned_entities.values().into_iter().map(|&e| e).collect();
         for skin_mapping in data.skeleton.skin_mappings.iter_mut() {
             if let Some(json_entity) = skin_mapping.skin {
-                let opt_new_entity = spawned_entities.get(&json_entity);
+                let opt_new_entity = spawned_entities.get(&Entity::from_raw(json_entity));
                 skin_mapping.skin = if let Some(new_entity) = opt_new_entity {
-                    Some(*new_entity)
+                    Some(new_entity.index())
                 } else {
                     None
                 };
             }
             for vertex_mapping in skin_mapping.vertex_mappings.iter_mut() {
                 for i in (0..vertex_mapping.bones.len()).rev() {
-                    if spawned_entities.get(&vertex_mapping.bones[i]).is_none() {
+                    if spawned_entities
+                        .get(&Entity::from_raw(vertex_mapping.bones[i]))
+                        .is_none()
+                    {
                         vertex_mapping.weights.swap_remove(i);
                         vertex_mapping.bones.swap_remove(i);
                         vertex_mapping.rel_positions.swap_remove(i);
                         continue;
                     }
-                    vertex_mapping.bones[i] =
-                        *spawned_entities.get(&vertex_mapping.bones[i]).unwrap();
+                    vertex_mapping.bones[i] = spawned_entities
+                        .get(&Entity::from_raw(vertex_mapping.bones[i]))
+                        .unwrap()
+                        .index();
                 }
             }
         }
-        skeleton.skin_mappings = data.skeleton.skin_mappings;
+        let new_types = data
+            .skeleton
+            .skin_mappings
+            .iter()
+            .map(|sm| SkinMapping {
+                skin: if sm.skin.is_some() {
+                    Some(Entity::from_raw(sm.skin.unwrap()))
+                } else {
+                    None
+                },
+                vertex_mappings: sm.vertex_mappings.clone().iter().map(|old| {
+                    crate::skeleton::VertexMapping {
+                        is_free: old.is_free,
+                        weights: old.weights.clone(),
+                        bones: old.bones.iter().map(|en| Entity::from_raw(*en)).collect(),
+                        rel_positions: old.rel_positions.clone(),
+                    }
+                }).collect(),
+            })
+            .collect();
+        skeleton.skin_mappings = new_types;
 
         // Clear Selection
         transform_state.selected_entities.clear();
@@ -586,6 +837,164 @@ fn load(
         };
     }
 }
+
+// fn load_new(
+//     mut meshes: ResMut<Assets<Mesh>>,
+//     mut materials: ResMut<Assets<ColorMaterial>>,
+//     asset_server: Res<AssetServer>,
+//     mut skeleton: ResMut<Skeleton>,
+//     mut q: ParamSet<(
+//         Query<Entity, With<Bone>>,
+//         Query<(Entity, &skin::Skin)>,
+//         Query<(Entity, &Target)>,
+//     )>,
+//     mut commands: Commands,
+//     mut animations: ResMut<Animations>,
+//     mut transform_state: ResMut<transform::State>,
+//     mut egui_state: ResMut<egui::State>,
+//     mut anim_state: ResMut<animation::State>,
+//     mut load_evr: EventReader<LoadEvent>,
+// ) {
+//     for e in load_evr.iter() {
+//         let mut data = e.0.clone();
+
+//         for entity in q.p0().iter() {
+//             commands.entity(entity).despawn();
+//         }
+//         for (entity, skin) in q.p1().iter() {
+//             commands.entity(entity).despawn();
+//             meshes.remove(skin.mesh_handle.clone().unwrap().0);
+//         }
+//         for (entity, target) in q.p2().iter() {
+//             commands.entity(entity).despawn();
+//         }
+
+//         // Json ID to spawned entity ID, necessary because Game Engines assigns IDs automatically
+//         let mut spawned_entities: HashMap<Entity, Entity> = HashMap::new();
+
+//         // Spawn Bones
+//         for i in 0..data.skeleton.bones.len() {
+//             if data.skeleton.bones[i].parent.is_none() {
+//                 load_bone_recursive_no_parent(
+//                     &mut commands,
+//                     &data.skeleton.bones,
+//                     &mut spawned_entities,
+//                     i,
+//                 );
+//             }
+//         }
+//         // Spawn Skins
+//         for i in 0..data.skeleton.skins.len() {
+//             let mut skin = data.skeleton.skins[i].as_skin();
+
+//             let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+//             mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, skin.vertices.clone());
+//             mesh.insert_attribute(
+//                 Mesh::ATTRIBUTE_NORMAL,
+//                 vec![[0., 0., 1.]; skin.vertices.len()],
+//             );
+//             mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, skin.uvs.clone());
+//             mesh.set_indices(Some(Indices::U16(skin.indices.clone())));
+
+//             let handle: Mesh2dHandle = meshes.add(mesh).into();
+//             skin.mesh_handle = Some(handle.clone());
+
+//             commands.spawn(MaterialMesh2dBundle {
+//                 mesh: handle.clone(),
+//                 material: materials.add(ColorMaterial::from(asset_server.load(&skin.path))),
+//                 ..default()
+//             });
+//             let skin_entity = commands
+//                 .spawn(TransformBundle::from_transform(Transform {
+//                     scale: Vec3::new(3.5, 3.5, 1.),
+//                     ..default()
+//                 }))
+//                 .insert(Transformable {
+//                     is_selected: false,
+//                     ..default()
+//                 })
+//                 .insert(skin)
+//                 .id();
+//             if let Some(cloth) = data.skeleton.skins[i].cloth.clone() {
+//                 commands.entity(skin_entity).insert(cloth);
+//             }
+//             spawned_entities.insert(
+//                 Entity::from_raw(data.skeleton.skins[i].entity),
+//                 commands.entity(skin_entity).id(),
+//             );
+//         }
+
+//         // Spawn Targets
+//         for i in 0..data.skeleton.targets.len() {
+//             let target = data.skeleton.targets[i].clone();
+//             let target_entity = commands
+//                 .spawn(SpriteBundle {
+//                     transform: Transform::from_translation(target.translation),
+//                     sprite: Sprite {
+//                         color: COLOR_DEFAULT,
+//                         custom_size: Some(Vec2::new(0.4, 0.4)),
+//                         ..Default::default()
+//                     },
+//                     texture: asset_server.load("img/ccd_target.png"),
+//                     ..Default::default()
+//                 })
+//                 .insert(Target {
+//                     ik_method: inverse_kinematics::IKMethod::CCD,
+//                     bone: *spawned_entities.get(&target.bone).unwrap(),
+//                     depth: target.depth,
+//                 })
+//                 .insert(Transformable::default())
+//                 .insert(Animatable)
+//                 .id();
+//             spawned_entities.insert(target.entity, target_entity);
+//         }
+
+//         // Build Skeleton
+//         skeleton.bones = spawned_entities.values().into_iter().map(|&e| e).collect();
+//         for skin_mapping in data.skeleton.skin_mappings.iter_mut() {
+//             if let Some(json_entity) = skin_mapping.skin {
+//                 let opt_new_entity = spawned_entities.get(&json_entity);
+//                 skin_mapping.skin = if let Some(new_entity) = opt_new_entity {
+//                     Some(*new_entity)
+//                 } else {
+//                     None
+//                 };
+//             }
+//             for vertex_mapping in skin_mapping.vertex_mappings.iter_mut() {
+//                 for i in (0..vertex_mapping.bones.len()).rev() {
+//                     if spawned_entities.get(&vertex_mapping.bones[i]).is_none() {
+//                         vertex_mapping.weights.swap_remove(i);
+//                         vertex_mapping.bones.swap_remove(i);
+//                         vertex_mapping.rel_positions.swap_remove(i);
+//                         continue;
+//                     }
+//                     vertex_mapping.bones[i] =
+//                         *spawned_entities.get(&vertex_mapping.bones[i]).unwrap();
+//                 }
+//             }
+//         }
+//         skeleton.skin_mappings = data.skeleton.skin_mappings;
+
+//         // Clear Selection
+//         transform_state.selected_entities.clear();
+
+//         // Load Animations
+//         animations.map = data.animations.as_animations(&spawned_entities).map;
+
+//         // Load Layers
+//         anim_state.layers = data.animation_layers;
+
+//         // Load Blending Style
+//         anim_state.blending_style = data.blending_style;
+
+//         // Select first Animation
+//         egui_state.plots[0].name = if let Some(name) = animations.map.keys().next() {
+//             name.clone()
+//         } else {
+//             String::new()
+//         };
+//     }
+// }
 
 fn get_just_pressed_number(keys: &Input<KeyCode>) -> i32 {
     if keys.just_pressed(KeyCode::Key1) {

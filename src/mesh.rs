@@ -2,7 +2,7 @@ use bevy::utils::HashMap;
 
 use crate::{skin::Skin, *};
 
-#[derive(Default)]
+#[derive(Resource, Default)]
 pub struct FrameMaterialHandles(HashMap<String, Handle<ColorMaterial>>);
 
 pub fn system_set() -> SystemSet {

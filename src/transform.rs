@@ -20,6 +20,7 @@ pub struct TransformChildren {
     pub entities: HashSet<Entity>,
 }
 
+#[derive(Resource)]
 pub struct State {
     pub action: transform::Action,
     pub cursor_anchor: Vec2,

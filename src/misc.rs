@@ -5,7 +5,7 @@ use crate::{skin::AVAILABLE_IMAGES, *};
 use bevy::{
     ecs::change_detection::MutUntyped,
     prelude::*,
-    render::camera::{DepthCalculation, RenderTarget},
+    render::camera::RenderTarget,
     utils::HashMap,
 };
 
@@ -24,10 +24,10 @@ pub fn setup(
     clear_color: Res<ClearColor>,
     mut save_load_state: ResMut<save_load::State>,
 ) {
-    commands.spawn_bundle(new_camera_2d()).insert(MainCamera);
+    commands.spawn(new_camera_2d()).insert(MainCamera);
 
     commands
-        .spawn_bundle(SpriteBundle {
+        .spawn(SpriteBundle {
             sprite: Sprite {
                 color: bevy_image::ColorUtils::invert(&clear_color.0),
                 ..Default::default()
@@ -46,7 +46,7 @@ pub fn setup(
     }
 
     // Load arachnoid animation
-    save_load_state.opt_load_path = Some(save_load::anim_name_to_path("arachnoid"));
+    // save_load_state.opt_load_path = Some(save_load::anim_name_to_path("arachnoid"));
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -63,7 +63,6 @@ fn new_camera_2d() -> Camera2dBundle {
     let mut camera = Camera2dBundle::default();
     camera.projection = OrthographicProjection {
         far,
-        depth_calculation: DepthCalculation::ZDifference,
         // scaling_mode: ScalingMode::FixedHorizontal,
         scale: 1f32,
         ..Default::default()

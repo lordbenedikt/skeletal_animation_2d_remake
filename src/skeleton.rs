@@ -7,9 +7,9 @@ use cloth::Cloth;
 use serde::*;
 use skin::Skin;
 
-const VERTEX_BONE_MAX_DISTANCE: f32 = 1.;
+pub const VERTEX_BONE_MAX_DISTANCE: f32 = 1.;
 
-#[derive(Default)]
+#[derive(Resource, Default)]
 pub struct Skeleton {
     pub bones: Vec<Entity>,
     pub skin_mappings: Vec<SkinMapping>,
