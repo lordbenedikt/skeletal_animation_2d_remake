@@ -13,7 +13,7 @@ use bevy_egui::{
 };
 use interpolate::Function;
 use inverse_kinematics::*;
-use std::fs;
+use std::{fs, f32::consts::PI};
 
 pub struct PlotState {
     pub name: String,
@@ -229,59 +229,6 @@ fn skin_settings(ui: &mut Ui, state: &mut State, skin_state: &mut skin::State) {
     ui.end_row();
 }
 
-fn animation_settings_grid(ui: &mut Ui, state: &mut State, anim_state: &mut animation::State) {
-    ui.horizontal(|ui| {
-        ui.vertical(|ui| {
-            egui::Grid::new("ik_and_keyframe_length").show(ui, |ui| {
-                if ui.button(state.ik_method.to_string()).clicked() {
-                    state.ik_method = if state.ik_method == IKMethod::CCD {
-                        IKMethod::Jacobian
-                    } else {
-                        IKMethod::CCD
-                    };
-                }
-                ui.label("Depth: ");
-                ui.add(
-                    egui::DragValue::new(&mut state.ik_depth)
-                        .speed(1)
-                        .clamp_range(1..=30),
-                );
-                ui.end_row();
-
-                ui.label("default keyframe length");
-                ui.add(
-                    egui::DragValue::new(&mut state.keyframe_length)
-                        .speed(1)
-                        .clamp_range(1..=10000)
-                        .suffix("ms"),
-                );
-                ui.end_row();
-            });
-        });
-        ui.vertical(|ui| {
-            egui::Grid::new("is_playing_and_blending_style").show(ui, |ui| {
-                ui.label("blending style:");
-                if ui.button(anim_state.blending_style.to_string()).clicked() {
-                    if anim_state.blending_style == animation::BlendingStyle::FourWayAdditive {
-                        anim_state.blending_style = animation::BlendingStyle::Layering;
-                    } else if anim_state.blending_style == animation::BlendingStyle::Layering {
-                        anim_state.blending_style = animation::BlendingStyle::FourWayAdditive;
-                    }
-                };
-                ui.end_row();
-
-                ui.label("animation:");
-                ui.label(if anim_state.running {
-                    "is playing"
-                } else {
-                    "is paused"
-                });
-                ui.end_row();
-            });
-        });
-    });
-}
-
 pub fn get_selection_stats(
     mut state: ResMut<State>,
     transform_state: Res<transform::State>,
@@ -402,10 +349,21 @@ fn animations_all(
     keys: &Input<KeyCode>,
     show_keyframe_evw: &mut EventWriter<animation::ShowKeyframeEvent>,
     q: &Query<&mut Transform>,
-    q_bones: &Query<(Entity, &Transformable), With<bone::Bone>>,
+    q_bones: &mut Query<(Entity, &Transformable, &mut bone::Bone)>,
+    transform_state: &transform::State,
 ) {
     // LAYERS
-    ui.label("Layers");
+    ui.label("LAYERS");
+    ui.horizontal(|ui| {
+        ui.label("blending style:");
+        if ui.button(anim_state.blending_style.to_string()).clicked() {
+            if anim_state.blending_style == animation::BlendingStyle::FourWayAdditive {
+                anim_state.blending_style = animation::BlendingStyle::Layering;
+            } else if anim_state.blending_style == animation::BlendingStyle::Layering {
+                anim_state.blending_style = animation::BlendingStyle::FourWayAdditive;
+            }
+        };
+    });
     let mut current_layer = 0;
     for row in 0..((anim_state.layers.len() + 2) / 2) {
         ui.horizontal(|ui| {
@@ -459,12 +417,103 @@ fn animations_all(
         });
     }
 
+    ui.separator();
+
+    // Inverse Kinematics
+    ui.label("INVERSE KINEMATICS");
+    ui.horizontal(|ui| {
+        if ui.button(state.ik_method.to_string()).clicked() {
+            state.ik_method = if state.ik_method == IKMethod::CCD {
+                IKMethod::Jacobian
+            } else {
+                IKMethod::CCD
+            };
+        }
+        ui.label("Depth: ");
+        ui.add(
+            egui::DragValue::new(&mut state.ik_depth)
+                .speed(1)
+                .clamp_range(1..=30),
+        );
+    });
+
+    ui.separator();
+
+    // Set Angle Constraints
+    ui.label("ANGLE CONSTRAINTS");
+    ui.horizontal(|ui| {
+        if let Some(&first_selected_entity) = transform_state.selected_entities.iter().next() {
+            if let Ok((_, _, mut bone)) = q_bones.get_mut(first_selected_entity) {
+                if let Some(angle_constraint) = &mut bone.ik_angle_constraint {
+                    ui.label("Start: ");
+                    ui.add(
+                        egui::DragValue::new(&mut angle_constraint.start)
+                            .speed(0.1)
+                            .custom_formatter(|n,_| {
+                                format!("{:.1}°", n.to_degrees())
+                            })
+                    );
+                    ui.label("End: ");
+                    ui.add(
+                        egui::DragValue::new(&mut angle_constraint.end)
+                            .speed(0.1)
+                            .custom_formatter(|n,_| {
+                                format!("{:.1}°", n.to_degrees())
+                            })
+                    );
+                    if ui.button("No Constraint").clicked() {
+                        angle_constraint.start = 0.0;
+                        angle_constraint.end = 0.0;
+                    }
+                    angle_constraint.start = (angle_constraint.start + 2.*PI) % (2.*PI);
+                    angle_constraint.end = (angle_constraint.end + 2.*PI) % (2.*PI);
+                    if angle_constraint.end < angle_constraint.start {
+                        angle_constraint.end += 2.*PI;   
+                    }
+                }
+            }
+        }
+    });
+
+    ui.separator();
+
     // General Animation Settings
-    ui.label("Animations                        ");
-    animation_settings_grid(ui, state, anim_state);
+    ui.horizontal(|ui| {
+        ui.label("ANIMATIONS  ");
+        ui.label(if anim_state.running {
+            "(animation is playing)"
+        } else {
+            "(animation is paused)"
+        });
+    });
+    ui.horizontal(|ui| {
+        ui.label("default keyframe length");
+        ui.add(
+            egui::DragValue::new(&mut state.keyframe_length)
+                .speed(1)
+                .clamp_range(1..=10000)
+                .suffix("ms"),
+        );
+
+        // Free selected bones removing them from the current animation layer
+        if ui.button("Free Selected Bones").clicked() {
+            let anim = animations
+                .map
+                .get_mut(&state.plots[state.edit_plot].name)
+                .unwrap();
+            for (entity, transformable, _) in q_bones.iter() {
+                if transformable.is_selected {
+                    anim.comp_animations.remove(&entity);
+                }
+            }
+        }
+    });
+
+    ui.separator();
+
     // Choose Easing Function
     ui.horizontal(|ui| {
-        ui.label("Easing Function:");
+        ui.label("EASING FUNCTION");
         let function_combo_box =
             egui::ComboBox::from_id_source(format!("easing_function_{}", state.edit_plot))
                 .selected_text(state.interpolation_function.to_string())
@@ -495,19 +544,6 @@ fn animations_all(
                         };
                     }
                 });
-
-        // Free selected bones removing them from the current animation layer
-        if ui.button("Free Bones").clicked() {
-            let anim = animations
-                .map
-                .get_mut(&state.plots[state.edit_plot].name)
-                .unwrap();
-            for (entity, transformable) in q_bones.iter() {
-                if transformable.is_selected {
-                    anim.comp_animations.remove(&entity);
-                }
-            }
-        }
     });
 
     ui.separator();
@@ -704,7 +740,7 @@ pub fn animation_menu(
     keys: Res<Input<KeyCode>>,
     mut anim_state: ResMut<animation::State>,
     mut q: Query<&mut Transform>,
-    mut q_bones: Query<(Entity, &transform::Transformable), With<bone::Bone>>,
+    mut q_bones: Query<(Entity, &transform::Transformable, &mut bone::Bone)>,
     mut save_evw: EventWriter<save_load::SaveEvent>,
 ) {
     // Hide window when transforming
@@ -777,7 +813,8 @@ pub fn animation_menu(
                 &keys,
                 &mut show_keyframe_evw,
                 &q,
-                &q_bones,
+                &mut q_bones,
+                &transform_state,
             );
         })
         .unwrap()

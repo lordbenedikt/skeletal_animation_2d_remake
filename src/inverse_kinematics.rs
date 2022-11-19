@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use crate::{animation::Animatable, *};
 use bone::Bone;
 
@@ -11,12 +13,7 @@ pub enum IKMethod {
 impl IKMethod {
     /// Get a vector containing all interpolation functions
     pub fn all() -> impl ExactSizeIterator<Item = IKMethod> {
-        [
-            Self::CCD,
-            Self::Jacobian,
-        ]
-        .iter()
-        .copied()
+        [Self::CCD, Self::Jacobian].iter().copied()
     }
 }
 impl ToString for IKMethod {
@@ -27,7 +24,6 @@ impl ToString for IKMethod {
         }
     }
 }
-
 
 #[derive(Component, Clone)]
 pub struct Target {
@@ -102,6 +98,7 @@ pub fn add_target(
 /// or `max_it` iterations have been executed.
 fn get_target_rotations_ccd(
     mut chain: Vec<Transform>,
+    constraints: Vec<Option<bone::AngleConstraint>>,
     target: Vec2,
     eps: f32,
     max_it: usize,
@@ -122,6 +119,24 @@ fn get_target_rotations_ccd(
                 (target - current_pos).normalize(),
             );
             chain[i].rotation = (chain[i].rotation * delta_rot).normalize();
+
+            if let Some(c) = &constraints[i] {
+                if c.start != c.end {
+                    let rot = (chain[i].rotation.to_euler(EulerRot::XYZ).2 + (4.*PI)) % (2.*PI);
+                    if !((rot >= c.start && rot <= c.end)
+                        || (rot >= c.start - 2. * PI && rot <= c.end - 2. * PI))
+                    {
+                        let start_dist = (rot - (c.start % (2. * PI))).abs();
+                        let end_dist = (rot - (c.end % (2. * PI))).abs();
+                        let fixed_angle = if start_dist <= end_dist {
+                            c.start
+                        } else {
+                            c.end
+                        };
+                        chain[i].rotation = Quat::from_rotation_z(fixed_angle);
+                    }
+                }
+            }
 
             end_effector_pos = kinematic_chain::get_tip_chain(&chain).truncate();
         }
@@ -225,6 +240,7 @@ pub fn reach_for_target(
         // Construct chain from bones query
         let mut chain_transforms = vec![];
         let mut chain_entities = vec![];
+        let mut chain_constraints = vec![];
         let mut next_bone = target.bone;
         let mut chain_has_parent_bone = true;
         for _ in 0..target.depth {
@@ -237,11 +253,12 @@ pub fn reach_for_target(
                 return;
             }
 
-            let (transform, opt_parent, _) = q_bones.get(next_bone).unwrap();
+            let (transform, opt_parent, bone) = q_bones.get(next_bone).unwrap();
 
             // Add bone to chain and continue with parent, if present
             chain_transforms.push(transform.clone());
             chain_entities.push(next_bone);
+            chain_constraints.push(bone.ik_angle_constraint.clone());
             next_bone = if let Some(parent) = opt_parent {
                 parent.get()
             } else {
@@ -280,7 +297,9 @@ pub fn reach_for_target(
             .truncate();
 
         let target_rotations = match target.ik_method {
-            IKMethod::CCD => get_target_rotations_ccd(chain_transforms, target_pos, 0.01, 2),
+            IKMethod::CCD => {
+                get_target_rotations_ccd(chain_transforms, chain_constraints, target_pos, 0.01, 2)
+            }
             IKMethod::Jacobian => {
                 get_target_rotations_jacobian(chain_transforms, target_pos, 0.01, 1.0, 2)
             }

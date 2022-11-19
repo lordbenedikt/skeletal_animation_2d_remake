@@ -1,13 +1,14 @@
 use std::cmp;
 use std::thread::sleep;
 
-use crate::{skin::AVAILABLE_IMAGES, *};
+use crate::{skin::AVAILABLE_IMAGES, *, debug::AngleConstraintDebug};
 use bevy::{
     ecs::change_detection::MutUntyped,
     prelude::*,
     render::camera::{DepthCalculation, RenderTarget},
     utils::HashMap,
 };
+use bevy_prototype_lyon::{entity::ShapeBundle, shapes::Polygon};
 
 #[derive(Component)]
 pub struct MainCamera;
@@ -25,6 +26,20 @@ pub fn setup(
     mut save_load_state: ResMut<save_load::State>,
 ) {
     commands.spawn_bundle(new_camera_2d()).insert(MainCamera);
+
+    commands.spawn_bundle(
+        GeometryBuilder::build_as(
+            &Polygon {
+                points: vec![],
+                closed: true,
+            },
+            DrawMode::Fill(FillMode {
+                color: COLOR_WHITE,
+                options: FillOptions::default(),
+            }),
+            Transform::from_translation(Vec3::new(0., 0., 700.)),
+        ),
+    ).insert(AngleConstraintDebug);
 
     commands
         .spawn_bundle(SpriteBundle {
@@ -46,7 +61,7 @@ pub fn setup(
     }
 
     // Load arachnoid animation
-    save_load_state.opt_load_path = Some(save_load::anim_name_to_path("standard_anims/arachnoid.anim"));
+    save_load_state.opt_load_path = Some("standard_anims/arachnoid.anim".to_string());
 }
 
 #[cfg(target_arch = "wasm32")]

@@ -1,4 +1,7 @@
+use std::{ascii::EscapeDefault, f32::consts::PI};
+
 use bevy::utils::HashSet;
+use bevy_prototype_lyon::{entity::ShapeBundle, shapes::Polygon};
 
 use crate::*;
 
@@ -66,6 +69,9 @@ impl Default for DebugDrawer {
         }
     }
 }
+
+#[derive(Component)]
+pub struct AngleConstraintDebug;
 
 const SCALAR: f32 = 1. / PIXELS_PER_UNIT as f32;
 
@@ -370,11 +376,14 @@ pub fn draw_bones(
     mut debug_drawer: ResMut<DebugDrawer>,
     cursor_pos: Res<CursorPos>,
     mut set: ParamSet<(
-        Query<Entity, With<bone::Bone>>,
+        Query<(Entity, &bone::Bone)>,
         Query<(&Transform, Option<&Parent>), With<bone::Bone>>,
         Query<&Transformable, With<bone::Bone>>,
+        Query<Entity, With<AngleConstraintDebug>>,
     )>,
     egui_state: Res<egui::State>,
+    mut commands: Commands,
+    transform_state: Res<transform::State>,
 ) {
     if !debug_drawer.bone_debug_enabled {
         return;
@@ -399,8 +408,9 @@ pub fn draw_bones(
         }
     }
 
-    let bone_entities: Vec<Entity> = set.p0().iter().collect();
+    let bone_entities: Vec<Entity> = set.p0().iter().map(|(entity, _)| entity).collect();
     for entity in bone_entities {
+        let transform = set.p1().get(entity).expect("bone entity doesn't exist").0.clone();
         let opt_bone_gl_transform = bone::get_bone_gl_transform(entity, &set.p1());
         if let Some(gl_transform) = opt_bone_gl_transform {
             if gl_transform.translation.is_nan()
@@ -410,6 +420,54 @@ pub fn draw_bones(
                 dbg!(gl_transform);
                 println!("transform is nan!");
                 continue;
+            }
+
+            // Draw Angle Constraints
+            if set.p2().get(entity).unwrap().is_selected {
+                if let Some(&first_selected_entity) =
+                    transform_state.selected_entities.iter().next()
+                {
+                    if entity == first_selected_entity {
+                        if let Some(angle_constraint) =
+                            set.p0().get(entity).unwrap().1.ik_angle_constraint.clone()
+                        {
+                            let mut angle = angle_constraint.start;
+                            let radius = f32::max(gl_transform.scale.y / 3.0, 0.3);
+                            for angle_constraint_entity in set.p3().iter() {
+                                // Calculate polygon points
+                                let mut points = vec![Vec2::splat(0.)];
+                                while angle <= angle_constraint.end {
+                                    angle += PI / 40.0;
+                                    let v_diff =
+                                        Vec2::new(0.0, radius).rotate(Vec2::from_angle(angle));
+                                    points.push(v_diff);
+                                }
+
+                                // Spawn shape
+                                commands.entity(angle_constraint_entity).insert_bundle(
+                                    GeometryBuilder::build_as(
+                                        &Polygon {
+                                            points: points,
+                                            closed: true,
+                                        },
+                                        DrawMode::Fill(FillMode {
+                                            color: COLOR_GREEN_TRANSPARENT,
+                                            options: FillOptions::default(),
+                                        }),
+                                        Transform {
+                                            rotation: gl_transform.rotation * transform.rotation.inverse(),
+                                            translation: gl_transform
+                                                .translation
+                                                .truncate()
+                                                .extend(600.),
+                                            ..Default::default()
+                                        },
+                                    ),
+                                );
+                            }
+                        }
+                    }
+                }
             }
 
             let z = 0.001;

@@ -1,8 +1,15 @@
 use crate::{animation::Animatable, skeleton::Skeleton, *};
 
-#[derive(Component, Default)]
+#[derive(Default, Clone)]
+pub struct AngleConstraint {
+    pub start: f32,
+    pub end: f32,
+}
+
+#[derive(Component)]
 pub struct Bone {
     pub is_ik_maneuvered: bool,
+    pub ik_angle_constraint: Option<AngleConstraint>,
 }
 impl Bone {
     pub fn get_tip(gl_transform: &GlobalTransform) -> Vec2 {
@@ -17,6 +24,14 @@ impl Bone {
             .rotation
             .mul_vec3(Vec3::new(0., gl_transform.scale.y, 0.));
         res.truncate()
+    }
+}
+impl Default for Bone {
+    fn default() -> Self {
+        Self {
+            is_ik_maneuvered: false,
+            ik_angle_constraint: Some(AngleConstraint::default()),
+        }
     }
 }
 

@@ -34,11 +34,16 @@ const COLOR_WHITE: Color = Color::rgb(1., 1., 1.);
 const COLOR_GRAY: Color = Color::rgb(0.3, 0.3, 0.3);
 const COLOR_LIGHT_GRAY: Color = Color::rgb(0.55, 0.55, 0.55);
 const COLOR_LIGHTER_GRAY: Color = Color::rgb(0.7, 0.7, 0.7);
+const COLOR_RED: Color = Color::rgb(1.0, 0.0, 0.0);
+const COLOR_RED_TRANSPARENT: Color = Color::rgba(1.0, 0.0, 0.0, 0.4);
+const COLOR_GREEN: Color = Color::rgb(0.0, 1.0, 0.0);
+const COLOR_GREEN_TRANSPARENT: Color = Color::rgba(0.0, 1.0, 0.0, 0.4);
 const COLOR_BLACK: Color = Color::rgb(0., 0., 0.);
 const COLOR_SELECTED: Color = Color::rgb(1., 0.9, 0.);
 const COLOR_DEFAULT: Color = Color::rgb(1., 0.6, 0.);
 const COLOR_SELECTED_ACTIVE: Color = Color::rgb(0., 0.9, 1.);
 const COLOR_DEFAULT_ACTIVE: Color = Color::rgb(0.2, 0.2, 1.);
+
 const PIXELS_PER_UNIT: u32 = 100;
 
 // RESOURCES
