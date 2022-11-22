@@ -440,7 +440,7 @@ fn animations_all(
     ui.separator();
 
     // Set Angle Constraints
-    ui.label("ANGLE CONSTRAINTS");
+    ui.label("ANGLE CONSTRAINTS (saving not currently supported)");
     ui.horizontal(|ui| {
         if let Some(&first_selected_entity) = transform_state.selected_entities.iter().next() {
             if let Ok((_, _, mut bone)) = q_bones.get_mut(first_selected_entity) {
@@ -479,7 +479,7 @@ fn animations_all(
 
     // General Animation Settings
     ui.horizontal(|ui| {
-        ui.label("ANIMATIONS  ");
+        ui.label("ANIMATION  ");
         ui.label(if anim_state.running {
             "(animation is playing)"
         } else {
