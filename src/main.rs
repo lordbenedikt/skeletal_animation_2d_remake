@@ -79,6 +79,7 @@ fn main() {
     .insert_resource(animation::State::new())
     .insert_resource(skin::State::default())
     .insert_resource(egui::State::default())
+    .insert_resource(egui::OpenWindows::default())
     .insert_resource(cloth::State::default())
     .insert_resource(save_load::State::default())
     // EVENTS
