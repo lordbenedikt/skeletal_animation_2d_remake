@@ -80,7 +80,7 @@ impl Transformable {
 
 #[derive(PartialEq)]
 pub enum PhantomShape {
-    Point(Vec2),
+    Point,
     Rectangle(Vec2, Vec2),
     Line(Vec2, Vec2),
     None,
@@ -360,6 +360,8 @@ pub fn select(
                     Vec2::distance((min + max) / 2., cursor_pos.0)
                 } else if let PhantomShape::Line(start, end) = transformable.collision_shape {
                     distance_segment_point(start, end, cursor_pos.0)
+                } else if let PhantomShape::Point = transformable.collision_shape {
+                    Vec2::distance(gl_transform.translation().truncate(), cursor_pos.0)
                 } else {
                     // assert transformable.collision_shape == Shape::None
                     let length = gl_transform.to_scale_rotation_translation().0.y;
@@ -514,11 +516,11 @@ pub trait AsTransform {
 impl AsTransform for GlobalTransform {
     fn as_transform(&self) -> Transform {
         let (parent_scale, parent_rotation, parent_translation) =
-        self.affine().to_scale_rotation_translation();
+            self.affine().to_scale_rotation_translation();
         Transform {
             translation: parent_translation,
             rotation: parent_rotation,
-            scale:parent_scale,
+            scale: parent_scale,
         }
     }
 }

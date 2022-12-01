@@ -2,10 +2,11 @@ use std::f32::consts::PI;
 
 use crate::{animation::Animatable, *};
 use bone::Bone;
+use serde::{Serialize, Deserialize};
 
 extern crate nalgebra as na;
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 pub enum IKMethod {
     CCD,
     Jacobian,
@@ -69,6 +70,7 @@ pub fn add_target(
                     sprite: Sprite {
                         color: COLOR_DEFAULT,
                         custom_size: Some(Vec2::new(0.4, 0.4)),
+                        anchor: bevy::sprite::Anchor::Center,
                         ..Default::default()
                     },
                     texture: asset_server.load("img/ccd_target.png"),
@@ -79,7 +81,10 @@ pub fn add_target(
                     bone: bone_entity,
                     depth: egui_state.ik_depth,
                 })
-                .insert(Transformable::default())
+                .insert(Transformable {
+                    collision_shape: transform::PhantomShape::Point,
+                    ..Default::default()
+                })
                 .insert(Animatable)
                 .id(),
         );
@@ -228,6 +233,7 @@ pub fn get_target_rotations_jacobian(
 pub fn reach_for_target(
     mut commands: Commands,
     mut q_bones: Query<(&mut Transform, Option<&Parent>, &mut Bone)>,
+    egui_state: Res<egui::State>,
     q_targets: Query<(Entity, &Transform, &Target), Without<Bone>>,
 ) {
     // Reset bone.is_ik_maneuvered
@@ -298,10 +304,10 @@ pub fn reach_for_target(
 
         let target_rotations = match target.ik_method {
             IKMethod::CCD => {
-                get_target_rotations_ccd(chain_transforms, chain_constraints, target_pos, 0.01, 2)
+                get_target_rotations_ccd(chain_transforms, chain_constraints, target_pos, 0.01, egui_state.ik_max_iterations)
             }
             IKMethod::Jacobian => {
-                get_target_rotations_jacobian(chain_transforms, target_pos, 0.01, 1.0, 2)
+                get_target_rotations_jacobian(chain_transforms, target_pos, 0.01, 1.0, egui_state.ik_max_iterations)
             }
         };
 

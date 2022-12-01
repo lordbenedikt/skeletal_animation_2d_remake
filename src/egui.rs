@@ -42,6 +42,7 @@ impl Default for OpenWindows {
 }
 
 pub struct State {
+    pub ik_max_iterations: usize,
     pub loaded_standard_anim: String,
     pub interpolation_function: Function,
     pub keyframe_length: i32,
@@ -67,6 +68,7 @@ pub struct State {
 impl Default for State {
     fn default() -> Self {
         Self {
+            ik_max_iterations: 10,
             loaded_standard_anim: String::from("Choose..."),
             interpolation_function: Function::EaseInOut,
             keyframe_length: 400,
@@ -449,6 +451,12 @@ fn animations_all(
             egui::DragValue::new(&mut state.ik_depth)
                 .speed(1)
                 .clamp_range(1..=30),
+        );
+        ui.label("Max Iterations (global): ");
+        ui.add(
+            egui::DragValue::new(&mut state.ik_max_iterations)
+                .speed(1)
+                .clamp_range(1..=50),
         );
     });
 

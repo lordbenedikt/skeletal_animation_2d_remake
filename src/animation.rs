@@ -435,26 +435,29 @@ pub fn show_keyframe(
     mut show_keyframe_evr: EventReader<ShowKeyframeEvent>,
     mut q: Query<&mut Transform>,
     state: Res<State>,
-    animations: ResMut<Animations>,
+    mut animations: ResMut<Animations>,
 ) {
     if state.running {
         return;
     }
     for ev in show_keyframe_evr.iter() {
-        // Set Transforms to values stored in keyframe
-        for (&entity, comp_animation) in animations
-            .map
-            .get(&ev.animation_name)
-            .unwrap()
-            .comp_animations
-            .iter()
-        {
-            for i in 0..comp_animation.transforms.len() {
-                if i == ev.keyframe_index {
-                    let mut transform = q.get_mut(entity).unwrap();
-                    transform.translation = comp_animation.transforms[i].translation;
-                    transform.scale = comp_animation.transforms[i].scale;
-                    transform.rotation = comp_animation.transforms[i].rotation;
+        let opt_anim = animations.map.get_mut(&ev.animation_name);
+        if let Some(anim) = opt_anim {
+            // Set Transforms to values stored in keyframe
+            let keys = anim.comp_animations.keys().map(|e| e.clone()).collect::<Vec<Entity>>();
+            for entity in keys {
+                if q.get_mut(entity).is_err() {
+                    anim.comp_animations.remove(&entity);
+                    continue;
+                }
+                let comp_anim = &anim.comp_animations[&entity];
+                for i in 0..comp_anim.transforms.len() {
+                    if i == ev.keyframe_index {
+                        let mut transform = q.get_mut(entity).expect("entity doesn't exist!");
+                        transform.translation = comp_anim.transforms[i].translation;
+                        transform.scale = comp_anim.transforms[i].scale;
+                        transform.rotation = comp_anim.transforms[i].rotation;
+                    }
                 }
             }
         }

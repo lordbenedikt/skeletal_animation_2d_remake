@@ -1,7 +1,7 @@
 use crate::animation::{Animatable, Animation, Animations, ComponentAnimation};
 use crate::bone::Bone;
-use crate::inverse_kinematics::Target;
 use crate::cloth::Cloth;
+use crate::inverse_kinematics::{IKMethod, Target};
 use crate::skeleton::{Skeleton, SkinMapping};
 use crate::skin::Skin;
 use crate::*;
@@ -188,6 +188,7 @@ impl SkinJson {
 
 #[derive(Serialize, Deserialize, Clone)]
 struct TargetJson {
+    opt_ik_method: Option<IKMethod>,
     entity: Entity,
     bone: Entity,
     depth: u8,
@@ -209,10 +210,7 @@ fn call_save_event(keys: Res<Input<KeyCode>>, mut save_evw: EventWriter<SaveEven
         if save_slot == -1 {
             return;
         }
-        save_evw.send(SaveEvent(format!(
-            "animation_{}",
-            save_slot
-        )));
+        save_evw.send(SaveEvent(format!("animation_{}", save_slot)));
     }
 }
 
@@ -266,6 +264,7 @@ fn save(
             .iter()
             .map(|(entity, target, transform)| TargetJson {
                 entity,
+                opt_ik_method: Some(target.ik_method),
                 bone: target.bone,
                 depth: target.depth,
                 translation: transform.translation,
@@ -290,11 +289,8 @@ fn save(
 fn save_to_file(serialized: &str, filename: String) {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let mut file = fs::File::create(format!(
-            "assets/anims/{}.anim",
-            filename
-        ))
-        .expect("Failed to create file!");
+        let mut file = fs::File::create(format!("assets/anims/{}.anim", filename))
+            .expect("Failed to create file!");
         file.write_all(serialized.as_bytes()).unwrap();
     }
 
@@ -426,7 +422,6 @@ fn call_load_event(
             }
         }
     }
-
 }
 
 fn load(
@@ -530,7 +525,11 @@ fn load(
                     ..Default::default()
                 })
                 .insert(Target {
-                    ik_method: inverse_kinematics::IKMethod::CCD,
+                    ik_method: if let Some(method) = target.opt_ik_method {
+                        method
+                    } else {
+                        inverse_kinematics::IKMethod::CCD
+                    },
                     bone: *spawned_entities.get(&target.bone).unwrap(),
                     depth: target.depth,
                 })
