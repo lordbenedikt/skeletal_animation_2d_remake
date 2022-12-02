@@ -203,7 +203,7 @@ pub fn get_target_rotations_jacobian(
 
         if scalar < 1.0 {
             // println!("scalar: {}",scalar);
-            let v_diff = root_to_target * (scalar - 1.001);
+            let v_diff = root_to_target * (scalar - 1.002);
             target_arranged = target + v_diff.truncate();
         }
         // let scalar =  chain_length / v.length();
