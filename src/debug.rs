@@ -366,7 +366,7 @@ pub fn draw_skin_mesh(
                 vertices[(line >> 16) as usize].truncate(), // 16 most significant bits
                 vertices[(line & RIGHT_HALF_BITMASK) as usize].truncate(), // 16 least significant bits
                 color,
-                1.,
+                3.,
             )
         }
     }

@@ -5,6 +5,9 @@ This is a 2D skeletal animation editor was implemented with Rust and the Game En
 A WebAssembly demo of the application can be found here:
 https://lordbenedikt.github.io/skeletal_animation_2d_remake/
 
+This app was implemented as addition to my bachelor thesis, which can be viewed [here](thesis/thesis.pdf).
+
+
 ## User Manual
 
 The editor allows the creation of a hierarchical bone structure and the generation of a 2D mesh from a simple png-file. Meshes can be bound to one or multiple bones and they will be deformed when the corresponding bones are moved, rotated or scaled. It is possible to create animations. An animation consists of keyframes. Between keyframes sufficient frames to create a fluent animation will be generated using interpolation. The nature of interpolation can be specified per keyframe by changing the easing function. The editor also supports animation layering and additive animation blending.
@@ -30,7 +33,7 @@ Use **LCtrl + LMouse** to create a new bone. The currently selected bone will au
 
 ### Skins
 
-Inside the window labeled 'Skins' a graphics file can be selected. The listed files are stored in the folder './assets/img'. Any custom PNG-file can be added by placing it inside of that folder. The values 'cols' and 'rows' can be adjusted to define the grid that will be used to generate the skins mesh. 'add skin' will create a regular skin. 'add as cloth' will create a physics-simulated cloth. Below 'Delaunay Triangulation' there is a second 'add skin' button that will use Delaunay Triangulation to generate a tightly fitted mesh for the image. Currently there is no algorithm implemented for triangle ordering, so self overlap can't be handled well. Currently it isn't possible to pin/unpin a cloth's vertices or change the cloths shape. All cloths are rectangular and the top row of vertices is pinned.
+Inside the window labeled 'Skins' a graphics file can be selected (I found most of the graphics used inside of the app online and don't own them). The listed files are stored in the folder './assets/img'. Any custom PNG-file can be added by placing it inside of that folder. The values 'cols' and 'rows' can be adjusted to define the grid that will be used to generate the skins mesh. 'add skin' will create a regular skin. 'add as cloth' will create a physics-simulated cloth. Below 'Delaunay Triangulation' there is a second 'add skin' button that will use Delaunay Triangulation to generate a tightly fitted mesh for the image. Currently there is no algorithm implemented for triangle ordering, so self overlap can't be handled well. Currently it isn't possible to pin/unpin a cloth's vertices or change the cloths shape. All cloths are rectangular and the top row of vertices is pinned.
 
 ### Bind / Unbind Skin
 
@@ -220,10 +223,16 @@ Displaying bones and meshes can be toggled.
 
 To compile and run the code you will need a working Rust installation. If you are new to Rust you can follow these instructions: https://www.rust-lang.org/tools/install
 
-Once Rust is installed, simply run following command inside of the project folder:
+Once Rust is installed, simply run following command inside of the project folder for a test run:
 
 ```
 cargo run
+```
+
+For better performance set the 'release' flag:
+
+```
+cargo run --release
 ```
 
 ### WebAssembly
@@ -235,7 +244,7 @@ rustup target install wasm32-unknown-unknown
 cargo install wasm-server-runner
 ```
 
-Run the application with:
+Test run the application with:
 ```
 cargo run --target wasm32-unknown-unknown
 ```

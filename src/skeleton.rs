@@ -66,7 +66,9 @@ impl VertexMapping {
             total += *weight;
         }
         for weight in self.weights.iter_mut() {
-            *weight /= total;
+            if *weight != 0.0 {
+                *weight /= total;
+            }
         }
     }
     fn refine(&mut self) {
@@ -78,6 +80,7 @@ impl VertexMapping {
         }
         for i in (0..self.weights.len()).rev() {
             if self.weights[i] > VERTEX_BONE_MAX_DISTANCE && self.weights[i] > min {
+                // self.weights[i] = -1.0;  // -1.0 weights are zero weights
                 self.weights.swap_remove(i);
                 self.rel_positions.swap_remove(i);
                 self.bones.swap_remove(i);
@@ -86,7 +89,11 @@ impl VertexMapping {
     }
     fn invert(&mut self) {
         for weight in self.weights.iter_mut() {
-            *weight = f32::powi(VERTEX_BONE_MAX_DISTANCE - *weight, 10);
+            if *weight < 0.0 {
+                *weight = 0.0;
+            } else {
+                *weight = f32::powi(VERTEX_BONE_MAX_DISTANCE - *weight, 10);
+            }
         }
     }
     fn clear(&mut self) {
@@ -237,7 +244,7 @@ pub fn assign_skins_to_bones(
                                 Err(_) => continue,
                             };
                         }
-                        mapping.refine(); // Remove bones that are too far from mapping
+                        mapping.refine(); // Set weight to zero for bones too far from vertex
                         mapping.invert();
                         mapping.normalize(); // normalize weighting
                     }
