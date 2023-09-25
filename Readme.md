@@ -188,6 +188,14 @@ Displaying bones and meshes can be toggled.
     <td colspan="2"><b>Other</b></td>
   </tr>
   <tr>
+    <td>A</td>
+    <td>Assign selected skins to selected bones</td>
+  </tr>
+  <tr>
+    <td>LControl + A</td>
+    <td>Unbind selected skins</td>
+  </tr>
+  <tr>
     <td>P</td>
     <td>Play / Pause animation</td>
   </tr>
@@ -202,6 +210,10 @@ Displaying bones and meshes can be toggled.
   <tr>
     <td>W</td>
     <td>Toggle adjust vertex weights mode</td>
+  </tr>
+  <tr>
+    <td>Q / E</td>
+    <td>Decrease / Increase vertex weights</td>
   </tr>
   <tr>
     <td>LMouse</td>
