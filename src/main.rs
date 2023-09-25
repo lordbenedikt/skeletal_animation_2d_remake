@@ -141,7 +141,7 @@ fn main() {
     )
     .add_system_set(save_load::system_set());
 
-    // Don't execute on Web
+    // Only execute on Web
     #[cfg(target_arch = "wasm32")]
     app.add_system(misc::wasm_resize_window);
 
